@@ -55,8 +55,14 @@ async function buildScene(gm) {
             tile("Ground Ruined", ground, "Ruine"),
             ...tower.map((levelId, i) => tile(`Tower ${i + 1} Burning`, levelId, "Brand"))
           ],
-          lights: [{ x: 300, y: 300, levels: [ground], config: { dim: 10, bright: 5 }, ...variant("Brand") }],
-          walls: [{ c: [100, 500, 600, 500], levels: [ground], ...variant("Ruine") }],
+          lights: [
+            { x: 300, y: 300, levels: [ground], config: { dim: 10, bright: 5 }, ...variant("Brand") },
+            { x: 600, y: 300, levels: [ground], config: { dim: 10, bright: 5 }, ...variant("Tag") }
+          ],
+          walls: [
+            { c: [100, 500, 600, 500], levels: [ground], ...variant("Ruine") },
+            { c: [100, 600, 600, 600], levels: [ground], ...variant(["Tag", "Fest", "Nacht", "Brand"]) }
+          ],
           flags: { [moduleId]: { defaultName: "Tag" } }
         },
         { keepId: true }
@@ -77,8 +83,9 @@ const documentState = (page, sceneId) =>
       const scene = game.scenes.get(id);
       const state = {};
       for (const t of scene.tiles) if (t.getFlag(moduleId, "variant")) state[t.name] = t.alpha;
-      for (const l of scene.lights) state[`light ${l.getFlag(moduleId, "variant")}`] = l.hidden ? 0 : 1;
-      for (const w of scene.walls) state[`wall ${w.getFlag(moduleId, "variant")}`] = w.sight === 0 ? 0 : 1;
+      const label = (doc) => [doc.getFlag(moduleId, "variant")].flat().join("+");
+      for (const l of scene.lights) state[`light ${label(l)}`] = l.hidden ? 0 : 1;
+      for (const w of scene.walls) state[`wall ${label(w)}`] = w.sight === 0 ? 0 : 1;
       return state;
     },
     sceneId,
@@ -108,32 +115,37 @@ const clickVariant = (page, levelId, selector, shift = false) =>
   );
 
 const optionSelector = (name) => `.my-variant-option[data-variant="${name}"]`;
+const BASE_ONLY = ["light Tag", "wall Tag+Fest+Nacht+Brand"];
+const sameList = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
+
+// Polls until exactly the expected variant documents are on: a sync writes one document type after the other.
+async function expectShown(page, sceneId, expected) {
+  let on = [];
+  for (let i = 0; i < 40; i++) {
+    on = shown(await documentState(page, sceneId));
+    if (sameList(on, expected)) return;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  throw new Error(`on: ${on.join(", ")}; expected: ${[...expected].sort().join(", ")}`);
+}
 
 await run(async () => {
   const gm = await joinGamemaster();
   const { sceneId, ground, tower } = await buildScene(gm);
   await waitFor(gm, (id) => canvas.scene?.id === id, sceneId);
 
-  await check("on load the active GM switches every variant off and saves what it switched", async () => {
-    await waitFor(
-      gm,
-      (id, m) =>
-        game.scenes
-          .get(id)
-          .tiles.filter((t) => t.getFlag(m, "variant"))
-          .every((t) => t.alpha === 0),
-      sceneId,
-      MODULE_ID
-    );
-    const state = await documentState(gm, sceneId);
-    assert(shown(state).length === 0, `still on: ${shown(state)}`);
-    const restore = await gm.evaluate(
-      (id, m) => game.scenes.get(id).walls.contents[0].getFlag(m, "restore"),
-      sceneId,
-      MODULE_ID
-    );
-    assert(restore?.sight > 0, `wall restore flag is ${JSON.stringify(restore)}`);
-  });
+  await check(
+    "on load the active GM switches every variant but the base state off and saves what it switched",
+    async () => {
+      await expectShown(gm, sceneId, BASE_ONLY);
+      const restore = await gm.evaluate(
+        (id, m) => game.scenes.get(id).walls.contents[0].getFlag(m, "restore"),
+        sceneId,
+        MODULE_ID
+      );
+      assert(restore?.sight > 0, `wall restore flag is ${JSON.stringify(restore)}`);
+    }
+  );
 
   await check("the default list scrolls, the full list shows all nine levels without scrolling", async () => {
     const measure = () =>
@@ -174,50 +186,40 @@ await run(async () => {
     await waitFor(gm, `(${labelAt})("${ground}") === "Fest"`);
     const label = await gm.evaluate(labelAt, ground);
     assert(label === "Fest", `ground label is ${label}`);
-    assert(JSON.stringify(shown(await documentState(gm, sceneId))) === '["Ground Feast"]', "only the feast tile is on");
+    await expectShown(gm, sceneId, ["Ground Feast", "wall Tag+Fest+Nacht+Brand"]);
   });
 
   await check("in the tree, Brand switches the ground floor and all six tower levels together", async () => {
     await setClientSetting(gm, "variantStyle", "tree");
     await waitFor(gm, () => document.querySelector(".my-variant-tree"));
     await clickVariant(gm, ground, optionSelector("Brand"));
-    await waitFor(
-      gm,
-      (id) =>
-        game.scenes
-          .get(id)
-          .tiles.filter((t) => t.name.includes("Burning"))
-          .every((t) => t.alpha === 1),
-      sceneId
-    );
-    const on = shown(await documentState(gm, sceneId));
-    const expected = ["Ground Burning", ...tower.map((_, i) => `Tower ${i + 1} Burning`), "light Brand"].sort();
-    assert(JSON.stringify(on) === JSON.stringify(expected), `on: ${on}`);
+    await expectShown(gm, sceneId, [
+      "Ground Burning",
+      ...tower.map((_, i) => `Tower ${i + 1} Burning`),
+      "light Brand",
+      "wall Tag+Fest+Nacht+Brand"
+    ]);
   });
 
   await check("shift-click on Tag at Turm 1 resets only that level", async () => {
     await clickVariant(gm, tower[0], optionSelector("Tag"), true);
-    await waitFor(gm, (id) => game.scenes.get(id).tiles.getName("Tower 1 Burning").alpha === 0, sceneId);
-    const on = shown(await documentState(gm, sceneId));
-    assert(on.includes("Tower 2 Burning") && on.includes("Ground Burning"), `on: ${on}`);
+    await expectShown(gm, sceneId, [
+      "Ground Burning",
+      ...tower.slice(1).map((_, i) => `Tower ${i + 2} Burning`),
+      "light Brand",
+      "wall Tag+Fest+Nacht+Brand"
+    ]);
   });
 
-  await check("Ruine switches its wall back on and Tag resets every level", async () => {
+  await check("Ruine swaps the church walls for its own and Tag resets every level", async () => {
     await clickVariant(gm, ground, optionSelector("Ruine"));
-    await waitFor(gm, (id) => game.scenes.get(id).walls.contents[0].sight > 0, sceneId);
+    await expectShown(gm, sceneId, [
+      "Ground Ruined",
+      "wall Ruine",
+      ...tower.slice(1).map((_, i) => `Tower ${i + 2} Burning`)
+    ]);
     await clickVariant(gm, ground, optionSelector("Tag"));
-    await waitFor(
-      gm,
-      (id, m) =>
-        game.scenes
-          .get(id)
-          .tiles.filter((t) => t.getFlag(m, "variant"))
-          .every((t) => t.alpha === 0),
-      sceneId,
-      MODULE_ID
-    );
-    const state = await documentState(gm, sceneId);
-    assert(shown(state).length === 0, `still on: ${shown(state)}`);
+    await expectShown(gm, sceneId, BASE_ONLY);
     const active = await gm.evaluate((id, m) => game.scenes.get(id).getFlag(m, "active"), sceneId, MODULE_ID);
     assert(Object.keys(active ?? {}).length === 0, `active is ${JSON.stringify(active)}`);
   });

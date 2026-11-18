@@ -10,7 +10,7 @@ Small Foundry VTT fixes for one table, in one module.
 
 ## Variants
 
-A variant is a set of documents (Tile, AmbientLight, AmbientSound, Wall) that share the flag `flags.foundry-my-modules.variant = "<name>"`. A document belongs to the levels in its own `levels` field, or to every level when that is empty; a document without the flag is always on.
+A variant is a set of documents (Tile, AmbientLight, AmbientSound, Wall) that share the flag `flags.foundry-my-modules.variant = "<name>"`. The flag may also be a list of names: the document is on while any of them is active. The base state's name means "on in the base state", so `["Tag", "Fest", "Nacht", "Brand"]` is a wall that only the ruin removes. A document belongs to the levels in its own `levels` field, or to every level when that is empty; a document without the flag is always on.
 
 - The variants of a level are the base state plus the variant names of its documents, in the order the documents were created. The scene flag `defaultName` names the base state.
 - The scene flag `active` maps a level id to its active variant; a level missing from it shows the base state.

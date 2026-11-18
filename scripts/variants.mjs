@@ -9,7 +9,8 @@ const SWITCHED = {
 };
 
 const isActiveGM = () => game.users.activeGM?.isSelf === true;
-const variantOf = (doc) => doc.getFlag(MODULE_ID, "variant") ?? null;
+// The variants a document is on in: none means always on. The base state's name means on in the base state.
+const variantsOf = (doc) => [doc.getFlag(MODULE_ID, "variant") ?? []].flat().filter(Boolean);
 const levelIdsOf = (scene, doc) => (doc.levels.size ? [...doc.levels] : scene.levels.map((l) => l.id));
 
 export const baseName = (scene) =>
@@ -26,11 +27,11 @@ export function getVariants(scene) {
   const active = scene.getFlag(MODULE_ID, "active") ?? {};
   const byLevel = new Map(scene.levels.map((l) => [l.id, [base]]));
   for (const { doc } of variantDocuments(scene)) {
-    const name = variantOf(doc);
-    if (!name) continue;
-    for (const id of levelIdsOf(scene, doc)) {
-      const names = byLevel.get(id);
-      if (names && !names.includes(name)) names.push(name);
+    for (const name of variantsOf(doc)) {
+      for (const id of levelIdsOf(scene, doc)) {
+        const names = byLevel.get(id);
+        if (names && !names.includes(name)) names.push(name);
+      }
     }
   }
   return scene.levels.contents
@@ -59,8 +60,9 @@ export async function syncVariants(scene) {
   const activeOn = new Map(getVariants(scene).map((v) => [v.levelId, v.active]));
   const updates = {};
   for (const { type, doc } of variantDocuments(scene)) {
-    const name = variantOf(doc);
-    const on = !name || levelIdsOf(scene, doc).some((id) => (activeOn.get(id) ?? baseName(scene)) === name);
+    const names = variantsOf(doc);
+    const on =
+      !names.length || levelIdsOf(scene, doc).some((id) => names.includes(activeOn.get(id) ?? baseName(scene)));
     const update = documentUpdate(type, doc, on);
     if (!update) continue;
     updates[type] ??= [];
@@ -114,7 +116,7 @@ export function setupVariants(onChange) {
   });
   for (const type of Object.keys(SWITCHED)) {
     Hooks.on(`create${type}`, (doc) => {
-      if (variantOf(doc)) {
+      if (variantsOf(doc).length) {
         onChange();
         queueSync(doc.parent);
       }
@@ -125,6 +127,6 @@ export function setupVariants(onChange) {
         queueSync(doc.parent);
       }
     });
-    Hooks.on(`delete${type}`, (doc) => variantOf(doc) && onChange());
+    Hooks.on(`delete${type}`, (doc) => variantsOf(doc).length && onChange());
   }
 }
