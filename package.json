@@ -8,8 +8,7 @@
   "scripts": {
     "check": "biome ci",
     "fix": "biome check --write",
-    "e2e": "node e2e/cursors.e2e.mjs && node e2e/levels.e2e.mjs",
-    "package": "git archive --format=zip -o module.zip HEAD module.json scripts styles lang LICENSE README.md"
+    "e2e": "node e2e/cursors.e2e.mjs && node e2e/levels.e2e.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.8",
