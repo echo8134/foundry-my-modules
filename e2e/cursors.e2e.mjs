@@ -175,6 +175,14 @@ try {
       b.classList.contains("off")
     );
     assert(toggleOff, "the GM row does not show the hidden state");
+    await player.mouse.move(700, 450);
+    await waitFor(
+      player,
+      (id) =>
+        getComputedStyle(document.querySelector(`#players li.player[data-user-id="${id}"] .my-cursor-toggle`))
+          .opacity === "0",
+      gmId
+    );
     assert((await cursorVisibleTo(gm, player, playerId)) === true, "GM lost the player cursor");
   });
 

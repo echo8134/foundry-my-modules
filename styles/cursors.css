@@ -9,15 +9,12 @@
   background: none;
   font-size: var(--font-size-12);
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: opacity 0.6s ease-out;
 }
 
 #players .player:hover .my-cursor-toggle {
   opacity: 0.6;
-}
-
-#players .player .my-cursor-toggle.off {
-  opacity: 0.35;
+  transition-duration: 0.15s;
 }
 
 #players .player .my-cursor-toggle:hover {
