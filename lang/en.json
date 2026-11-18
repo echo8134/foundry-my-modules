@@ -9,5 +9,8 @@
   "MY_MODULES.Variants.Style.Arrows": "Arrows (◀ Burning ▶)",
   "MY_MODULES.Variants.Style.Tree": "Tree (indented under the level)",
   "MY_MODULES.Levels.Dropdown.Name": "Levels as a dropdown",
-  "MY_MODULES.Levels.Dropdown.Hint": "Under the scene name only the current level shows; a click on it folds the list of every level out and in."
+  "MY_MODULES.Levels.Dropdown.Hint": "Under the scene name only the current level shows; a click on it folds the list of every level out and in.",
+  "MY_MODULES.Names.Reroll": "Roll a new name",
+  "MY_MODULES.Names.Format.Name": "Format of random token names",
+  "MY_MODULES.Names.Format.Hint": "For figures with name tables. {name} is the drawn name, {actor} the prototype token's name, for example \"{name} ({actor})\"."
 }

@@ -120,7 +120,6 @@ export function setupLevels() {
       default: "arrows",
       onChange: rerender
     });
-    game.modules.get(MODULE_ID).api = { getVariants, setVariant };
   });
 
   Hooks.on("renderSceneNavigation", decorate);

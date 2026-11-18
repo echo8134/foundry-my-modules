@@ -9,5 +9,8 @@
   "MY_MODULES.Variants.Style.Arrows": "Pfeile (◀ Brand ▶)",
   "MY_MODULES.Variants.Style.Tree": "Baum (eingerückt unter der Ebene)",
   "MY_MODULES.Levels.Dropdown.Name": "Ebenen als Dropdown",
-  "MY_MODULES.Levels.Dropdown.Hint": "Unter dem Szenennamen steht nur die aktuelle Ebene; ein Klick darauf klappt die Liste aller Ebenen auf und wieder zu."
+  "MY_MODULES.Levels.Dropdown.Hint": "Unter dem Szenennamen steht nur die aktuelle Ebene; ein Klick darauf klappt die Liste aller Ebenen auf und wieder zu.",
+  "MY_MODULES.Names.Reroll": "Neuen Namen würfeln",
+  "MY_MODULES.Names.Format.Name": "Format zufälliger Token-Namen",
+  "MY_MODULES.Names.Format.Hint": "Für Figuren mit Namenstabellen. {name} ist der gezogene Name, {actor} der Name aus dem Prototyp-Token, zum Beispiel \"{name} ({actor})\"."
 }

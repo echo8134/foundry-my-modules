@@ -36,6 +36,16 @@ A scene can carry variants of its levels, such as feast, night, burning or ruine
 
 ![The GM switches the cathedral's ground floor between its variants in the level navigation](docs/variants-demo.gif)
 
+### Names for generic figures
+
+A token of a villager, a guard or a hunter gets its own name when the GM puts it on the scene, drawn from RollTables the GM keeps in Foundry.
+
+- Give the actor the flag `flags.foundry-my-modules.randomName = { tables: ["<RollTable UUID>", ...] }`. With several tables each is equally likely, so a guard can carry the names of two cultures.
+- Only unlinked tokens are named, and only when the GM creates them with the prototype's name. A linked NPC, an actor without the flag and a token created with its own name keep their name.
+- No two tokens on a scene get the same name while the tables have names left, also when several tokens are created at once.
+- The world setting "Format of random token names" shapes the name: `{name}` is the drawn name, `{actor}` the prototype token's name, so `{name} ({actor})` gives "Bogdan (Guard)".
+- The dice button in the token HUD rolls a new name. `api.rollName(actor)` returns one for macros.
+
 ## Variant data
 
 A variant is a set of documents (Tile, AmbientLight, AmbientSound, Wall) with the flag `flags.foundry-my-modules.variant`.
@@ -55,6 +65,7 @@ api.getVariants(scene); // [{ levelId, name, variants, active }]
 await api.setVariant(scene, levelId, "Burning"); // this level only
 await api.setVariant(scene, levelId, "Burning", { linked: true }); // every level that has it
 await api.setVariant(scene, null, "Day"); // reset every level
+api.rollName(actor); // a name from the actor's name tables, or null
 ```
 
 ## Develop

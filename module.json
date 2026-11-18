@@ -1,8 +1,8 @@
 {
   "id": "foundry-my-modules",
   "title": "My Modules",
-  "description": "Small table fixes for one group: hide cursors from the player list, list every scene level, and switch a level's variants from the level navigation.",
-  "version": "0.3.0",
+  "description": "Small table fixes for one group: hide cursors from the player list, list every scene level, switch a level's variants from the level navigation, and name generic figures from RollTables.",
+  "version": "0.4.0",
   "authors": [
     {
       "name": "echo8134"

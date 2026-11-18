@@ -1,6 +1,6 @@
 {
   "name": "foundry-my-modules",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "description": "Small Foundry VTT table fixes for one group.",
@@ -8,7 +8,7 @@
   "scripts": {
     "check": "biome ci",
     "fix": "biome check --write",
-    "e2e": "node e2e/cursors.e2e.mjs && node e2e/levels.e2e.mjs"
+    "e2e": "node e2e/cursors.e2e.mjs && node e2e/levels.e2e.mjs && node e2e/names.e2e.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.8",
