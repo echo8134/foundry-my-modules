@@ -1,15 +1,30 @@
 {
   "id": "foundry-my-modules",
   "title": "My Modules",
-  "description": "Small table fixes for one group: hide the cursors of chosen users from the player list.",
-  "version": "0.1.1",
-  "authors": [{ "name": "echo8134" }],
-  "compatibility": { "minimum": "14", "verified": "14" },
+  "description": "Small table fixes for one group: hide cursors from the player list, list every scene level, and switch a level's variants from the level navigation.",
+  "version": "0.2.0",
+  "authors": [
+    {
+      "name": "echo8134"
+    }
+  ],
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14"
+  },
   "esmodules": ["scripts/main.mjs"],
-  "styles": ["styles/cursors.css"],
+  "styles": ["styles/cursors.css", "styles/levels.css"],
   "languages": [
-    { "lang": "de", "name": "Deutsch", "path": "lang/de.json" },
-    { "lang": "en", "name": "English", "path": "lang/en.json" }
+    {
+      "lang": "de",
+      "name": "Deutsch",
+      "path": "lang/de.json"
+    },
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
   ],
   "url": "https://github.com/echo8134/foundry-my-modules",
   "manifest": "https://github.com/echo8134/foundry-my-modules/releases/latest/download/module.json",

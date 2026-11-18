@@ -1,4 +1,4 @@
-export const MODULE_ID = "foundry-my-modules";
+import { MODULE_ID } from "./constants.mjs";
 
 // The users whose cursor this user does not want to see. Stored per user, so it follows them to every device.
 const HIDDEN_SETTING = "hiddenCursors";

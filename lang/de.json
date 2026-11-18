@@ -1,4 +1,12 @@
 {
   "MY_MODULES.Cursors.Own": "Meinen Cursor den anderen zeigen",
-  "MY_MODULES.Cursors.Other": "Cursor dieser Person anzeigen (Umschalt: alle)"
+  "MY_MODULES.Cursors.Other": "Cursor dieser Person anzeigen (Umschalt: alle)",
+  "MY_MODULES.Levels.FullList.Name": "Alle Ebenen zeigen",
+  "MY_MODULES.Levels.FullList.Hint": "Die Ebenen-Navigation unter dem Szenennamen zeigt alle Ebenen untereinander, ohne Scrollen.",
+  "MY_MODULES.Variants.Default": "Grundzustand",
+  "MY_MODULES.Variants.Hint": "Klick: Variante auf allen Ebenen, die sie haben. Umschalt-Klick: nur diese Ebene.",
+  "MY_MODULES.Variants.Style.Name": "Varianten an den Ebenen (nur GM)",
+  "MY_MODULES.Variants.Style.Hint": "Wie die Varianten einer Ebene in der Ebenen-Navigation erscheinen.",
+  "MY_MODULES.Variants.Style.Arrows": "Pfeile (◀ Brand ▶)",
+  "MY_MODULES.Variants.Style.Tree": "Baum (eingerückt unter der Ebene)"
 }
