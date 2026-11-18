@@ -64,3 +64,36 @@
   border-color: var(--color-border-highlight);
   color: var(--color-text-emphatic);
 }
+
+#scene-navigation .my-level-dropdown {
+  flex: none;
+  pointer-events: all;
+}
+
+#scene-navigation .my-level-dropdown .level-row {
+  padding-left: 1rem;
+}
+
+#scene-navigation .my-level-dropdown .scene-level {
+  display: flex;
+  align-items: center;
+  cursor: var(--cursor-pointer);
+}
+
+#scene-navigation .my-level-dropdown .scene-level span {
+  flex: 1;
+}
+
+#scene-navigation .my-level-dropdown .fa-caret-down {
+  margin-left: auto;
+  padding-left: 0.5rem;
+  transition: transform 0.15s;
+}
+
+#scene-navigation .my-level-dropdown.open .fa-caret-down {
+  transform: rotate(180deg);
+}
+
+#scene-navigation .scene-levels.my-collapsed {
+  display: none;
+}

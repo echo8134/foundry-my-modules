@@ -3,6 +3,8 @@ import { getVariants, setupVariants, setVariant } from "./variants.mjs";
 
 const FULL_LIST = "fullLevelList";
 const VARIANT_STYLE = "variantStyle";
+const DROPDOWN = "levelDropdown";
+const DROPDOWN_OPEN = "levelDropdownOpen";
 
 const rerender = foundry.utils.debounce(() => ui.nav?.render(), 50);
 
@@ -48,10 +50,28 @@ function treeControl(scene, level) {
   return list;
 }
 
+// A row in Foundry's own level style above the list, naming the viewed level; a click folds the list in or out.
+function dropdownToggle(menu) {
+  const open = game.settings.get(MODULE_ID, DROPDOWN_OPEN);
+  const viewed = menu.querySelector(".scene-level.view span")?.textContent ?? "";
+  const toggle = document.createElement("menu");
+  toggle.className = "scene-navigation-menu flexcol my-level-dropdown";
+  toggle.innerHTML = `<li class="level-row"><div class="ui-control scene scene-level"><span class="ellipsis"></span><i class="fa-solid fa-caret-down" inert></i></div></li>`;
+  toggle.querySelector("span").textContent = viewed;
+  toggle.classList.toggle("open", open);
+  toggle.addEventListener("click", (event) => {
+    event.stopPropagation();
+    game.settings.set(MODULE_ID, DROPDOWN_OPEN, !open);
+  });
+  menu.before(toggle);
+  menu.classList.toggle("my-collapsed", !open);
+}
+
 function decorate(_app, element) {
   const menu = element.querySelector("#scene-navigation-levels");
   if (!menu) return;
   menu.classList.toggle("my-full-level-list", game.settings.get(MODULE_ID, FULL_LIST));
+  if (game.settings.get(MODULE_ID, DROPDOWN)) dropdownToggle(menu);
   if (!game.user.isGM) return;
   const sceneId = menu.querySelector("[data-scene-id]")?.dataset.sceneId;
   const scene = game.scenes.get(sceneId);
@@ -70,6 +90,22 @@ export function setupLevels() {
       hint: "MY_MODULES.Levels.FullList.Hint",
       scope: "client",
       config: true,
+      type: Boolean,
+      default: false,
+      onChange: rerender
+    });
+    game.settings.register(MODULE_ID, DROPDOWN, {
+      name: "MY_MODULES.Levels.Dropdown.Name",
+      hint: "MY_MODULES.Levels.Dropdown.Hint",
+      scope: "client",
+      config: true,
+      type: Boolean,
+      default: false,
+      onChange: rerender
+    });
+    game.settings.register(MODULE_ID, DROPDOWN_OPEN, {
+      scope: "client",
+      config: false,
       type: Boolean,
       default: false,
       onChange: rerender

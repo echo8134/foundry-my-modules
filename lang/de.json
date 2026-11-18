@@ -7,5 +7,7 @@
   "MY_MODULES.Variants.Style.Name": "Varianten an den Ebenen (nur GM)",
   "MY_MODULES.Variants.Style.Hint": "Wie die Varianten einer Ebene in der Ebenen-Navigation erscheinen. Klick: nur diese Ebene. Umschalt-Klick: alle Ebenen, die die Variante haben.",
   "MY_MODULES.Variants.Style.Arrows": "Pfeile (◀ Brand ▶)",
-  "MY_MODULES.Variants.Style.Tree": "Baum (eingerückt unter der Ebene)"
+  "MY_MODULES.Variants.Style.Tree": "Baum (eingerückt unter der Ebene)",
+  "MY_MODULES.Levels.Dropdown.Name": "Ebenen als Dropdown",
+  "MY_MODULES.Levels.Dropdown.Hint": "Unter dem Szenennamen steht nur die aktuelle Ebene; ein Klick darauf klappt die Liste aller Ebenen auf und wieder zu."
 }

@@ -24,7 +24,7 @@ Hover a row of the player list, bottom left, and a check mark appears; it fades 
 
 ### Every level in the level navigation
 
-The client setting "Show every level" lists all levels of a scene under the scene name, instead of three rows and a scroll bar. It is off by default.
+The client setting "Show every level" lists all levels of a scene under the scene name, instead of three rows and a scroll bar. The client setting "Levels as a dropdown" folds the list into one row that names the current level; a click on it folds the list out and in. Both are off by default.
 
 ### Scene variants at their level
 

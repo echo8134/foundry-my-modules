@@ -164,6 +164,32 @@ await run(async () => {
     assert(after.rows === 9 && !after.scrolls, `full list: ${JSON.stringify(after)}`);
   });
 
+  await check("the dropdown shows the viewed level and folds the list out and in", async () => {
+    const state = () =>
+      gm.evaluate(() => {
+        const toggle = document.querySelector("#scene-navigation .my-level-dropdown");
+        const menu = document.querySelector("#scene-navigation-levels");
+        return { label: toggle?.textContent.trim(), listShown: menu.offsetParent !== null };
+      });
+    const clickToggle = () =>
+      gm.evaluate(() =>
+        document
+          .querySelector("#scene-navigation .my-level-dropdown .scene-level")
+          .dispatchEvent(new MouseEvent("click", { bubbles: true }))
+      );
+    await setClientSetting(gm, "levelDropdownOpen", false);
+    await setClientSetting(gm, "levelDropdown", true);
+    await waitFor(gm, () => document.querySelector("#scene-navigation .my-level-dropdown"));
+    const closed = await state();
+    assert(closed.label === "Erdgeschoss" && !closed.listShown, `closed: ${JSON.stringify(closed)}`);
+    await clickToggle();
+    await waitFor(gm, () => document.querySelector("#scene-navigation-levels")?.offsetParent !== null);
+    await clickToggle();
+    await waitFor(gm, () => document.querySelector("#scene-navigation-levels")?.offsetParent === null);
+    await setClientSetting(gm, "levelDropdown", false);
+    await waitFor(gm, () => !document.querySelector("#scene-navigation .my-level-dropdown"));
+  });
+
   await check("the API lists the variants of each level", async () => {
     const variants = await gm.evaluate(
       (id, m) => game.modules.get(m).api.getVariants(game.scenes.get(id)),
