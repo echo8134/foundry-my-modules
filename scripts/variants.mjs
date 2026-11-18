@@ -71,7 +71,7 @@ export async function syncVariants(scene) {
   for (const [type, list] of Object.entries(updates)) await scene.updateEmbeddedDocuments(type, list);
 }
 
-export async function setVariant(scene, levelId, name, { linked = true } = {}) {
+export async function setVariant(scene, levelId, name, { linked = false } = {}) {
   if (!game.user.isGM) throw new Error(`${MODULE_ID} | only a Gamemaster can switch variants`);
   const levels = getVariants(scene);
   const active = { ...(scene.getFlag(MODULE_ID, "active") ?? {}) };

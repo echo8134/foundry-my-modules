@@ -2,7 +2,7 @@
   "id": "foundry-my-modules",
   "title": "My Modules",
   "description": "Small table fixes for one group: hide cursors from the player list, list every scene level, and switch a level's variants from the level navigation.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "authors": [
     {
       "name": "echo8134"

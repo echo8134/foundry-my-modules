@@ -189,10 +189,12 @@ await run(async () => {
     await expectShown(gm, sceneId, ["Ground Feast", "wall Tag+Fest+Nacht+Brand"]);
   });
 
-  await check("in the tree, Brand switches the ground floor and all six tower levels together", async () => {
+  await check("in the tree, Brand switches only the ground floor, shift-click every level that has it", async () => {
     await setClientSetting(gm, "variantStyle", "tree");
     await waitFor(gm, () => document.querySelector(".my-variant-tree"));
     await clickVariant(gm, ground, optionSelector("Brand"));
+    await expectShown(gm, sceneId, ["Ground Burning", "light Brand", "wall Tag+Fest+Nacht+Brand"]);
+    await clickVariant(gm, ground, optionSelector("Brand"), true);
     await expectShown(gm, sceneId, [
       "Ground Burning",
       ...tower.map((_, i) => `Tower ${i + 1} Burning`),
@@ -201,8 +203,8 @@ await run(async () => {
     ]);
   });
 
-  await check("shift-click on Tag at Turm 1 resets only that level", async () => {
-    await clickVariant(gm, tower[0], optionSelector("Tag"), true);
+  await check("a click on Tag at Turm 1 resets only that level", async () => {
+    await clickVariant(gm, tower[0], optionSelector("Tag"));
     await expectShown(gm, sceneId, [
       "Ground Burning",
       ...tower.slice(1).map((_, i) => `Tower ${i + 2} Burning`),
@@ -211,14 +213,14 @@ await run(async () => {
     ]);
   });
 
-  await check("Ruine swaps the church walls for its own and Tag resets every level", async () => {
+  await check("Ruine swaps the church walls for its own and shift-click on Tag resets every level", async () => {
     await clickVariant(gm, ground, optionSelector("Ruine"));
     await expectShown(gm, sceneId, [
       "Ground Ruined",
       "wall Ruine",
       ...tower.slice(1).map((_, i) => `Tower ${i + 2} Burning`)
     ]);
-    await clickVariant(gm, ground, optionSelector("Tag"));
+    await clickVariant(gm, ground, optionSelector("Tag"), true);
     await expectShown(gm, sceneId, BASE_ONLY);
     const active = await gm.evaluate((id, m) => game.scenes.get(id).getFlag(m, "active"), sceneId, MODULE_ID);
     assert(Object.keys(active ?? {}).length === 0, `active is ${JSON.stringify(active)}`);

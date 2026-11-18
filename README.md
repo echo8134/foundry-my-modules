@@ -31,8 +31,8 @@ The client setting "Show every level" lists all levels of a scene under the scen
 A scene can carry variants of its levels, such as feast, night, burning or ruined. The GM switches them in the level navigation; players see nothing of it.
 
 - The client setting "Variants at their levels" shows them as arrows (`◀ Burning ▶`) or as a tree under each level.
-- A click switches the variant on every level that has it, so the fire takes the tower too. Shift-click switches only that level.
-- A click on the base state resets every level; Shift-click resets only that level.
+- A click switches the variant on that level only. Shift-click switches it on every level that has it, so the fire takes the tower too.
+- A click on the base state resets that level; Shift-click resets every level.
 
 ## Variant data
 
@@ -50,8 +50,8 @@ The API for macros and other modules:
 ```js
 const api = game.modules.get("foundry-my-modules").api;
 api.getVariants(scene); // [{ levelId, name, variants, active }]
-await api.setVariant(scene, levelId, "Burning"); // every level that has it
-await api.setVariant(scene, levelId, "Burning", { linked: false }); // this level only
+await api.setVariant(scene, levelId, "Burning"); // this level only
+await api.setVariant(scene, levelId, "Burning", { linked: true }); // every level that has it
 await api.setVariant(scene, null, "Day"); // reset every level
 ```
 

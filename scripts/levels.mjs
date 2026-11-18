@@ -9,7 +9,7 @@ const rerender = foundry.utils.debounce(() => ui.nav?.render(), 50);
 function choose(scene, levelId, name, event) {
   event.preventDefault();
   event.stopPropagation();
-  setVariant(scene, levelId, name, { linked: !event.shiftKey }).catch((error) => ui.notifications.error(error.message));
+  setVariant(scene, levelId, name, { linked: event.shiftKey }).catch((error) => ui.notifications.error(error.message));
 }
 
 function button(label, onClick, className) {
@@ -57,7 +57,6 @@ function decorate(_app, element) {
   const scene = game.scenes.get(sceneId);
   if (!scene) return;
   const control = game.settings.get(MODULE_ID, VARIANT_STYLE) === "tree" ? treeControl : arrowsControl;
-  menu.dataset.tooltipText = game.i18n.localize("MY_MODULES.Variants.Hint");
   for (const level of getVariants(scene)) {
     const row = menu.querySelector(`.scene-level[data-level-id="${level.levelId}"]`)?.closest(".level-row");
     row?.append(control(scene, level));

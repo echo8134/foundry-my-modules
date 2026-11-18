@@ -4,9 +4,8 @@
   "MY_MODULES.Levels.FullList.Name": "Show every level",
   "MY_MODULES.Levels.FullList.Hint": "The level navigation under the scene name lists every level, without scrolling.",
   "MY_MODULES.Variants.Default": "Default",
-  "MY_MODULES.Variants.Hint": "Click: the variant on every level that has it. Shift-click: this level only.",
   "MY_MODULES.Variants.Style.Name": "Variants at their levels (GM only)",
-  "MY_MODULES.Variants.Style.Hint": "How a level's variants show in the level navigation.",
+  "MY_MODULES.Variants.Style.Hint": "How a level's variants show in the level navigation. Click: this level only. Shift-click: every level that has the variant.",
   "MY_MODULES.Variants.Style.Arrows": "Arrows (◀ Burning ▶)",
   "MY_MODULES.Variants.Style.Tree": "Tree (indented under the level)"
 }
