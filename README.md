@@ -34,6 +34,8 @@ A scene can carry variants of its levels, such as feast, night, burning or ruine
 - A click switches the variant on that level only. Shift-click switches it on every level that has it, so the fire takes the tower too.
 - A click on the base state resets that level; Shift-click resets every level.
 
+![The GM switches the cathedral's ground floor between its variants in the level navigation](docs/variants-demo.gif)
+
 ## Variant data
 
 A variant is a set of documents (Tile, AmbientLight, AmbientSound, Wall) with the flag `flags.foundry-my-modules.variant`.
