@@ -36,7 +36,12 @@ async function buildEncounter(gm) {
           name: "Ashwood Staff",
           type: "weapon",
           img: "icons/weapons/staves/staff-blue-jewel.webp",
-          system: { activities: activity("attack") }
+          system: { equipped: true, activities: activity("attack") }
+        },
+        {
+          name: "Stowed Dagger",
+          type: "weapon",
+          system: { equipped: false, activities: activity("attack") }
         },
         spell("Light", 0, 1),
         spell("Mage Hand", 0, 1),
@@ -65,7 +70,8 @@ async function buildEncounter(gm) {
       name: "Cellar Sentry",
       type: "npc",
       prototypeToken: { texture: { src: "systems/dnd5e/tokens/humanoid/Guard.webp" } },
-      ownership: { [player.id]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER }
+      ownership: { [player.id]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER },
+      items: [spell("Detect Magic", 1, 0, "atwill")]
     });
     hudTestDocuments.push(guard);
     const tokens = await Promise.all([
@@ -88,6 +94,7 @@ async function buildEncounter(gm) {
       actor: wizard.id,
       hero: scene.tokens.find((token) => token.actorId === wizard.id).id,
       guard: scene.tokens.find((token) => token.actorId === guard.id).id,
+      atWillSpell: guard.items.getName("Detect Magic").id,
       items: Object.fromEntries(wizard.items.map((item) => [item.name, item.id]))
     };
   }, PLAYER_NAME);
@@ -136,6 +143,7 @@ await run(async () => {
       assert(first, "expected the owned wizard first and the observed sentry second");
       await click(player, group("attacks"));
       await player.waitForSelector(entry("item", ids.items["Ashwood Staff"]), { visible: true });
+      assert(!(await player.$(entry("item", ids.items["Stowed Dagger"]))), "unequipped dagger appeared in Attacks");
       await player.evaluate((id) => canvas.tokens.get(id).release(), ids.hero);
       await player.waitForSelector(HUD, { hidden: true });
       assert(await player.evaluate((id) => canvas.tokens.controlled[0]?.id === id, ids.guard), "sentry lost control");
@@ -148,11 +156,76 @@ await run(async () => {
       await player.waitForSelector(group("attacks"), { visible: true });
     });
 
+    await check("the sentry's at-will spell appears with prepared set to zero", async () => {
+      await gm.evaluate((id) => canvas.tokens.get(id).control(), ids.guard);
+      await gm.waitForSelector(group("conditions"), { visible: true });
+      const prepared = await gm.evaluate(
+        (id) => canvas.tokens.controlled[0].actor.items.get(id).system.prepared,
+        ids.atWillSpell
+      );
+      assert(prepared === 0, `expected prepared 0, got ${prepared}`);
+      assert(await gm.$(group("spells")), "missing Spells group for the at-will caster");
+      await click(gm, group("spells"));
+      await gm.waitForSelector(entry("item", ids.atWillSpell), { visible: true });
+      await gm.evaluate(() => canvas.tokens.releaseAll());
+    });
+
+    await check("only dragging pins the HUD and double-clicking restores hotbar following", async () => {
+      const grip = `${HUD} .hud-grip`;
+      const saved = () =>
+        player.evaluate(() => game.settings.get("foundry-my-modules", "actionHudPositions")[game.user.id]);
+      await player.click(grip);
+      assert(!(await saved()), "clicking the grip pinned the HUD");
+      const { x, y } = await player.$eval(grip, (el) => {
+        const rect = el.getBoundingClientRect();
+        return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      });
+      await player.mouse.move(x, y);
+      await player.mouse.down();
+      await player.mouse.move(x + 2, y - 2);
+      await player.mouse.up();
+      assert(!(await saved()), "minor pointer movement pinned the HUD");
+      const initialTop = await player.$eval(HUD, (el) => el.getBoundingClientRect().top);
+      await player.mouse.down();
+      await player.mouse.move(x + 2, y - 82, { steps: 5 });
+      await player.mouse.up();
+      const pinned = await saved();
+      assert(Math.abs(pinned?.y - (initialTop - 80)) < 1, "drag did not save the new position");
+      await player.click(grip, { count: 2 });
+      assert(!(await saved()), "double-click left a saved position");
+      const viewport = player.viewport();
+      await player.setViewport({ ...viewport, height: viewport.height + 100 });
+      await waitFor(
+        player,
+        (s, y) => Math.abs(document.querySelector(s).getBoundingClientRect().top - y) < 1,
+        HUD,
+        initialTop + 100
+      );
+      await player.setViewport(viewport);
+    });
+
     await check("the condition button applies and removes the wizard's actual prone status", async () => {
       await click(player, group("conditions"));
       for (const active of [true, false]) {
         await click(player, entry("condition", "prone"));
         await waitFor(gm, (id, expected) => game.actors.get(id).statuses.has("prone") === expected, ids.actor, active);
+      }
+    });
+
+    await check("left and right clicks raise and lower the wizard's exhaustion one level", async () => {
+      for (const [button, level] of [
+        ["left", 1],
+        ["left", 2],
+        ["right", 1],
+        ["right", 0]
+      ]) {
+        await player.click(entry("condition", "exhaustion"), { button });
+        await waitFor(
+          gm,
+          (id, expected) => game.actors.get(id).system.attributes.exhaustion === expected,
+          ids.actor,
+          level
+        );
       }
     });
 
