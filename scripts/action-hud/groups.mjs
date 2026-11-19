@@ -70,11 +70,12 @@ export function actionGroups(actor) {
   const items = [];
   for (const item of [...actor.items].sort(byName)) {
     if (!item.canUse) continue;
+    if (item.type === "weapon" && item.system.equipped === false) continue;
     const activities = item.system.activities?.filter((a) => a.canUse) ?? [];
     const entry = itemEntry(item, activities);
     if (item.type === "spell") {
-      const { level, prepared, method } = item.system;
-      if (!prepared && method !== "innate" && method !== "pact") continue;
+      const { level, prepared, method, canPrepare } = item.system;
+      if (canPrepare && !prepared && method !== "pact") continue;
       if (!spells.has(level)) spells.set(level, []);
       spells.get(level).push(entry);
     } else if (item.type === "feat") {
@@ -84,7 +85,14 @@ export function actionGroups(actor) {
   }
   const conditions = Object.entries(CONFIG.DND5E.conditionTypes)
     .filter(([, status]) => !status.pseudo)
-    .map(([id, { name, img }]) => ({ id, name, img, action: "condition", active: actor.statuses.has(id) }))
+    .map(([id, { name, img }]) => ({
+      id,
+      name,
+      img,
+      action: "condition",
+      active: actor.statuses.has(id),
+      detail: actor.system.conditions?.[id]
+    }))
     .sort(byName);
   const rests = actor.system.isVehicle
     ? []

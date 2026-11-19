@@ -1,11 +1,11 @@
-import { assert, check, join, joinGamemaster, PLAYER_NAME, run, waitFor } from "./harness.mjs";
+import { assert, check, join, joinGamemaster, MODULE_ID, PLAYER_NAME, run, waitFor } from "./harness.mjs";
 
 const HUD = "#my-action-hud";
 const group = (name) => `${HUD} button[data-group="${name}"]`;
 const entry = (action, id) => `${HUD} [data-action="${action}"][data-id="${id}"]`;
 
-async function click(page, selector) {
-  await page.locator(selector).setTimeout(10000).click();
+async function click(page, selector, options) {
+  await page.locator(selector).setTimeout(10000).click(options);
 }
 
 async function buildEncounter(gm) {
@@ -172,9 +172,8 @@ await run(async () => {
 
     await check("only dragging pins the HUD and double-clicking restores hotbar following", async () => {
       const grip = `${HUD} .hud-grip`;
-      const saved = () =>
-        player.evaluate(() => game.settings.get("foundry-my-modules", "actionHudPositions")[game.user.id]);
-      await player.click(grip);
+      const saved = () => player.evaluate((id) => game.settings.get(id, "actionHudPositions")[game.user.id], MODULE_ID);
+      await click(player, grip);
       assert(!(await saved()), "clicking the grip pinned the HUD");
       const { x, y } = await player.$eval(grip, (el) => {
         const rect = el.getBoundingClientRect();
@@ -191,7 +190,7 @@ await run(async () => {
       await player.mouse.up();
       const pinned = await saved();
       assert(Math.abs(pinned?.y - (initialTop - 80)) < 1, "drag did not save the new position");
-      await player.click(grip, { count: 2 });
+      await click(player, grip, { count: 2 });
       assert(!(await saved()), "double-click left a saved position");
       const viewport = player.viewport();
       await player.setViewport({ ...viewport, height: viewport.height + 100 });
@@ -219,7 +218,7 @@ await run(async () => {
         ["right", 1],
         ["right", 0]
       ]) {
-        await player.click(entry("condition", "exhaustion"), { button });
+        await click(player, entry("condition", "exhaustion"), { button });
         await waitFor(
           gm,
           (id, expected) => game.actors.get(id).system.attributes.exhaustion === expected,

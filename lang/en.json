@@ -3,7 +3,7 @@
   "MY_MODULES.ActionHud.enabled": "Show action HUD",
   "MY_MODULES.ActionHud.hint": "Show combat actions for the first selected token you own.",
   "MY_MODULES.ActionHud.toggle": "Toggle action HUD",
-  "MY_MODULES.ActionHud.move": "Drag to move the action HUD",
+  "MY_MODULES.ActionHud.move": "Drag to move the action HUD. Double-click to return it to the hotbar.",
   "MY_MODULES.ActionHud.attacks": "Attacks",
   "MY_MODULES.ActionHud.spells": "Spells",
   "MY_MODULES.ActionHud.features": "Features",

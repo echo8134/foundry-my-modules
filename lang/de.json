@@ -3,7 +3,7 @@
   "MY_MODULES.ActionHud.enabled": "Aktionsleiste anzeigen",
   "MY_MODULES.ActionHud.hint": "Zeigt die Aktionen des ersten ausgewählten Tokens, wenn dir sein Akteur gehört.",
   "MY_MODULES.ActionHud.toggle": "Aktionsleiste ein-/ausblenden",
-  "MY_MODULES.ActionHud.move": "Aktionsleiste durch Ziehen verschieben",
+  "MY_MODULES.ActionHud.move": "Ziehen, um die Aktionsleiste zu verschieben. Doppelklicken, um sie wieder an der Makroleiste auszurichten.",
   "MY_MODULES.ActionHud.attacks": "Angriffe",
   "MY_MODULES.ActionHud.spells": "Zauber",
   "MY_MODULES.ActionHud.features": "Merkmale",

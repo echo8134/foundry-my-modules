@@ -37,7 +37,7 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
       condition(_event, target) {
         const actor = this.currentActor(target);
         const id = target.dataset.id;
-        const level = actor?.system.conditions?.[id];
+        const level = id !== "exhaustion" && actor?.system.conditions?.[id];
         actor?.toggleStatusEffect(id, level ? { levels: -level } : {});
       },
       shortRest(event, target) {
@@ -71,13 +71,22 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
     super._onFirstRender(context, options);
     this.saved = game.settings.get(MODULE_ID, POSITIONS)[game.user.id];
     this.element.addEventListener("pointerdown", (e) => {
-      if (e.button === 0 && e.target.closest(".hud-grip")) this.drag(e);
+      if (e.button === 0 && e.isPrimary && e.target.closest(".hud-grip")) this.drag(e);
+    });
+    this.element.addEventListener("dblclick", (e) => {
+      // Pointer capture retargets grip clicks to the persistent application element.
+      if (this.saved && document.elementFromPoint(e.clientX, e.clientY)?.closest("#my-action-hud .hud-grip")) {
+        this.savePosition();
+        this.layout();
+      }
     });
     this.element.addEventListener("contextmenu", (e) => {
-      const button = e.target.closest('[data-action="item"]');
+      const button = e.target.closest('[data-action="item"], [data-action="condition"][data-id="exhaustion"]');
       if (!button) return;
       e.preventDefault();
-      this.currentActor(button)?.items.get(button.dataset.id)?.sheet.render({ force: true });
+      const actor = this.currentActor(button);
+      if (button.dataset.action === "condition") actor?.toggleStatusEffect("exhaustion", { levels: -1, active: false });
+      else actor?.items.get(button.dataset.id)?.sheet.render({ force: true });
     });
     this.observer = new ResizeObserver(() => this.layout());
     for (const id of ["interface", "ui-right", "ui-left-column-1", "hotbar"]) {
@@ -120,6 +129,14 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
     return { x, y };
   }
 
+  savePosition(position) {
+    this.saved = position;
+    const positions = { ...game.settings.get(MODULE_ID, POSITIONS) };
+    if (position) positions[game.user.id] = position;
+    else delete positions[game.user.id];
+    game.settings.set(MODULE_ID, POSITIONS, positions);
+  }
+
   drag(event) {
     const el = this.element;
     const { left, top } = el.getBoundingClientRect();
@@ -127,21 +144,21 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
     const listeners = new AbortController();
     const options = { signal: listeners.signal };
     el.setPointerCapture(pointerId);
-    const position = (e) => this.layout({ x: left + e.clientX - clientX, y: top + e.clientY - clientY });
-    el.addEventListener(
-      "pointermove",
-      (e) => {
-        if (e.pointerId === pointerId) position(e);
-      },
-      options
-    );
+    let dragging = false;
+    const move = (e) => {
+      if (e.pointerId !== pointerId) return;
+      const dx = e.clientX - clientX;
+      const dy = e.clientY - clientY;
+      if (!dragging && Math.hypot(dx, dy) <= 4) return;
+      dragging = true;
+      return this.layout({ x: left + dx, y: top + dy });
+    };
+    el.addEventListener("pointermove", move, options);
     el.addEventListener(
       "pointerup",
       (e) => {
-        if (e.pointerId !== pointerId) return;
-        this.saved = position(e);
-        const positions = game.settings.get(MODULE_ID, POSITIONS);
-        game.settings.set(MODULE_ID, POSITIONS, { ...positions, [game.user.id]: this.saved });
+        const position = move(e);
+        if (position) this.savePosition(position);
       },
       options
     );
@@ -190,7 +207,9 @@ export function setupActionHud() {
     Hooks.on("canvasTearDown", () => hud.close({ animate: false }));
     for (const action of ["create", "update", "delete"]) {
       for (const type of ["Actor", "Item", "ActiveEffect", "Token"]) {
-        Hooks.on(`${action}${type}`, (doc) => {
+        const hook = `${action}${type}`;
+        Hooks.on(hook, (doc, changes) => {
+          if (hook === "updateToken" && !("actorId" in changes || "actorLink" in changes || "delta" in changes)) return;
           const token = canvas?.tokens?.controlled[0];
           if (!token) return;
           for (let parent = doc; parent; parent = parent.parent) {
