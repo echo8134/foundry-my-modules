@@ -1,20 +1,26 @@
 import { MODULE_ID } from "./constants.mjs";
+import { setupVariantTokenControls } from "./variant-token-controls.mjs";
 
 // The fields a variant switches per document type, and the values that switch it off.
 const SWITCHED = {
   Tile: { alpha: 0 },
   AmbientLight: { hidden: true },
   AmbientSound: { hidden: true },
-  Wall: { move: 0, sight: 0, light: 0, sound: 0 }
+  Wall: { move: 0, sight: 0, light: 0, sound: 0 },
+  Token: { hidden: true }
 };
 
 const isActiveGM = () => game.users.activeGM?.isSelf === true;
 // The variants a document is on in: none means always on. The base state's name means on in the base state.
-const variantsOf = (doc) => [doc.getFlag(MODULE_ID, "variant") ?? []].flat().filter(Boolean);
-const levelIdsOf = (scene, doc) => (doc.levels.size ? [...doc.levels] : scene.levels.map((l) => l.id));
+const variantNames = (variant) => [variant ?? []].flat().filter(Boolean);
+const variantsOf = (doc) => variantNames(doc.getFlag(MODULE_ID, "variant"));
+function levelIdsOf(scene, doc) {
+  if (doc.documentName === "Token") return [doc.level];
+  return doc.levels.size ? doc.levels : scene.levels.keys();
+}
 
-export const baseName = (scene) =>
-  scene.getFlag(MODULE_ID, "defaultName") ?? game.i18n.localize("MY_MODULES.Variants.Default");
+export const baseName = (scene, flags = scene.flags[MODULE_ID]) =>
+  flags?.defaultName ?? game.i18n.localize("MY_MODULES.Variants.Default");
 
 function* variantDocuments(scene) {
   for (const type of Object.keys(SWITCHED)) {
@@ -22,9 +28,9 @@ function* variantDocuments(scene) {
   }
 }
 
-export function getVariants(scene) {
-  const base = baseName(scene);
-  const active = scene.getFlag(MODULE_ID, "active") ?? {};
+export function getVariants(scene, flags = scene.flags[MODULE_ID]) {
+  const base = baseName(scene, flags);
+  const active = flags?.active ?? {};
   const byLevel = new Map(scene.levels.map((l) => [l.id, [base]]));
   for (const { doc } of variantDocuments(scene)) {
     for (const name of variantsOf(doc)) {
@@ -53,25 +59,101 @@ function documentUpdate(type, doc, on) {
   return { _id: doc.id, ...off, [`flags.${MODULE_ID}.restore`]: saved };
 }
 
+function flagsAfter(doc, changes) {
+  if (!changes.flags) return doc.flags[MODULE_ID] ?? {};
+  const { flags } = foundry.utils.mergeObject(
+    { flags: doc.flags },
+    { flags: changes.flags },
+    {
+      inplace: false,
+      applyOperators: true
+    }
+  );
+  return flags?.[MODULE_ID] ?? {};
+}
+
+function activeByLevel(scene, flags = scene.flags[MODULE_ID]) {
+  return new Map(getVariants(scene, flags).map((v) => [v.levelId, v.active]));
+}
+
+// The same scene update publishes the selected variant and the corresponding token visibility to every client.
+function sceneTokenUpdates(scene, flags = scene.flags[MODULE_ID]) {
+  const updates = [];
+  if (!scene.tokens.some((t) => variantsOf(t).length || t.getFlag(MODULE_ID, "restore"))) return updates;
+  const active = activeByLevel(scene, flags);
+  for (const token of scene.tokens) {
+    const names = variantsOf(token);
+    const on = !names.length || names.includes(active.get(token.level) ?? baseName(scene, flags));
+    const update = documentUpdate("Token", token, on);
+    if (update) updates.push(foundry.utils.expandObject(update));
+  }
+  return updates;
+}
+
+function preUpdateScene(scene, changes) {
+  if (!changes.flags || !scene.tokens.size) return;
+  const flags = flagsAfter(scene, changes);
+  if (foundry.utils.equals(flags, scene.flags[MODULE_ID] ?? {})) return;
+  const updates = sceneTokenUpdates(scene, flags);
+  if (!updates.length) return;
+  changes.tokens ??= [];
+  for (const update of updates) {
+    const existing = changes.tokens.find((t) => t._id === update._id);
+    if (existing) foundry.utils.mergeObject(existing, update);
+    else changes.tokens.push(update);
+  }
+}
+
+function applyTokenVisibility(token, changes) {
+  const flags = flagsAfter(token, changes);
+  const names = variantNames(flags.variant);
+  if (!names.length && !flags.restore) return;
+  const scene = token.parent;
+  const level = changes.level ?? token.level;
+  const selected = scene.getFlag(MODULE_ID, "active")?.[level];
+  const active = names.includes(selected) ? selected : (activeByLevel(scene).get(level) ?? baseName(scene));
+  const hidden = changes.hidden ?? flags.restore?.hidden ?? token.hidden;
+  if (names.length && !names.includes(active)) {
+    changes.hidden = true;
+    foundry.utils.setProperty(changes, `flags.${MODULE_ID}.restore`, { hidden });
+  } else if (flags.restore) {
+    changes.hidden = hidden;
+    foundry.utils.setProperty(changes, `flags.${MODULE_ID}.restore`, _del);
+  }
+}
+
 // Brings every variant-bound document of the scene to the state its levels' active variants ask for.
 // Runs on the active GM only, so two clients never save each other's switched-off values as the ones to restore.
 export async function syncVariants(scene) {
   if (!isActiveGM()) return;
-  const activeOn = new Map(getVariants(scene).map((v) => [v.levelId, v.active]));
+  const activeOn = activeByLevel(scene);
   const updates = {};
   for (const { type, doc } of variantDocuments(scene)) {
     const names = variantsOf(doc);
     const on =
-      !names.length || levelIdsOf(scene, doc).some((id) => names.includes(activeOn.get(id) ?? baseName(scene)));
+      !names.length ||
+      Array.from(levelIdsOf(scene, doc)).some((id) => names.includes(activeOn.get(id) ?? baseName(scene)));
     const update = documentUpdate(type, doc, on);
     if (!update) continue;
     updates[type] ??= [];
     updates[type].push(update);
   }
-  for (const [type, list] of Object.entries(updates)) await scene.updateEmbeddedDocuments(type, list);
+  for (const [type, list] of Object.entries(updates)) {
+    await scene.updateEmbeddedDocuments(type, list, { [MODULE_ID]: { sync: true } });
+  }
 }
 
-export async function setVariant(scene, levelId, name, { linked = false } = {}) {
+const sceneQueues = new WeakMap();
+function enqueue(scene, fn, ...args) {
+  if (!sceneQueues.has(scene)) sceneQueues.set(scene, new foundry.utils.Semaphore());
+  return sceneQueues.get(scene).add(fn, scene, ...args);
+}
+
+export function setVariant(scene, levelId, name, options) {
+  return enqueue(scene, switchVariant, levelId, name, options);
+}
+
+async function switchVariant(scene, levelId, name, { linked = false } = {}) {
   if (!game.user.isGM) throw new Error(`${MODULE_ID} | only a Gamemaster can switch variants`);
   const levels = getVariants(scene);
   const active = { ...(scene.getFlag(MODULE_ID, "active") ?? {}) };
@@ -90,7 +172,8 @@ export async function setVariant(scene, levelId, name, { linked = false } = {}) 
 const touchesVariants = (changes) =>
   foundry.utils.hasProperty(changes, `flags.${MODULE_ID}.variant`) ||
   foundry.utils.hasProperty(changes, `flags.${MODULE_ID}.-=variant`) ||
-  "levels" in changes;
+  "levels" in changes ||
+  "level" in changes;
 
 export function setupVariants(onChange) {
   const pending = new Map();
@@ -101,11 +184,27 @@ export function setupVariants(onChange) {
       scene.id,
       setTimeout(() => {
         pending.delete(scene.id);
-        syncVariants(scene);
+        enqueue(scene, syncVariants);
       }, 100)
     );
   };
 
+  setupVariantTokenControls();
+  Hooks.on("preCreateScene", (scene) => {
+    const tokens = sceneTokenUpdates(scene);
+    if (tokens.length) scene.updateSource({ tokens });
+  });
+  Hooks.on("preUpdateScene", preUpdateScene);
+  Hooks.on("preCreateToken", (token) => {
+    const changes = {};
+    applyTokenVisibility(token, changes);
+    if ("hidden" in changes) token.updateSource(changes);
+  });
+  Hooks.on("preUpdateToken", (token, changes, options) => {
+    if (!options[MODULE_ID]?.sync && ("hidden" in changes || "flags" in changes || "level" in changes)) {
+      applyTokenVisibility(token, changes);
+    }
+  });
   Hooks.on("canvasReady", (canvas) => canvas.scene && queueSync(canvas.scene));
   Hooks.on("updateScene", (scene, changes, options, userId) => {
     const state = foundry.utils.getProperty(changes, `flags.${MODULE_ID}`);
