@@ -1,3 +1,4 @@
+import { setupActionHud } from "./action-hud/hud.mjs";
 import { MODULE_ID } from "./constants.mjs";
 import { setupCursors } from "./cursors.mjs";
 import { setupLevels } from "./levels.mjs";
@@ -8,6 +9,7 @@ import { setupSafetyTools } from "./safety/window.mjs";
 import { setupTiles } from "./tiles.mjs";
 import { getVariants, setVariant } from "./variants.mjs";
 
+setupActionHud();
 setupCursors();
 setupLevels();
 setupNames();
