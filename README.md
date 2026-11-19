@@ -46,6 +46,29 @@ A token of a villager, a guard or a hunter gets its own name when the GM puts it
 - The world setting "Format of random token names" shapes the name: `{name}` is the drawn name, `{actor}` the prototype token's name, so `{name} ({actor})` gives "Bogdan (Guard)".
 - The dice button in the token HUD rolls a new name. `api.rollName(actor)` returns one for macros.
 
+### Quest log
+
+Open the **Quest Log** from the bottom of the Journal directory, the Notes scene controls, or **Ctrl+Q**. Choose a status tab, then click a quest to read it. Each row counts the objectives you can see, including child objectives.
+
+As GM, click **Create quest** to start a hidden quest in the journal folder named by the world setting **Quest journal folder** (default `Quests`). Set its status on the sheet or right-click its log row. The trash button asks for confirmation before deleting the journal.
+
+- Edit the name, giver, and objectives directly on the sheet. Drop an Actor onto the giver section to use its name and portrait, or choose a portrait with the image picker.
+- Use the checkbox to mark an objective done and the eye to hide it. Drag the grip to reorder objectives. Indent a goal beneath the preceding goal, or outdent it to return it to the top level.
+- Use the pencil beside a page to open Foundry's page editor. New quests have a description page and a GM notes page. Players see the pages they can observe and the public objectives and rewards. Open sheets update when the journal changes.
+
+#### Write a quest from a script
+
+Create an ordinary `JournalEntry` with `flags.foundry-my-modules.quest`. The [quest specification](docs/quests-spec.md#data-model) describes the flag fields. The GM client keeps journal ownership in sync. Hidden quests are GM-only. Other statuses grant Observer to the users listed in `personal`, or to every player when the list is empty.
+
+Keep objective and reward IDs stable across imports. When refreshing an objective list, match existing objectives by ID and carry their `done` and `hidden` values forward. Hidden objectives and rewards are filtered from the interface. Foundry sends world documents to clients, so players can inspect those flag values outside the sheet.
+
+```js
+const quests = game.modules.get("foundry-my-modules").api.quests;
+await quests.open();
+const [first] = quests.list(); // Plain quest data visible to the current user
+if (first) await quests.openQuest(first.uuid);
+```
+
 ## Variant data
 
 A variant is a set of documents (Tile, AmbientLight, AmbientSound, Wall) with the flag `flags.foundry-my-modules.variant`.

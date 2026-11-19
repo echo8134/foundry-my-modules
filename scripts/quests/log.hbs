@@ -1,0 +1,34 @@
+<div class="quest-log-body">
+  <nav class="tabs quest-tabs" aria-label="{{localize 'MY_MODULES.Quests.Log'}}">
+    {{#each tabs}}
+    <button type="button" class="{{#if active}}active{{/if}}" data-action="tab" data-group="status"
+            data-tab="{{status}}" data-status="{{status}}" aria-pressed="{{active}}">{{localize label}}</button>
+    {{/each}}
+  </nav>
+  <div class="quest-lists">
+    {{#each tabs}}
+    <section class="tab {{#if active}}active{{/if}}" data-group="status" data-tab="{{status}}">
+      <ul class="quest-rows">
+        {{#each quests}}
+        <li class="quest-row" data-quest-id="{{id}}" data-status="{{status}}">
+          <button type="button" class="quest-link" data-action="openQuest">
+            <img src="{{#if giver.img}}{{giver.img}}{{else}}icons/svg/book.svg{{/if}}" alt="{{giver.name}}">
+            <span>{{name}}</span>
+            <small aria-label="{{localize 'MY_MODULES.Quests.Progress' done=done total=total}}">{{done}} / {{total}}</small>
+          </button>
+          {{#if @root.isGM}}
+          <button type="button" class="icon fa-solid fa-trash" data-action="deleteQuest"
+                  aria-label="{{localize 'MY_MODULES.Quests.Delete'}}" data-tooltip="MY_MODULES.Quests.Delete"></button>
+          {{/if}}
+        </li>
+        {{else}}
+        <li class="quest-empty">{{localize 'MY_MODULES.Quests.Empty'}}</li>
+        {{/each}}
+      </ul>
+    </section>
+    {{/each}}
+  </div>
+  {{#if isGM}}
+  <footer><button type="button" data-action="createQuest"><i class="fa-solid fa-plus" inert></i>{{localize 'MY_MODULES.Quests.Create'}}</button></footer>
+  {{/if}}
+</div>

@@ -1,0 +1,92 @@
+<div class="quest-sheet-body">
+  {{#if quest}}
+  <header class="quest-header">
+    {{#if gm}}
+      <label>{{localize "MY_MODULES.Quests.QuestName"}} <input type="text" name="name" value="{{quest.name}}" required></label>
+      <label>{{localize "MY_MODULES.Quests.StatusLabel"}}
+        <select name="status">
+          {{#each statuses}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{localize label}}</option>{{/each}}
+        </select>
+      </label>
+    {{else}}
+      <p>{{localize statusLabel}}</p>
+    {{/if}}
+  </header>
+
+  <section class="quest-giver">
+    {{#if quest.giver.img}}<img class="giver-portrait" src="{{quest.giver.img}}" alt="">{{/if}}
+    {{#if gm}}
+      <label>{{localize "MY_MODULES.Quests.Giver"}} <input type="text" name="giver" value="{{quest.giver.name}}"></label>
+      <label>{{localize "MY_MODULES.Quests.Portrait"}} <file-picker type="image" name="giverImage" value="{{quest.giver.img}}"></file-picker></label>
+      <p class="hint">{{localize "MY_MODULES.Quests.DropActor"}}</p>
+    {{else}}
+      {{#if quest.giver.name}}<p><strong>{{localize "MY_MODULES.Quests.Giver"}}</strong> {{quest.giver.name}}</p>{{/if}}
+    {{/if}}
+  </section>
+
+  <section class="quest-objectives">
+    <h2>{{localize "MY_MODULES.Quests.Objectives"}}</h2>
+    <ul>
+      {{#each objectives}}
+      <li class="quest-objective{{#if done}} is-done{{/if}}{{#if hidden}} is-hidden{{/if}}"
+          data-objective-id="{{id}}" data-parent-id="{{parentId}}" data-next-id="{{nextId}}">
+        {{#if @root.gm}}
+          <span draggable="true" class="objective-grip fa-solid fa-grip-vertical" title="{{localize 'MY_MODULES.Quests.Reorder'}}"></span>
+          <button type="button" data-action="toggleDone" aria-pressed="{{#if done}}true{{else}}false{{/if}}"
+                  class="icon fa-regular {{#if done}}fa-square-check{{else}}fa-square{{/if}}"
+                  aria-label="{{localize 'MY_MODULES.Quests.Done'}}" data-tooltip="MY_MODULES.Quests.Done"></button>
+          <input type="text" class="objective-text" name="objectiveText" id="{{@root.quest.id}}-objective-{{id}}"
+                 value="{{text}}" aria-label="{{localize 'MY_MODULES.Quests.ObjectiveText'}}">
+          <button type="button" data-action="toggleHidden" aria-pressed="{{#if hidden}}true{{else}}false{{/if}}"
+                  class="icon fa-solid {{#if hidden}}fa-eye-slash{{else}}fa-eye{{/if}}"
+                  aria-label="{{localize 'MY_MODULES.Quests.Hidden'}}" data-tooltip="MY_MODULES.Quests.Hidden"></button>
+          {{#if parentId}}
+            <button type="button" data-action="outdent" data-before="{{outdentBefore}}" class="icon fa-solid fa-outdent"
+                    aria-label="{{localize 'MY_MODULES.Quests.Outdent'}}" data-tooltip="MY_MODULES.Quests.Outdent"></button>
+          {{else if indentUnder}}
+            <button type="button" data-action="indent" data-under="{{indentUnder}}" class="icon fa-solid fa-indent"
+                    aria-label="{{localize 'MY_MODULES.Quests.Indent'}}" data-tooltip="MY_MODULES.Quests.Indent"></button>
+          {{/if}}
+          <button type="button" data-action="deleteObjective" class="icon fa-solid fa-trash"
+                  aria-label="{{localize 'MY_MODULES.Quests.DeleteObjective'}}" data-tooltip="MY_MODULES.Quests.DeleteObjective"></button>
+        {{else}}
+          <span class="objective-text">{{#if done}}<s>{{text}}</s>{{else}}{{text}}{{/if}}</span>
+        {{/if}}
+      </li>
+      {{/each}}
+    </ul>
+    {{#if gm}}<button type="button" data-action="addObjective"><i class="fa-solid fa-plus" inert></i>{{localize "MY_MODULES.Quests.AddObjective"}}</button>{{/if}}
+  </section>
+
+  {{#if rewards.length}}
+    <section class="quest-rewards">
+      <h2>{{localize "MY_MODULES.Quests.Rewards"}}</h2>
+      <ul>
+        {{#each rewards}}
+          <li {{#if hidden}}class="is-hidden"{{/if}}>
+            {{#if hidden}}<i class="fa-solid fa-eye-slash" title="{{localize 'MY_MODULES.Quests.Hidden'}}"></i>{{/if}}
+            {{#if text}}{{text}}{{else}}{{localize "DOCUMENT.Item"}}{{/if}}
+          </li>
+        {{/each}}
+      </ul>
+    </section>
+  {{/if}}
+
+  <section class="quest-pages">
+    {{#each pages}}
+      <article data-page-id="{{id}}">
+        <header>
+          <h2>{{name}}</h2>
+          {{#if @root.gm}}
+            {{#if restricted}}<i class="fa-solid fa-user-lock" title="{{localize 'MY_MODULES.Quests.RestrictedPage'}}"></i>{{/if}}
+            <button type="button" data-action="editPage" class="icon fa-solid fa-pen"
+                    aria-label="{{localize 'JOURNAL.EditPage'}}" data-tooltip="JOURNAL.EditPage"></button>
+          {{/if}}
+        </header>
+        <div class="quest-page-content">{{{html}}}</div>
+      </article>
+    {{/each}}
+    {{#if gm}}<button type="button" data-action="addPage"><i class="fa-solid fa-plus" inert></i>{{localize "MY_MODULES.Quests.AddPage"}}</button>{{/if}}
+  </section>
+  {{/if}}
+</div>

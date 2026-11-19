@@ -1,7 +1,7 @@
 {
   "id": "foundry-my-modules",
   "title": "My Modules",
-  "description": "Small table fixes for one group: hide cursors from the player list, list every scene level, switch a level's variants from the level navigation, and name generic figures from RollTables.",
+  "description": "Small table fixes for one group: hide cursors from the player list, list every scene level, switch a level's variants from the level navigation, name generic figures from RollTables, and keep a journal-based quest log.",
   "version": "0.4.0",
   "authors": [
     {
@@ -13,7 +13,7 @@
     "verified": "14"
   },
   "esmodules": ["scripts/main.mjs"],
-  "styles": ["styles/cursors.css", "styles/levels.css"],
+  "styles": ["styles/cursors.css", "styles/levels.css", "styles/quests.css"],
   "languages": [
     {
       "lang": "de",
