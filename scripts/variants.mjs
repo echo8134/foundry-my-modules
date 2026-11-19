@@ -144,8 +144,11 @@ function knownInactive(token, levels) {
   if (!names.length) return false;
   const flags = token.parent.flags[MODULE_ID];
   const selected = flags?.active?.[token.level];
-  const level = levels.find((entry) => entry.levelId === token.level);
-  const active = level?.variants.includes(selected) ? selected : flags?.defaultName;
+  let active = flags?.defaultName;
+  if (selected) {
+    const level = (levels ?? getVariants(token.parent)).find((entry) => entry.levelId === token.level);
+    if (level?.variants.includes(selected)) active = selected;
+  }
   return active !== undefined && !names.includes(active);
 }
 
@@ -157,7 +160,7 @@ function guardLegacyTokens({ scene }) {
     if (token.hidden || !knownInactive(token, levels)) continue;
     const prepare = token.prepareBaseData;
     token.prepareBaseData = function (...args) {
-      if (!this.hidden && knownInactive(this, getVariants(this.parent))) this.hidden = true;
+      if (!this._source.hidden && knownInactive(this)) this.hidden = true;
       else delete this.prepareBaseData;
       return prepare.apply(this, args);
     };
