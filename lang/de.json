@@ -18,6 +18,7 @@
   "MY_MODULES.Safety.Limits": "Linien & Schleier",
   "MY_MODULES.Safety.Prompt": "Etwas stört mich, bitte weiter",
   "MY_MODULES.Safety.Note": "Optionale Nachricht an die aktive Spielleitung",
+  "MY_MODULES.Safety.SessionNotes": "Letzte Nachrichten dieser Sitzung",
   "MY_MODULES.Safety.Send": "X-Karte zeigen",
   "MY_MODULES.Safety.Dismiss": "Zum Schließen klicken",
   "MY_MODULES.Safety.Privacy": "Dein Name erscheint weder auf der Karte noch in der Liste. Die aktive Spielleitung kann die Absender-ID in den Socket-Daten von Foundry einsehen.",

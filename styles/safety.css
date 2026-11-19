@@ -202,9 +202,17 @@
   width: 7rem;
   font-size: 6rem;
 }
+#my-safety-overlay[aria-describedby] {
+  cursor: auto;
+}
+#my-safety-private-note,
+#my-safety-session-notes {
+  overflow-wrap: anywhere;
+  user-select: text;
+  cursor: text;
+}
 #my-safety-private-note {
   font-size: 1rem;
-  overflow-wrap: anywhere;
 }
 #my-safety-overlay button {
   border: 1px solid #9c8562;

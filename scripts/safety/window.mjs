@@ -1,5 +1,5 @@
 import { MODULE_ID } from "../constants.mjs";
-import { enabled, request, setupRelay } from "./relay.mjs";
+import { enabled, request, sessionNotes, setupRelay } from "./relay.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -54,6 +54,7 @@ class SafetyWindow extends HandlebarsApplicationMixin(ApplicationV2) {
       showCard: this.tabGroups.safety === "card",
       door: enabled("openDoor"),
       gm: game.user.isGM,
+      notes: game.user.isGM ? sessionNotes : [],
       columns: ["line", "veil"].map((kind) => ({
         kind,
         title: `MY_MODULES.Safety.${kind}.Title`,
@@ -93,6 +94,7 @@ function refreshTools() {
 
 export function setupSafetyTools() {
   setupRelay(refreshTools, refreshWindow);
+  Hooks.on(`${MODULE_ID}.safetyNotesChanged`, refreshWindow);
   Hooks.on("getSceneControlButtons", (controls) => {
     if (!["xCard", "linesVeils", "openDoor"].some(enabled)) return;
     const title = "MY_MODULES.Safety.Title";

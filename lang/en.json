@@ -18,6 +18,7 @@
   "MY_MODULES.Safety.Limits": "Lines & veils",
   "MY_MODULES.Safety.Prompt": "Something bothers me. Please move on.",
   "MY_MODULES.Safety.Note": "Optional note for the active GM",
+  "MY_MODULES.Safety.SessionNotes": "Recent notes this session",
   "MY_MODULES.Safety.Send": "Show the X-card",
   "MY_MODULES.Safety.Dismiss": "Click to dismiss",
   "MY_MODULES.Safety.Privacy": "Your name stays off the card and the list. The active GM can inspect the sender ID in Foundry’s socket traffic.",

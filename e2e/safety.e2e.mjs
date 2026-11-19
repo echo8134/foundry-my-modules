@@ -8,7 +8,7 @@ const action = (name) => `${windowId} [data-action="${name}"]`;
 const settings = ["xCard", "linesVeils", "openDoor"];
 const line = "E2E line";
 const veil = "E2E veil";
-const privateNote = "Private note <b>for the GM</b>";
+const privateNote = "Private note <b>for the GM</b>".padEnd(200, "!");
 
 async function openWindow(page) {
   await page.click(control);
@@ -44,7 +44,9 @@ await run(async () => {
     );
     const player = await join(PLAYER_NAME);
     const observer = await join(observerName);
-    const secondGM = await gm.browserContext().newPage();
+    const gmDevice = await gm.browser().createBrowserContext();
+    await gmDevice.setCookie(...(await gm.browserContext().cookies()));
+    const secondGM = await gmDevice.newPage();
     await secondGM.setViewport(gm.viewport());
     await secondGM.goto(gm.url(), { waitUntil: "domcontentloaded" });
     await secondGM.waitForFunction(() => globalThis.game?.ready && globalThis.canvas?.ready, { timeout: 180000 });
@@ -80,15 +82,21 @@ await run(async () => {
         }, MODULE_ID);
       }
       const previous = await gm.evaluate(() => game.messages.map((m) => m.id));
-      await player.type("#safety-note", privateNote);
-      await player.click(action("sendCard"));
+      assert((await player.$eval("#safety-note", (input) => input.maxLength)) === 200, "missing note limit");
+      await player.$eval(
+        "#safety-note",
+        (input, note) => {
+          input.value = `${note}excess`;
+        },
+        privateNote
+      );
+      await player.$eval(action("sendCard"), (button) => {
+        button.click();
+        button.click();
+      });
       await Promise.all(clients.map((p) => p.waitForSelector(overlay, { visible: true })));
       const noteSelector = `${overlay} #my-safety-private-note`;
-      const noteTabs = [];
-      for (const tab of gmTabs) {
-        if (await tab.$(noteSelector)) noteTabs.push(tab);
-      }
-      assert(noteTabs.length > 0, "neither GM tab received the private note");
+      await Promise.all(gmTabs.map((tab) => tab.waitForSelector(noteSelector, { visible: true })));
       for (const p of [player, observer]) {
         assert(!(await p.$eval(overlay, (el) => el.textContent)).includes(privateNote), "player saw the GM note");
         assert(!(await p.$eval(windowId, (el) => el.textContent)).includes(privateNote), "note in player window");
@@ -96,7 +104,7 @@ await run(async () => {
       await player.click(overlay);
       await player.waitForSelector(overlay, { hidden: true });
       await observer.waitForSelector(overlay, { hidden: true, timeout: 15000 });
-      for (const tab of noteTabs) {
+      for (const tab of gmTabs) {
         assert(
           await tab.$eval(
             noteSelector,
@@ -124,7 +132,7 @@ await run(async () => {
       assert(
         requestId &&
           gmRequests.every(
-            (requests) => requests.length === 1 && requests[0][0].requestId === requestId && requests[0][1] === playerId
+            (requests) => requests.length === 2 && requests[0][0].requestId === requestId && requests[0][1] === playerId
           ),
         "GM tabs did not receive the same stamped request"
       );
@@ -226,22 +234,32 @@ await run(async () => {
       await player.evaluate((m) => {
         const opts = { recipients: [game.users.activeGM.id] };
         const id = game.settings.get(m, "safetyBoundaries").find((e) => e.kind === "line").id;
-        game.socket.emit(`module.${m}`, { action: "edit", id, text: "player edit" }, opts);
-        game.socket.emit(`module.${m}`, { action: "remove", id }, opts);
+        game.socket.emit(
+          `module.${m}`,
+          { action: "edit", id, requestId: foundry.utils.randomID(), text: "player edit" },
+          opts
+        );
+        game.socket.emit(`module.${m}`, { action: "remove", id, requestId: foundry.utils.randomID() }, opts);
       }, MODULE_ID);
       // A subsequent add on the same connection confirms the GM has processed the preceding requests.
       await add(player, "veil", "Second veil");
       await waitFor(gm, () => document.querySelectorAll("#my-safety-tools [data-entry]").length === 3);
       const row = '[data-kind="line"] [data-entry]';
       assert((await gm.$eval(`${row} input`, (input) => input.value)) === line, "player changed the line");
-      await gm.$eval(`${row} input`, (input) => {
-        input.value = "Revised line";
-      });
+      const revised = "Revised line".padEnd(200, ".");
+      await gm.$eval(
+        `${row} input`,
+        (input, text) => {
+          input.value = `${text}excess`;
+        },
+        revised
+      );
       await gm.click(`${row} [data-action="editEntry"]`);
       await waitFor(
         observer,
-        (selector) => document.querySelector(selector)?.textContent.trim() === "Revised line",
-        row
+        (selector, text) => document.querySelector(selector)?.textContent.trim() === text,
+        row,
+        revised
       );
       await gm.click(`${row} [data-action="removeEntry"]`);
       await Promise.all(clients.map((p) => p.waitForSelector(row, { hidden: true })));

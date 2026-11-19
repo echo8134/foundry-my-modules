@@ -16,9 +16,15 @@
       <h2>{{localize "MY_MODULES.Safety.Prompt"}}</h2>
     </div>
     <label for="safety-note">{{localize "MY_MODULES.Safety.Note"}}</label>
-    <input id="safety-note" type="text" autocomplete="off">
+    <input id="safety-note" type="text" maxlength="200" autocomplete="off">
     <p class="safety-hint">{{localize "MY_MODULES.Safety.Privacy"}}</p>
     <button type="button" data-action="sendCard">{{localize "MY_MODULES.Safety.Send"}}</button>
+    {{#if notes}}
+    <h3>{{localize "MY_MODULES.Safety.SessionNotes"}}</h3>
+    <ul id="my-safety-session-notes">
+      {{#each notes}}<li>{{this}}</li>{{/each}}
+    </ul>
+    {{/if}}
   </section>
   {{/if}}
   {{#if limits}}
@@ -28,14 +34,14 @@
       <section data-kind="{{kind}}">
         <h2>{{localize title}}</h2><p class="safety-hint">{{localize hint}}</p>
         <div class="safety-add">
-          <input id="safety-add-{{kind}}" type="text" aria-label="{{localize add}}" placeholder="{{localize add}}" autocomplete="off">
+          <input id="safety-add-{{kind}}" type="text" maxlength="200" aria-label="{{localize add}}" placeholder="{{localize add}}" autocomplete="off">
           <button type="button" class="icon fa-solid fa-plus" data-action="addEntry" aria-label="{{localize add}}" data-tooltip="{{add}}"></button>
         </div>
         <ul>
           {{#each entries}}
           <li data-entry="{{id}}">
             {{#if @root.gm}}
-            <input type="text" id="safety-entry-{{id}}" aria-label="{{localize 'MY_MODULES.Safety.Edit'}}" value="{{text}}">
+            <input type="text" id="safety-entry-{{id}}" maxlength="200" aria-label="{{localize 'MY_MODULES.Safety.Edit'}}" value="{{text}}">
             <button type="button" class="icon fa-solid fa-check" data-action="editEntry" aria-label="{{localize 'MY_MODULES.Safety.Save'}}" data-tooltip="MY_MODULES.Safety.Save"></button>
             <button type="button" class="icon fa-solid fa-trash" data-action="removeEntry" aria-label="{{localize 'MY_MODULES.Safety.Remove'}}" data-tooltip="MY_MODULES.Safety.Remove"></button>
             {{else}}{{text}}{{/if}}
