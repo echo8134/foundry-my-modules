@@ -51,6 +51,14 @@ await run(async () => {
   let player, questId, sheet, row, visibleId, hiddenId;
 
   try {
+    await check("Quests directly follows Notes in the rendered top-level controls", async () => {
+      const controls = await gm.$$eval("#scene-controls-layers button[data-control]", (buttons) =>
+        buttons.map((button) => button.dataset.control)
+      );
+      const notes = controls.indexOf("notes");
+      assert(notes >= 0 && controls[notes + 1] === "quests", `unexpected control order: ${controls.join(", ")}`);
+    });
+
     await check("the GM opens the log from the Journal and from Quests while using a Notes tool", async () => {
       await pressButton(gm, "#sidebar-tabs [data-tab=journal]");
       await pressButton(gm, "#journal .my-quest-directory");
