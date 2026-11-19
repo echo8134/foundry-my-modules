@@ -16,7 +16,7 @@ const variantNames = (variant) => [variant ?? []].flat().filter(Boolean);
 const variantsOf = (doc) => variantNames(doc.getFlag(MODULE_ID, "variant"));
 function levelIdsOf(scene, doc) {
   if (doc.documentName === "Token") return [doc.level];
-  return doc.levels.size ? doc.levels : scene.levels.keys();
+  return doc.levels.size ? [...doc.levels] : scene.levels.map((level) => level.id);
 }
 
 export const baseName = (scene, flags = scene.flags[MODULE_ID]) =>
@@ -76,50 +76,67 @@ function activeByLevel(scene, flags = scene.flags[MODULE_ID]) {
   return new Map(getVariants(scene, flags).map((v) => [v.levelId, v.active]));
 }
 
-// The same scene update publishes the selected variant and the corresponding token visibility to every client.
-function sceneTokenUpdates(scene, flags = scene.flags[MODULE_ID]) {
-  const updates = [];
-  if (!scene.tokens.some((t) => variantsOf(t).length || t.getFlag(MODULE_ID, "restore"))) return updates;
-  const active = activeByLevel(scene, flags);
-  for (const token of scene.tokens) {
-    const names = variantsOf(token);
-    const on = !names.length || names.includes(active.get(token.level) ?? baseName(scene, flags));
-    const update = documentUpdate("Token", token, on);
-    if (update) updates.push(foundry.utils.expandObject(update));
-  }
-  return updates;
+function tokenVisibility(hidden, restore, on, intended) {
+  const change = {};
+  if (hidden !== (!on || intended)) change.hidden = !on || intended;
+  if (!on && restore?.hidden !== intended)
+    foundry.utils.setProperty(change, `flags.${MODULE_ID}.restore`, { hidden: intended });
+  if (on && restore) foundry.utils.setProperty(change, `flags.${MODULE_ID}.restore`, _del);
+  return change;
 }
 
-function preUpdateScene(scene, changes) {
-  if (!changes.flags || !scene.tokens.size) return;
+// The same scene update publishes the selected variant and the corresponding token visibility to every client.
+function prepareSceneTokens(scene, changes) {
+  const edits = foundry.data.operators.DataFieldOperator.get(changes.tokens);
+  if ("tokens" in changes && !edits) return;
+  const byId = new Map();
+  for (const edit of edits ?? []) {
+    edit._id ??= foundry.utils.randomID();
+    byId.set(edit._id, edit);
+  }
+
+  // A parent update can retag, move or create tokens without running the embedded document hooks.
+  let next = scene;
+  if (edits) {
+    next = scene.clone({}, { keepId: true });
+    next.updateSource(changes);
+  }
+  if (!next.tokens.size) return;
   const flags = flagsAfter(scene, changes);
-  if (foundry.utils.equals(flags, scene.flags[MODULE_ID] ?? {})) return;
-  const updates = sceneTokenUpdates(scene, flags);
-  if (!updates.length) return;
-  changes.tokens ??= [];
-  for (const update of updates) {
-    const existing = changes.tokens.find((t) => t._id === update._id);
-    if (existing) foundry.utils.mergeObject(existing, update);
-    else changes.tokens.push(update);
+  const active = activeByLevel(next, flags);
+  for (const token of next.tokens) {
+    const names = variantsOf(token);
+    const restore = token.getFlag(MODULE_ID, "restore");
+    const previous = scene.tokens.get(token.id)?.getFlag(MODULE_ID, "restore");
+    if (!names.length && !restore && !previous) continue;
+    const edit = byId.get(token.id);
+    const on = !names.length || names.includes(active.get(token.level) ?? baseName(next, flags));
+    // A copied token's restore flag already carries its GM's choice, even when its source hidden field is true.
+    const intended =
+      edit?.flags?.[MODULE_ID]?.restore?.hidden ?? edit?.hidden ?? restore?.hidden ?? previous?.hidden ?? token.hidden;
+    const patch = tokenVisibility(token.hidden, restore, on, intended);
+    if (foundry.utils.isEmpty(patch)) continue;
+    if (edit) foundry.utils.mergeObject(edit, patch);
+    else {
+      changes.tokens ??= [];
+      changes.tokens.push({ _id: token.id, ...patch });
+    }
   }
 }
 
 function applyTokenVisibility(token, changes) {
   const flags = flagsAfter(token, changes);
   const names = variantNames(flags.variant);
-  if (!names.length && !flags.restore) return;
+  const previous = token.getFlag(MODULE_ID, "restore");
+  if (!names.length && !flags.restore && !previous) return;
   const scene = token.parent;
   const level = changes.level ?? token.level;
   const selected = scene.getFlag(MODULE_ID, "active")?.[level];
   const active = names.includes(selected) ? selected : (activeByLevel(scene).get(level) ?? baseName(scene));
-  const hidden = changes.hidden ?? flags.restore?.hidden ?? token.hidden;
-  if (names.length && !names.includes(active)) {
-    changes.hidden = true;
-    foundry.utils.setProperty(changes, `flags.${MODULE_ID}.restore`, { hidden });
-  } else if (flags.restore) {
-    changes.hidden = hidden;
-    foundry.utils.setProperty(changes, `flags.${MODULE_ID}.restore`, _del);
-  }
+  const on = !names.length || names.includes(active);
+  const hidden = changes.hidden ?? token.hidden;
+  const intended = changes.hidden ?? flags.restore?.hidden ?? previous?.hidden ?? token.hidden;
+  foundry.utils.mergeObject(changes, tokenVisibility(hidden, flags.restore, on, intended));
 }
 
 // Brings every variant-bound document of the scene to the state its levels' active variants ask for.
@@ -127,12 +144,17 @@ function applyTokenVisibility(token, changes) {
 export async function syncVariants(scene) {
   if (!isActiveGM()) return;
   const activeOn = activeByLevel(scene);
+  const selected = scene.getFlag(MODULE_ID, "active") ?? {};
+  const expired = Object.keys(selected).filter((id) => selected[id] !== activeOn.get(id));
+  if (expired.length) {
+    const removed = Object.fromEntries(expired.map((id) => [id, _del]));
+    await scene.update({ [`flags.${MODULE_ID}.active`]: removed }, { [MODULE_ID]: { variant: true } });
+  }
   const updates = {};
   for (const { type, doc } of variantDocuments(scene)) {
     const names = variantsOf(doc);
     const on =
-      !names.length ||
-      Array.from(levelIdsOf(scene, doc)).some((id) => names.includes(activeOn.get(id) ?? baseName(scene)));
+      !names.length || levelIdsOf(scene, doc).some((id) => names.includes(activeOn.get(id) ?? baseName(scene)));
     const update = documentUpdate(type, doc, on);
     if (!update) continue;
     updates[type] ??= [];
@@ -191,14 +213,21 @@ export function setupVariants(onChange) {
 
   setupVariantTokenControls();
   Hooks.on("preCreateScene", (scene) => {
-    const tokens = sceneTokenUpdates(scene);
-    if (tokens.length) scene.updateSource({ tokens });
+    const changes = {};
+    prepareSceneTokens(scene, changes);
+    if (changes.tokens) scene.updateSource(changes);
   });
-  Hooks.on("preUpdateScene", preUpdateScene);
+  Hooks.on("preUpdateScene", (scene, changes) => {
+    if (
+      "tokens" in changes ||
+      ("flags" in changes && !foundry.utils.equals(flagsAfter(scene, changes), scene.flags[MODULE_ID] ?? {}))
+    )
+      prepareSceneTokens(scene, changes);
+  });
   Hooks.on("preCreateToken", (token) => {
     const changes = {};
     applyTokenVisibility(token, changes);
-    if ("hidden" in changes) token.updateSource(changes);
+    if (!foundry.utils.isEmpty(changes)) token.updateSource(changes);
   });
   Hooks.on("preUpdateToken", (token, changes, options) => {
     if (!options[MODULE_ID]?.sync && ("hidden" in changes || "flags" in changes || "level" in changes)) {
@@ -226,6 +255,11 @@ export function setupVariants(onChange) {
         queueSync(doc.parent);
       }
     });
-    Hooks.on(`delete${type}`, (doc) => variantsOf(doc).length && onChange());
+    Hooks.on(`delete${type}`, (doc) => {
+      if (variantsOf(doc).length) {
+        onChange();
+        queueSync(doc.parent);
+      }
+    });
   }
 }
