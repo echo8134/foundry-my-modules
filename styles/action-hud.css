@@ -1,0 +1,184 @@
+#my-action-hud {
+  position: fixed;
+  z-index: var(--z-index-app);
+  width: max-content;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: visible;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  font:
+    1rem / 1.2 "Quest Fell",
+    Georgia,
+    serif;
+}
+
+#my-action-hud .hud-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid #887450;
+  border-radius: 4px;
+  background:
+    linear-gradient(#291e18bf, #281e19e0),
+    #3f342c url("../assets/quests/board.webp") center / cover;
+  box-shadow: 0 2px 6px #19100db3;
+}
+
+#my-action-hud .hud-grip {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  max-width: 12rem;
+  padding: 0.35rem 0.55rem 0.35rem 0.25rem;
+  color: #f2dcaa;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+#my-action-hud .hud-grip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#my-action-hud button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: auto;
+  height: auto;
+  min-height: 1.8rem;
+  border: 0;
+  border-radius: 2px;
+  font: inherit;
+  text-shadow: none;
+}
+
+#my-action-hud .hud-bar button {
+  padding: 0.3rem 0.48rem;
+  background: none;
+  color: #f4e9cf;
+  font-family: "Quest Fell SC", Georgia, serif;
+}
+
+#my-action-hud [aria-pressed="true"] i {
+  margin-inline-start: auto;
+}
+
+#my-action-hud .hud-bar i {
+  color: #c6ad79;
+  font-size: 0.78em;
+}
+
+#my-action-hud .hud-bar button:is(:hover, [aria-expanded="true"]) {
+  background: #f0dfb9;
+  color: #362317;
+}
+
+#my-action-hud .hud-bar button:is(:hover, [aria-expanded="true"]) i {
+  color: #704329;
+}
+
+#my-action-hud .hud-panel {
+  position: absolute;
+  bottom: calc(100% + 5px);
+  left: 0;
+  width: min(100%, 34rem);
+  max-height: min(24rem, var(--hud-panel-height));
+  overflow-y: auto;
+  padding: 0.65rem 0.85rem 0.85rem;
+  border: 1px solid #897251;
+  border-radius: 3px;
+  background:
+    linear-gradient(#f1e0bdae, #efdfbeb8),
+    #e4d4b5 url("../assets/quests/parchment.webp") center / cover;
+  box-shadow: 0 2px 8px #1b130f94;
+  color: #34281e;
+  scrollbar-color: #927753 transparent;
+}
+
+#my-action-hud.opens-down .hud-panel {
+  top: calc(100% + 5px);
+  bottom: auto;
+}
+
+#my-action-hud .hud-panel header {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.35rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 3px double #897251;
+  font:
+    1.3rem / 1.15 "Quest Fell SC",
+    Georgia,
+    serif;
+}
+
+#my-action-hud .hud-section h3 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.55rem 0 0.2rem;
+  border: 0;
+  color: #684329;
+  font:
+    1.04rem / 1.1 "Quest Fell SC",
+    Georgia,
+    serif;
+  text-shadow: none;
+}
+
+#my-action-hud .hud-entries {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 2px 8px;
+}
+
+#my-action-hud .hud-entries button {
+  justify-content: start;
+  padding: 0.28rem 0.36rem;
+  background: #fff8e540;
+  color: #30241b;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+#my-action-hud .hud-entries button:is(:hover, [aria-pressed="true"]) {
+  background: #d6bc8e;
+}
+
+#my-action-hud button:focus-visible {
+  outline: 2px solid #a26334;
+  outline-offset: -2px;
+}
+
+#my-action-hud .hud-entries img {
+  width: 1.55rem;
+  height: 1.55rem;
+  border: 0;
+  border-radius: 2px;
+}
+
+#my-action-hud [data-action="condition"] img {
+  padding: 3px;
+  background: #584835;
+}
+
+#my-action-hud .hud-panel small {
+  margin-inline-start: auto;
+  font:
+    0.88rem / 1.1 "Quest Fell",
+    Georgia,
+    serif;
+  color: #59432f;
+}

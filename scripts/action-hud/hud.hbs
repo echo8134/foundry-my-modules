@@ -1,0 +1,35 @@
+<div class="hud-body" data-actor="{{actor.uuid}}">
+  {{#if actor}}
+  <nav class="hud-bar" aria-label="{{localize 'MY_MODULES.ActionHud.title'}}">
+    <span class="hud-grip" title="{{localize 'MY_MODULES.ActionHud.move'}}">
+      <i class="fa-solid fa-grip-vertical" inert></i>
+      <span>{{actor.name}}</span>
+    </span>
+    {{#each groups}}
+    <button type="button" id="my-action-group-{{id}}" data-action="group" data-group="{{id}}" aria-expanded="{{#if (eq id ../open.id)}}true{{else}}false{{/if}}">
+      <i class="fa-solid {{icon}}" inert></i><span>{{localize label}}</span>
+    </button>
+    {{/each}}
+  </nav>
+  {{#if open}}
+  <section class="hud-panel" aria-label="{{localize open.label}}">
+    <header><i class="fa-solid {{open.icon}}" inert></i>{{localize open.label}}</header>
+    {{#each open.sections}}
+    <div class="hud-section" data-level="{{level}}">
+      {{#if label}}<h3>{{localize label}}{{#if slots}}<small>{{slots}}</small>{{/if}}</h3>{{/if}}
+      <div class="hud-entries">
+      {{#each entries}}
+        <button type="button" id="my-action-{{action}}-{{id}}" data-action="{{action}}" data-id="{{id}}" {{#if (eq action "condition")}}aria-pressed="{{active}}"{{/if}}>
+          {{#if img}}<img src="{{img}}" alt="">{{/if}}
+          <span>{{name}}</span>
+          {{#if detail}}<small>{{detail}}</small>{{/if}}
+          {{#if active}}<i class="fa-solid fa-check" inert></i>{{/if}}
+        </button>
+      {{/each}}
+      </div>
+    </div>
+    {{/each}}
+  </section>
+  {{/if}}
+  {{/if}}
+</div>

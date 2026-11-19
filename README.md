@@ -14,6 +14,14 @@ Foundry offers each new release through the module's Update button.
 
 ## Features
 
+### Action HUD for D&D 5e
+
+Select a token you own to see its combat actions above the hotbar. The GM can use any token. If you select several, the bar follows the first. Drag the actor’s name to move the bar. **Alt+H** toggles the client setting **Show action HUD**.
+
+Click a group to open it and click it again to fold it away. **Attacks**, **Spells**, **Features**, and **Items** use the item through dnd5e. The spell list starts with cantrips and shows prepared, always-prepared, innate, and pact spells by level. Slot counts, uses, and quantities update as you play. Right-click an item to open its sheet.
+
+**Rolls** shows modifiers for ability checks, saving throws, and skills. **Conditions** toggles dnd5e effects, and **Rests** starts a short or long rest. Shift-click to skip the configuration dialog where dnd5e supports it.
+
 ### Hide cursors
 
 Hover a row of the player list, bottom left, and a check mark appears; it fades out when the mouse leaves.

@@ -13,7 +13,7 @@
     "verified": "14"
   },
   "esmodules": ["scripts/main.mjs"],
-  "styles": ["styles/cursors.css", "styles/levels.css", "styles/quests.css"],
+  "styles": ["styles/cursors.css", "styles/levels.css", "styles/quests.css", "styles/action-hud.css"],
   "languages": [
     {
       "lang": "de",
