@@ -22,6 +22,10 @@ function levelIdsOf(scene, doc) {
 export const baseName = (scene, flags = scene.flags[MODULE_ID]) =>
   flags?.defaultName ?? game.i18n.localize("MY_MODULES.Variants.Default");
 
+function needsBaseName(scene) {
+  return scene.getFlag(MODULE_ID, "defaultName") == null && scene.tokens.some((token) => variantsOf(token).length);
+}
+
 function* variantDocuments(scene) {
   for (const type of Object.keys(SWITCHED)) {
     for (const doc of scene.getEmbeddedCollection(type)) yield { type, doc };
@@ -139,7 +143,7 @@ function applyTokenVisibility(token, changes) {
   foundry.utils.mergeObject(changes, tokenVisibility(hidden, flags.restore, on, intended));
 }
 
-function knownInactive(token, levels) {
+function hideBeforeSync(token, levels) {
   const names = variantsOf(token);
   if (!names.length) return false;
   const flags = token.parent.flags[MODULE_ID];
@@ -149,18 +153,23 @@ function knownInactive(token, levels) {
     const level = (levels ?? getVariants(token.parent)).find((entry) => entry.levelId === token.level);
     if (level?.variants.includes(selected)) active = selected;
   }
-  return active !== undefined && !names.includes(active);
+  // Before the GM records the base name, its translation can differ on this client.
+  return !names.includes(active);
 }
 
 // Old scenes may still contain visible source tokens until a GM opens them. Mask only the prepared player document.
+let maskedScene;
 function guardLegacyTokens({ scene }) {
+  maskedScene = null;
   if (game.user.isGM || !scene.tokens.size) return;
   const levels = getVariants(scene);
   for (const token of scene.tokens) {
-    if (token.hidden || !knownInactive(token, levels)) continue;
+    if (token._source.hidden || !hideBeforeSync(token, levels)) continue;
+    maskedScene = scene;
+    if (token.hidden) continue;
     const prepare = token.prepareBaseData;
     token.prepareBaseData = function (...args) {
-      if (!this._source.hidden && knownInactive(this)) this.hidden = true;
+      if (!this._source.hidden && hideBeforeSync(this)) this.hidden = true;
       else delete this.prepareBaseData;
       return prepare.apply(this, args);
     };
@@ -175,9 +184,14 @@ export async function syncVariants(scene) {
   const activeOn = activeByLevel(scene);
   const selected = scene.getFlag(MODULE_ID, "active") ?? {};
   const expired = Object.keys(selected).filter((id) => selected[id] !== activeOn.get(id));
+  const flagChanges = {};
+  // A localized base name becomes a shared data key once tokens use variants.
+  if (needsBaseName(scene)) flagChanges.defaultName = baseName(scene);
   if (expired.length) {
-    const removed = Object.fromEntries(expired.map((id) => [id, _del]));
-    await scene.update({ [`flags.${MODULE_ID}.active`]: removed }, { [MODULE_ID]: { variant: true } });
+    flagChanges.active = Object.fromEntries(expired.map((id) => [id, _del]));
+  }
+  if (!foundry.utils.isEmpty(flagChanges)) {
+    await scene.update({ [`flags.${MODULE_ID}`]: flagChanges }, { [MODULE_ID]: { variant: true } });
   }
   const updates = {};
   for (const { type, doc } of variantDocuments(scene)) {
@@ -243,8 +257,9 @@ export function setupVariants(onChange) {
   setupVariantTokenControls();
   Hooks.on("preCreateScene", (scene) => {
     const changes = {};
+    if (needsBaseName(scene)) changes.flags = { [MODULE_ID]: { defaultName: baseName(scene) } };
     prepareSceneTokens(scene, changes);
-    if (changes.tokens) scene.updateSource(changes);
+    if (!foundry.utils.isEmpty(changes)) scene.updateSource(changes);
   });
   Hooks.on("preUpdateScene", (scene, changes) => {
     if (
@@ -268,6 +283,8 @@ export function setupVariants(onChange) {
   Hooks.on("updateScene", (scene, changes, options, userId) => {
     const state = foundry.utils.getProperty(changes, `flags.${MODULE_ID}`);
     if (!state) return;
+    // A flag-only switch can release a legacy mask without Foundry redrawing the token layer.
+    if (scene === maskedScene && scene === canvas.scene && !changes.tokens) canvas.draw();
     onChange();
     const fromSetVariant = options[MODULE_ID]?.variant && userId === game.user.id;
     if (!fromSetVariant) queueSync(scene);

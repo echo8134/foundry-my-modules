@@ -424,4 +424,56 @@ await run(async () => {
     );
     await expectTokens("Guest", "Ambush", "Scout", "Bell ringer", "Resident");
   });
+
+  await check(
+    "the first player view of an older scene hides its inactive tokens before GM synchronization",
+    async () => {
+      const legacy = await gm.evaluate(async (m) => {
+        const scene = await Scene.create(
+          {
+            name: "Variant tokens before synchronization",
+            tokenVision: false,
+            ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER },
+            tokens: [{ name: "Guest", flags: { [m]: { variant: "Fest" } } }, { name: "Resident" }]
+          },
+          { noHook: true }
+        );
+        return scene.id;
+      }, MODULE_ID);
+      try {
+        await waitFor(player, (id) => game.scenes.has(id), legacy);
+        await waitFor(player, () => canvas.ready && !canvas.loading);
+        const firstDraw = await player.evaluate(async (id) => {
+          const scene = game.scenes.get(id);
+          const drawn = [];
+          const hook = Hooks.on("drawToken", (token) => {
+            if (token.scene === scene)
+              drawn.push({ name: token.name, hidden: token.document.hidden, source: token.document._source.hidden });
+          });
+          try {
+            await scene.view();
+            return drawn;
+          } finally {
+            Hooks.off("drawToken", hook);
+          }
+        }, legacy);
+        assert(
+          firstDraw.length === 2 &&
+            firstDraw.every((token) => token.hidden === (token.name === "Guest") && !token.source),
+          JSON.stringify(firstDraw)
+        );
+        await gm.evaluate(
+          async (id, m) => {
+            const scene = game.scenes.get(id);
+            await game.modules.get(m).api.setVariant(scene, scene.levels.contents[0].id, "Fest");
+          },
+          legacy,
+          MODULE_ID
+        );
+        await waitFor(player, (id) => game.scenes.get(id).tokens.getName("Guest").object?.mesh?.visible, legacy);
+      } finally {
+        await gm.evaluate((id) => game.scenes.get(id).delete(), legacy);
+      }
+    }
+  );
 });

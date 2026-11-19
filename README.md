@@ -108,7 +108,7 @@ A variant is a set of documents (Tile, AmbientLight, AmbientSound, Wall, or Toke
 
 - The flag is a variant name, or a list of names: the document is on while any of them is active. The base state's name means "on in the base state", so `["Day", "Feast", "Night", "Burning"]` is a wall that only the ruin removes. Variants leave documents without this flag alone.
 - A token belongs to the scene level in its `level` field. Other documents use their `levels` field and belong to every level when it is empty.
-- The variants of a level are the base state, then the variant names of its documents in the order the documents were created. The scene flag `defaultName` names the base state.
+- The variants of a level are the base state, then the variant names of its documents in the order the documents were created. The scene flag `defaultName` names the base state. If you omit it on a scene with variant tokens, the module saves the GM's localized base name so players in other languages use the same name. On older scenes with no stored base name or selection, players see variant tokens once the GM first opens the scene or selects a variant.
 - The scene flag `active` maps a level id to its active variant. A level missing from it shows the base state.
 - Switching off saves the switched fields in the document flag `restore` and writes the off values: Tile `alpha` 0, light and sound `hidden`, Wall `move`, `sight`, `light` and `sound` 0. Switching on writes the saved values back and deletes the flag. Tiles switch by alpha, because the GM sees hidden tiles half transparent.
 - Create tiles, lights, sounds, and walls switched on. The active GM applies the stored variant when the scene loads and whenever the flags change.
