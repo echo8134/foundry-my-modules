@@ -53,7 +53,9 @@ To give a portrait a sound or link a note to a quest, open the tile's configurat
 - **Click sound** takes an audio file. A single left click plays it at the clicking user's interface volume. Clicking again restarts it from the beginning.
 - **Quest UUID** takes the world journal UUID, such as `JournalEntry.<id>`. A click opens the quest sheet for anyone who can view that quest.
 
-Players can use the token layer and the GM can use any layer. A hand cursor over the tile is the only hint. Transparent pixels let clicks through, and overlapping tokens keep their normal controls. To edit a clickable tile again, double-right-click it on the Tiles layer.
+Test the tile on the token layer, where players use it. A hand cursor appears when the tile has an action you can use. On the Tiles layer, you can select, drag, or double-click the tile to configure it. Creation tools also work over the tile.
+
+Transparent pixels let clicks through, and overlapping tokens keep their normal controls. To put an invisible hotspot over artwork, set the tile's opacity to zero. Its entire rotated rectangle then responds to clicks.
 
 Scripts can set the same fields on a Tile document with `flags.foundry-my-modules.clickSound` and `flags.foundry-my-modules.quest`.
 
@@ -116,3 +118,5 @@ Raise `version` in `module.json` and `package.json` and push to `main`. The Rele
 ## License
 
 MIT, see `LICENSE`.
+
+The DM owns the quest artwork in `assets/quests/` and distributes it with the module under the same MIT license. He generated `board.webp` in Google Flow for his campaign. His vault's landing script drew `note.webp`, `parchment.webp`, and `nail.webp` procedurally.

@@ -43,7 +43,7 @@ Each stage is one branch in its own worktree, ends with `npm run check` clean, n
 
 - **Quest Log window:** tabs Laufend, Verfügbar, Erledigt, Gescheitert, and for the GM Versteckt; each row shows the giver's image, the name and the objectives done of total. A GM can create a quest (empty, status hidden), delete one (with Foundry's confirm dialog), and change its status from a row's context menu.
 - **Quest sheet:** opens from a row. Players see the giver, the description pages, the objectives that are not hidden (done ones struck through) and the rewards that are not hidden. The GM sees everything, hidden parts marked, and edits in place: name, giver (drop an actor or pick an image), status, objectives (add, edit text, nest one level, reorder by drag, toggle done, toggle hidden, delete), the pages through Foundry's own page editor.
-- **Access:** a button at the bottom of the Journal directory, a tool in the Notes scene controls, and a keybinding (default Ctrl+Q) for the log. The sheet re-renders when its journal changes (the `updateJournalEntry` hook), for everyone looking at it.
+- The top-level **Quests** control directly below **Notes** opens the log and preserves the active layer and tool. The Journal directory footer button and the keybinding (default Ctrl+Q) also open the log. An open quest sheet updates for each viewer when its journal changes.
 - **API:** `game.modules.get("foundry-my-modules").api.quests` with `open()`, `openQuest(uuid)`, `list()` (the quests the current user may see, as plain data).
 - **e2e:** the GM creates a quest, adds two objectives, hides one, sets it active; the player sees the quest under Laufend with one objective; the GM ticks it done and the player's sheet updates without a reload; a hidden quest does not reach the player's log.
 
@@ -58,9 +58,13 @@ Each stage is one branch in its own worktree, ends with `npm run check` clean, n
 
 ### Stage 3: the landing board
 
-- **Quest notes:** a Tile with the flag `flags.foundry-my-modules.quest = "JournalEntry.<id>"` opens that quest's sheet when anyone clicks it on the canvas, players included (Foundry gives players no tile interaction, so the module adds a pointer handler on flagged tiles; a hover shows a pointer cursor). Nothing else about tiles changes.
-- **Calendar sheet:** a Tile with the flag `flags.foundry-my-modules.calendarSheet = true` shows a parchment sheet of the current month, drawn by the module from `game.time` and dnd5e's calendar (`CONFIG.time.worldCalendarConfig`, Harptos on the table): the month's name, its days in rows of tendays, a festival day after its month where the calendar has one, past days struck through, and an ink X over today. It redraws when the world time changes (`updateWorldTime` hook). The tile's texture is only the blank parchment; the drawing sits on top of it at the tile's size and rotation.
-- **e2e:** a click on a flagged tile opens the quest for the player; advancing the world time by a day moves the X.
+- In **TileConfig**, the GM can set either or both fields in the **My Modules** section of the **Appearance** tab. Saving an empty field removes its action.
+- **Quest UUID** stores a world journal UUID (`JournalEntry.<id>`) in `flags.foundry-my-modules.quest`. A single left click opens the sheet if the user can view the quest. A quest hidden from that user gives the tile no click action or hand cursor of its own.
+- **Click sound** stores an audio file path in `flags.foundry-my-modules.clickSound`. A click plays the sound for the clicking user. A second click restarts it. A tile can play its sound even when its quest is hidden from that user.
+- Players and GMs can activate tiles on the token layer. Foundry handles clicks on the Tiles layer and while any creation tool is active. The GM can select, move, or configure a clickable tile and can start a wall or drawing over it.
+- Transparent texture pixels let clicks through. A tile with zero opacity uses its entire rotated rectangle as an invisible hotspot.
+- **Planned calendar sheet:** a Tile with the flag `flags.foundry-my-modules.calendarSheet = true` shows a parchment sheet of the current month, drawn by the module from `game.time` and dnd5e's calendar (`CONFIG.time.worldCalendarConfig`, Harptos on the table): the month's name, its days in rows of tendays, a festival day after its month where the calendar has one, past days struck through, and an ink X over today. It redraws when the world time changes (`updateWorldTime` hook). The tile's texture is only the blank parchment; the drawing sits on top of it at the tile's size and rotation.
+- The tile e2e checks cover opening a quest as a player, restarting a sound, moving a clickable tile on the Tiles layer, and starting a wall over it. The planned calendar check advances world time by a day and verifies that the X moves.
 
 ## Not in scope
 
