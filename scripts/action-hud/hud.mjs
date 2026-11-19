@@ -13,6 +13,13 @@ function selectedActor() {
 
 const dialogOptions = (event) => (event.shiftKey ? { configure: false } : {});
 
+function onlyRecordsTokenMovement(changes) {
+  if (!changes.flags?.dnd5e?.lastMovedToken) return false;
+  return Object.keys(foundry.utils.flattenObject(changes)).every(
+    (key) => key === "_id" || key === "flags.dnd5e.lastMovedToken"
+  );
+}
+
 class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
   static DEFAULT_OPTIONS = {
     id: "my-action-hud",
@@ -210,6 +217,7 @@ export function setupActionHud() {
         const hook = `${action}${type}`;
         Hooks.on(hook, (doc, changes) => {
           if (hook === "updateToken" && !("actorId" in changes || "actorLink" in changes || "delta" in changes)) return;
+          if (hook === "updateActor" && onlyRecordsTokenMovement(changes)) return;
           const token = canvas?.tokens?.controlled[0];
           if (!token) return;
           for (let parent = doc; parent; parent = parent.parent) {
