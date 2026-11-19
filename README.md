@@ -46,6 +46,17 @@ A token of a villager, a guard or a hunter gets its own name when the GM puts it
 - The world setting "Format of random token names" shapes the name: `{name}` is the drawn name, `{actor}` the prototype token's name, so `{name} ({actor})` gives "Bogdan (Guard)".
 - The dice button in the token HUD rolls a new name. `api.rollName(actor)` returns one for macros.
 
+### Clickable tiles
+
+To give a portrait a sound or link a note to a quest, open the tile's configuration as GM. On the **Appearance** tab, find **My Modules**. Set either or both fields and save. Clear a field and save to remove that action.
+
+- **Click sound** takes an audio file. A single left click plays it at the clicking user's interface volume. Clicking again restarts it from the beginning.
+- **Quest UUID** takes the world journal UUID, such as `JournalEntry.<id>`. A click opens the quest sheet for anyone who can view that quest.
+
+Players can use the token layer and the GM can use any layer. A hand cursor over the tile is the only hint. Transparent pixels let clicks through, and overlapping tokens keep their normal controls. To edit a clickable tile again, double-right-click it on the Tiles layer.
+
+Scripts can set the same fields on a Tile document with `flags.foundry-my-modules.clickSound` and `flags.foundry-my-modules.quest`.
+
 ### Quest log
 
 Click **Quests** (the scroll icon below Notes on the left) to open the **Quest Log**. GMs and players can open it while keeping their current canvas tool selected. You can also use the button at the bottom of the Journal directory or press **Ctrl+Q**. Choose a status tab, then click a quest to read it. Each pinned note counts the objectives you can see, including child objectives.

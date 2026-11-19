@@ -8,7 +8,7 @@
   "scripts": {
     "check": "biome ci",
     "fix": "biome check --write",
-    "e2e": "node e2e/cursors.e2e.mjs && node e2e/levels.e2e.mjs && node e2e/names.e2e.mjs && node e2e/quests.e2e.mjs"
+    "e2e": "node e2e/cursors.e2e.mjs && node e2e/levels.e2e.mjs && node e2e/names.e2e.mjs && node e2e/quests.e2e.mjs && node e2e/tiles.e2e.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.8",

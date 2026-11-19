@@ -20,3 +20,8 @@
 #players .player .my-cursor-toggle:hover {
   opacity: 1;
 }
+
+#board.my-clickable-tile {
+  --cursor-default: var(--cursor-pointer);
+  cursor: var(--cursor-pointer);
+}

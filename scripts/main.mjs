@@ -4,6 +4,7 @@ import { setupLevels } from "./levels.mjs";
 import { rollName, setupNames } from "./names.mjs";
 import { setupQuestData } from "./quests/data.mjs";
 import { quests, setupQuestLog } from "./quests/log.mjs";
+import { setupTiles } from "./tiles.mjs";
 import { getVariants, setVariant } from "./variants.mjs";
 
 setupCursors();
@@ -11,6 +12,7 @@ setupLevels();
 setupNames();
 setupQuestData();
 setupQuestLog();
+setupTiles();
 
 Hooks.once("init", () => {
   game.modules.get(MODULE_ID).api = { getVariants, setVariant, rollName, quests };
