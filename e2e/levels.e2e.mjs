@@ -366,6 +366,7 @@ await run(async () => {
   });
 
   await check("manual visibility edits while off take effect when the token's variant returns", async () => {
+    await waitFor(gm, () => canvas.ready && canvas.tokens.placeables.some((token) => token.name === "Lookout"));
     await gm.evaluate(async (id) => {
       const tokens = game.scenes.get(id).tokens;
       await tokens.getName("Scout").update({ hidden: false });
@@ -392,5 +393,35 @@ await run(async () => {
       MODULE_ID
     );
     await expectTokens("Guest", "Scout", "Bell ringer", "Resident");
+  });
+
+  await check("scene updates apply token edits and a level switch together", async () => {
+    await gm.evaluate(
+      async (id, m) => {
+        const scene = game.scenes.get(id);
+        await scene.update({
+          tokens: [
+            { _id: scene.tokens.getName("Ambush").id, hidden: false },
+            { _id: scene.tokens.getName("Scout").id, flags: { [m]: { variant: "Brand" } } }
+          ]
+        });
+      },
+      sceneId,
+      MODULE_ID
+    );
+    await expectTokens("Guest", "Bell ringer", "Resident");
+    await gm.evaluate(
+      async (id, m, level) => {
+        const scene = game.scenes.get(id);
+        await scene.update({
+          flags: { [m]: { active: { [level]: "Fest" } } },
+          tokens: [{ _id: scene.tokens.getName("Scout").id, flags: { [m]: { variant: "Fest" } } }]
+        });
+      },
+      sceneId,
+      MODULE_ID,
+      ground
+    );
+    await expectTokens("Guest", "Ambush", "Scout", "Bell ringer", "Resident");
   });
 });

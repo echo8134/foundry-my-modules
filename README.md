@@ -104,14 +104,15 @@ Click a group to open it and click it again to fold it away. **Attacks**, **Spel
 
 ## Variant data
 
-A variant is a set of documents (Tile, AmbientLight, AmbientSound, Wall) with the flag `flags.foundry-my-modules.variant`.
+A variant is a set of documents (Tile, AmbientLight, AmbientSound, Wall, or Token) with the flag `flags.foundry-my-modules.variant`.
 
-- The flag is a variant name, or a list of names: the document is on while any of them is active. The base state's name means "on in the base state", so `["Day", "Feast", "Night", "Burning"]` is a wall that only the ruin removes. A document without the flag is always on.
-- A document belongs to the levels in its own `levels` field, or to every level when that is empty.
+- The flag is a variant name, or a list of names: the document is on while any of them is active. The base state's name means "on in the base state", so `["Day", "Feast", "Night", "Burning"]` is a wall that only the ruin removes. Variants leave documents without this flag alone.
+- A token belongs to the scene level in its `level` field. Other documents use their `levels` field and belong to every level when it is empty.
 - The variants of a level are the base state, then the variant names of its documents in the order the documents were created. The scene flag `defaultName` names the base state.
 - The scene flag `active` maps a level id to its active variant. A level missing from it shows the base state.
 - Switching off saves the switched fields in the document flag `restore` and writes the off values: Tile `alpha` 0, light and sound `hidden`, Wall `move`, `sight`, `light` and `sound` 0. Switching on writes the saved values back and deletes the flag. Tiles switch by alpha, because the GM sees hidden tiles half transparent.
-- Create the documents switched on. The active GM brings the scene to the stored state when it loads and whenever the flags change, and writes only what differs.
+- Create tiles, lights, sounds, and walls switched on. The active GM applies the stored variant when the scene loads and whenever the flags change.
+- Give a token its usual GM visibility when you create it. For example, a guard tagged `"Fest"` arrives hidden if another variant is active. When Fest starts, the guard appears unless the GM hid it for an ambush. While Fest is off, the module stores the GM's visibility choice in `restore.hidden` and keeps the token hidden from players. The GM can change that choice with the eye button in the token HUD. Removing the variant flag also restores the GM's choice.
 
 The API for macros and other modules:
 
