@@ -134,9 +134,35 @@ function applyTokenVisibility(token, changes) {
   const selected = scene.getFlag(MODULE_ID, "active")?.[level];
   const active = names.includes(selected) ? selected : (activeByLevel(scene).get(level) ?? baseName(scene));
   const on = !names.length || names.includes(active);
-  const hidden = changes.hidden ?? token.hidden;
-  const intended = changes.hidden ?? flags.restore?.hidden ?? previous?.hidden ?? token.hidden;
+  const hidden = changes.hidden ?? token._source.hidden;
+  const intended = changes.hidden ?? flags.restore?.hidden ?? previous?.hidden ?? token._source.hidden;
   foundry.utils.mergeObject(changes, tokenVisibility(hidden, flags.restore, on, intended));
+}
+
+function knownInactive(token, levels) {
+  const names = variantsOf(token);
+  if (!names.length) return false;
+  const flags = token.parent.flags[MODULE_ID];
+  const selected = flags?.active?.[token.level];
+  const level = levels.find((entry) => entry.levelId === token.level);
+  const active = level?.variants.includes(selected) ? selected : flags?.defaultName;
+  return active !== undefined && !names.includes(active);
+}
+
+// Old scenes may still contain visible source tokens until a GM opens them. Mask only the prepared player document.
+function guardLegacyTokens({ scene }) {
+  if (game.user.isGM || !scene.tokens.size) return;
+  const levels = getVariants(scene);
+  for (const token of scene.tokens) {
+    if (token.hidden || !knownInactive(token, levels)) continue;
+    const prepare = token.prepareBaseData;
+    token.prepareBaseData = function (...args) {
+      if (!this.hidden && knownInactive(this, getVariants(this.parent))) this.hidden = true;
+      else delete this.prepareBaseData;
+      return prepare.apply(this, args);
+    };
+    token.reset();
+  }
 }
 
 // Brings every variant-bound document of the scene to the state its levels' active variants ask for.
@@ -234,6 +260,7 @@ export function setupVariants(onChange) {
       applyTokenVisibility(token, changes);
     }
   });
+  Hooks.on("canvasInit", guardLegacyTokens);
   Hooks.on("canvasReady", (canvas) => canvas.scene && queueSync(canvas.scene));
   Hooks.on("updateScene", (scene, changes, options, userId) => {
     const state = foundry.utils.getProperty(changes, `flags.${MODULE_ID}`);
