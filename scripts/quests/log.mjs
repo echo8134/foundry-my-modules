@@ -126,15 +126,13 @@ export function setupQuestLog() {
   Hooks.on("renderJournalDirectory", addDirectoryButton);
   Hooks.on("getSceneControlButtons", (controls) => {
     const icon = "fa-solid fa-scroll";
-    const groups = Object.values(controls);
-    const order = (controls.notes?.order ?? Math.max(0, ...groups.map((group) => group.order))) + 1;
-    for (const group of groups) {
-      if (group.order >= order) group.order++;
-    }
+    const precedingOrder = controls.notes
+      ? (controls.notes.order ?? 0)
+      : Math.max(0, ...Object.values(controls).map((group) => group.order ?? 0));
     controls.quests = {
       name: "quests",
       title: "MY_MODULES.Quests.Control",
-      order,
+      order: precedingOrder + 0.5,
       icon,
       tools: {
         questLog: { name: "questLog", title, order: 0, icon, button: true, onChange: quests.open }
