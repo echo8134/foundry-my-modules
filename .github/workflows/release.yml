@@ -26,5 +26,5 @@ jobs:
             echo "$TAG is already released"
             exit 0
           fi
-          git archive --format=zip -o module.zip HEAD module.json scripts styles lang LICENSE README.md
+          git archive --format=zip -o module.zip HEAD module.json scripts styles lang assets/quests assets/fonts LICENSE README.md
           gh release create "$TAG" module.json module.zip --target "$GITHUB_SHA" --title "$TAG" --generate-notes

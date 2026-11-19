@@ -1,28 +1,28 @@
 <div class="quest-sheet-body">
   {{#if quest}}
-  <header class="quest-header">
-    {{#if gm}}
-      <label>{{localize "MY_MODULES.Quests.QuestName"}} <input type="text" name="name" value="{{quest.name}}" required></label>
-      <label>{{localize "MY_MODULES.Quests.StatusLabel"}}
-        <select name="status">
+  <header class="quest-header quest-giver">
+    {{#if quest.giver.img}}<img class="giver-portrait" src="{{quest.giver.img}}" alt="">{{/if}}
+    <div class="quest-heading">
+      {{#if gm}}
+        <select class="quest-stamp" name="status" aria-label="{{localize 'MY_MODULES.Quests.StatusLabel'}}">
           {{#each statuses}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{localize label}}</option>{{/each}}
         </select>
-      </label>
-    {{else}}
-      <p>{{localize statusLabel}}</p>
+        <input type="text" class="quest-title" name="name" value="{{quest.name}}" required
+               aria-label="{{localize 'MY_MODULES.Quests.QuestName'}}">
+        <label class="quest-byline">{{localize "MY_MODULES.Quests.Giver"}} <input type="text" name="giver" value="{{quest.giver.name}}"></label>
+      {{else}}
+        <span class="quest-stamp">{{localize statusLabel}}</span>
+        <h1 class="quest-title">{{quest.name}}</h1>
+        {{#if quest.giver.name}}<p class="quest-byline">{{localize "MY_MODULES.Quests.Giver"}} · {{quest.giver.name}}</p>{{/if}}
+      {{/if}}
+    </div>
+    {{#if gm}}
+      <div class="quest-portrait-field">
+        <label>{{localize "MY_MODULES.Quests.Portrait"}} <file-picker type="image" name="giverImage" value="{{quest.giver.img}}"></file-picker></label>
+        <p class="hint">{{localize "MY_MODULES.Quests.DropActor"}}</p>
+      </div>
     {{/if}}
   </header>
-
-  <section class="quest-giver">
-    {{#if quest.giver.img}}<img class="giver-portrait" src="{{quest.giver.img}}" alt="">{{/if}}
-    {{#if gm}}
-      <label>{{localize "MY_MODULES.Quests.Giver"}} <input type="text" name="giver" value="{{quest.giver.name}}"></label>
-      <label>{{localize "MY_MODULES.Quests.Portrait"}} <file-picker type="image" name="giverImage" value="{{quest.giver.img}}"></file-picker></label>
-      <p class="hint">{{localize "MY_MODULES.Quests.DropActor"}}</p>
-    {{else}}
-      {{#if quest.giver.name}}<p><strong>{{localize "MY_MODULES.Quests.Giver"}}</strong> {{quest.giver.name}}</p>{{/if}}
-    {{/if}}
-  </section>
 
   <section class="quest-objectives">
     <h2>{{localize "MY_MODULES.Quests.Objectives"}}</h2>
@@ -33,7 +33,7 @@
         {{#if @root.gm}}
           <span draggable="true" class="objective-grip fa-solid fa-grip-vertical" title="{{localize 'MY_MODULES.Quests.Reorder'}}"></span>
           <button type="button" data-action="toggleDone" aria-pressed="{{#if done}}true{{else}}false{{/if}}"
-                  class="icon fa-regular {{#if done}}fa-square-check{{else}}fa-square{{/if}}"
+                  class="objective-box icon fa-regular {{#if done}}fa-square-check{{else}}fa-square{{/if}}"
                   aria-label="{{localize 'MY_MODULES.Quests.Done'}}" data-tooltip="MY_MODULES.Quests.Done"></button>
           <input type="text" class="objective-text" name="objectiveText" id="{{@root.quest.id}}-objective-{{id}}"
                  value="{{text}}" aria-label="{{localize 'MY_MODULES.Quests.ObjectiveText'}}">
@@ -50,6 +50,7 @@
           <button type="button" data-action="deleteObjective" class="icon fa-solid fa-trash"
                   aria-label="{{localize 'MY_MODULES.Quests.DeleteObjective'}}" data-tooltip="MY_MODULES.Quests.DeleteObjective"></button>
         {{else}}
+          <span class="objective-box" aria-hidden="true"></span>
           <span class="objective-text">{{#if done}}<s>{{text}}</s>{{else}}{{text}}{{/if}}</span>
         {{/if}}
       </li>

@@ -1,14 +1,64 @@
+@font-face {
+  font-family: "Quest Fell";
+  src: url("../assets/fonts/IMFeENrm28P.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Quest Fell";
+  src: url("../assets/fonts/IMFeENit28P.ttf") format("truetype");
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Quest Fell SC";
+  src: url("../assets/fonts/IMFeENsc28P.ttf") format("truetype");
+  font-display: swap;
+}
+
+.my-quest-log .window-content {
+  padding: 0;
+  background: #594b3d url("../assets/quests/board.webp") center / cover;
+  box-shadow: inset 0 0 3rem 0.55rem #18100cd6;
+}
+
 .my-quest-log .quest-log-body {
+  --ink: #2a2018;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
   height: 100%;
   min-height: 0;
+  color: var(--ink);
+  font-family: "Quest Fell", Georgia, serif;
 }
 
 .my-quest-log .quest-tabs {
   flex-wrap: wrap;
-  gap: 0.25rem;
+  gap: 0.45rem;
+  padding: 0.9rem 1rem;
+  border: 0;
+  background: linear-gradient(#241e1bd9, #382c25b3);
+  box-shadow: 0 2px 4px #19120ecc;
+}
+
+.my-quest-log .quest-tabs button,
+.my-quest-log [data-action="createQuest"] {
+  height: auto;
+  border: 0;
+  border-radius: 2% 3% 4% 1%;
+  padding: 0.28rem 0.6rem;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 2px, #71553a1a 2px 3px),
+    linear-gradient(#f0dfb933, #f0dfb933),
+    #c3b397 url("../assets/quests/note.webp") center / cover;
+  box-shadow: 1px 2px 3px #181310a3;
+  color: var(--ink);
+  font:
+    1.05rem / 1.3 "Quest Fell SC",
+    Georgia,
+    serif;
+  text-shadow: none;
 }
 
 .my-quest-log .quest-tabs button {
@@ -16,14 +66,18 @@
 }
 
 .my-quest-log .quest-tabs button.active {
-  border-color: var(--color-border-highlight);
-  font-weight: bold;
+  background: #f0dfb9;
+  box-shadow:
+    inset 0 -3px #81402d,
+    1px 3px 3px #181310bd;
+  transform: rotate(-1.4deg);
 }
 
 .my-quest-log .quest-lists {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  overflow: auto;
+  scrollbar-color: #806d52 #302820;
 }
 
 .my-quest-log .tab:not(.active) {
@@ -31,136 +85,448 @@
 }
 
 .my-quest-log .quest-rows {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr));
+  align-items: start;
+  gap: 1.1rem;
   margin: 0;
-  padding: 0;
+  padding: 1.5rem;
   list-style: none;
 }
 
 .my-quest-log .quest-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  border-bottom: 1px solid var(--color-border-light-tertiary);
-  padding: 0.25rem 0;
+  position: relative;
+  margin: 0;
+  transform: rotate(var(--quest-tilt));
+  filter: drop-shadow(2px 5px 3px #1e1812ae);
+}
+
+.my-quest-log .quest-row::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  top: 0.3rem;
+  left: calc(50% - 0.4rem);
+  width: 0.8rem;
+  height: 0.8rem;
+  background: url("../assets/quests/nail.webp") center / contain no-repeat;
+  filter: drop-shadow(1px 2px 1px #453422b3);
+  pointer-events: none;
 }
 
 .my-quest-log .quest-link {
   display: flex;
-  flex: 1;
-  min-width: 0;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+  min-height: 12.5rem;
   height: auto;
-  justify-content: start;
-  gap: 0.75rem;
-  padding: 0.25rem;
-  text-align: start;
+  padding: 1.5rem 0.85rem 0.75rem;
+  border: 0;
+  border-radius: 1% 2% 3% 1%;
+  background:
+    linear-gradient(105deg, #f5e7c6a6, #edddb68c),
+    #c8b89a url("../assets/quests/note.webp") center / 100% 100%;
+  box-shadow: inset 0 0 0.8rem #704e332e;
+  color: var(--ink);
+  line-height: 1.15;
+  white-space: normal;
+  text-shadow: none;
 }
 
 .my-quest-log .quest-link img {
-  width: 2.5rem;
-  height: 2.5rem;
+  box-sizing: border-box;
+  width: 3.9rem;
+  height: 4.5rem;
+  margin-bottom: 0.25rem;
+  padding: 2px;
   object-fit: cover;
+  object-position: center 30%;
+  background: #c8b999;
+  border: 1px solid #4c3c2f;
+  border-radius: 1px;
+  box-shadow: 1px 2px 2px #392b2547;
 }
 
-.my-quest-log .quest-link span {
-  flex: 1;
+.my-quest-log .quest-name {
+  font:
+    1.35rem / 1.03 "Quest Fell SC",
+    Georgia,
+    serif;
+  overflow-wrap: anywhere;
+}
+
+.my-quest-log .quest-byline {
+  font:
+    italic 0.94rem / 1.12 "Quest Fell",
+    Georgia,
+    serif;
   overflow-wrap: anywhere;
 }
 
 .my-quest-log .quest-link small {
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.45rem;
+  font:
+    1rem / 1 "Quest Fell",
+    Georgia,
+    serif;
+}
+
+.my-quest-log .quest-link small::before,
+.my-quest-log .quest-link small::after {
+  content: "";
+  width: 1.15rem;
+  border-top: 1px solid #705a42;
+}
+
+.my-quest-log [data-status="completed"] .quest-name::after {
+  content: " ✓";
+  color: #30442a;
+}
+
+.my-quest-log [data-status="failed"] .quest-name {
+  text-decoration: line-through #6b3328;
+}
+
+.my-quest-log .quest-row [data-action="deleteQuest"] {
+  --button-size: 1.5rem;
+  position: absolute;
+  top: 0.1rem;
+  right: 0.1rem;
+  padding: 0;
+  color: #574333;
+  background: transparent;
+  border: 0;
+  font-size: 0.73rem;
 }
 
 .my-quest-log .quest-empty {
-  padding: 1rem 0.25rem;
-  color: var(--color-text-secondary);
+  grid-column: 1 / -1;
+  justify-self: center;
+  margin: 0;
+  padding: 0.5rem 1.25rem;
+  background: #e4d4b5;
+  box-shadow: 1px 3px 4px #21191280;
+  font-style: italic;
+}
+
+.my-quest-log footer {
+  display: flex;
+  justify-content: end;
+  padding: 0.55rem 1.1rem 0.7rem;
+}
+
+.my-quest-log [data-action="createQuest"] {
+  padding-inline: 1rem;
+  background:
+    linear-gradient(#f0dfb9b3, #f0dfb9b3),
+    #e9d8b7 url("../assets/quests/note.webp") center / cover;
+}
+
+.my-quest-log button:hover {
+  filter: brightness(1.08);
+}
+
+.my-quest-log button:focus-visible {
+  outline: 2px solid #8a462c;
+  outline-offset: -3px;
+}
+
+#context-menu.quest-status-menu {
+  --hover-entry-background: #c6ad87;
+  --hover-entry-border: #866747;
+  --hover-text-color: #2a2018;
+  padding: 0.25rem;
+  background: #e9d8b7;
+  border: 1px solid #866747;
+  color: #2a2018;
+  font-family: "Quest Fell", Georgia, serif;
+}
+
+#context-menu.quest-status-menu .context-item {
+  font-size: 1rem;
+}
+
+.my-quest-sheet .window-content {
+  padding: 0;
+  background:
+    linear-gradient(#f8e9c67d, #f8e9c67d),
+    #dfcda4 url("../assets/quests/parchment.webp") center / cover;
+  box-shadow: inset 0 0 22px #54371f52;
 }
 
 .my-quest-sheet .quest-sheet-body {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  --ink: #2a2018;
+  --faded-ink: #4f3d2e;
+  --rule: #775e4375;
+  --color-text-primary: var(--ink);
+  --color-text-secondary: var(--faded-ink);
+  --color-text-emphatic: var(--ink);
+  min-height: 0;
+  padding: 1.4rem clamp(1rem, 5%, 2.25rem) 2rem;
   overflow-y: auto;
-  padding-inline-end: 0.35rem;
+  color-scheme: light;
+  color: var(--ink);
+  font:
+    1.05rem / 1.4 "Quest Fell",
+    Georgia,
+    serif;
 }
 
-.my-quest-sheet .quest-header,
-.my-quest-sheet .quest-giver,
-.my-quest-sheet .quest-pages header {
+.my-quest-sheet .quest-header {
   display: flex;
-  align-items: center;
   flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.my-quest-sheet label {
-  display: grid;
-  gap: 0.25rem;
-}
-
-.my-quest-sheet .quest-header label:first-child,
-.my-quest-sheet .quest-giver label,
-.my-quest-sheet .quest-pages h2 {
-  flex: 1;
-  min-width: 8rem;
+  align-items: center;
+  gap: 0.65rem 1.25rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 3px double var(--rule);
 }
 
 .my-quest-sheet .giver-portrait {
-  width: 4rem;
-  height: 4rem;
+  width: 4.75rem;
+  height: 5.75rem;
   object-fit: cover;
+  border: 3px double #463829;
+  border-radius: 46%;
+  background: #504333;
+  box-shadow: 0 1px 3px #38281866;
 }
 
-.my-quest-sheet .quest-giver .hint {
-  flex-basis: 100%;
+.my-quest-sheet .quest-heading {
+  display: grid;
+  justify-items: start;
+  flex: 1 1 12rem;
+  min-width: 0;
+  gap: 0.3rem;
+}
+
+.my-quest-sheet .quest-sheet-body :where(input[type="text"]) {
+  min-width: 0;
+  border: 0;
+  border-bottom: 1px dotted var(--rule);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+}
+
+.my-quest-sheet .quest-sheet-body .quest-title {
+  width: 100%;
+  height: auto;
   margin: 0;
+  padding: 0;
+  border: 0;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font:
+    2rem / 1.2 "Quest Fell SC",
+    Georgia,
+    serif;
+}
+
+.my-quest-sheet .quest-heading .quest-stamp {
+  width: auto;
+  height: auto;
+  min-height: 1.5rem;
+  padding: 0.08rem 0.45rem;
+  border: 2px solid currentColor;
+  border-radius: 2px 4px 2px 3px;
+  background-color: transparent;
+  color: #693124;
+  font:
+    0.85rem / 1.1 "Quest Fell SC",
+    Georgia,
+    serif;
+  letter-spacing: 0.06em;
+  transform: rotate(-2deg);
+}
+
+.my-quest-sheet select.quest-stamp {
+  --color-select-option-bg: #eddfc3;
+  appearance: auto;
+}
+
+.my-quest-sheet .quest-byline,
+.my-quest-sheet .quest-portrait-field label {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  margin: 0;
+  color: var(--faded-ink);
+  font-style: italic;
+}
+
+.my-quest-sheet .quest-portrait-field {
+  flex: 1 0 100%;
+  min-width: 0;
+  font-size: 0.9rem;
+}
+
+.my-quest-sheet .quest-portrait-field file-picker,
+.my-quest-sheet .objective-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.my-quest-sheet .quest-portrait-field file-picker {
+  --input-background-color: #eddfc3;
+  --input-border-color: var(--rule);
+  --input-focus-outline-color: #77442b;
+  color: var(--ink);
+}
+
+.my-quest-sheet .quest-portrait-field .hint {
+  margin: 0.25rem 0 0;
+  color: var(--faded-ink);
+  font:
+    italic 0.85rem / 1.3 "Quest Fell",
+    Georgia,
+    serif;
+}
+
+.my-quest-sheet .quest-sheet-body :is(.quest-objectives, .quest-rewards, .quest-pages) {
+  margin-top: 1.15rem;
+}
+
+.my-quest-sheet :is(.quest-objectives, .quest-rewards) > h2,
+.my-quest-sheet .quest-pages header h2 {
+  margin: 0 0 0.25rem;
+  border: 0;
+  color: var(--ink);
+  font:
+    1.35rem / 1.2 "Quest Fell SC",
+    Georgia,
+    serif;
 }
 
 .my-quest-sheet .quest-objectives ul {
-  list-style: none;
-  margin: 0;
+  margin: 0 0 0.5rem;
   padding: 0;
+  list-style: none;
 }
 
 .my-quest-sheet .quest-objective {
   display: flex;
-  gap: 0.25rem;
   align-items: center;
-  margin-block: 0.25rem;
+  gap: 0.25rem;
+  min-height: 2rem;
+  margin: 0;
+  border-bottom: 1px solid var(--rule);
 }
 
 .my-quest-sheet .quest-objective[data-parent-id]:not([data-parent-id=""]) {
   margin-inline-start: 1.5rem;
 }
 
-.my-quest-sheet .objective-text {
-  flex: 1;
-  min-width: 0;
+.my-quest-sheet .quest-objective .objective-text {
   overflow-wrap: anywhere;
+  border: 0;
+  font-style: italic;
 }
 
-.my-quest-sheet .objective-grip {
-  cursor: grab;
-  padding: 0.35rem;
-}
-
-.my-quest-sheet .is-done .objective-text {
+.my-quest-sheet .quest-objective.is-done .objective-text {
   text-decoration: line-through;
 }
 
-.my-quest-sheet .is-hidden {
-  color: var(--color-text-secondary);
-  border-inline-start: 2px dashed currentColor;
-  padding-inline-start: 0.35rem;
+.my-quest-sheet .quest-sheet-body .is-hidden {
+  color: var(--faded-ink);
 }
 
-.my-quest-sheet .quest-pages article,
-.my-quest-sheet .quest-objectives ul:not(:empty) {
-  margin-block-end: 0.65rem;
+.my-quest-sheet .objective-grip {
+  padding: 0.35rem;
+  color: var(--faded-ink);
+  cursor: grab;
+}
+
+.my-quest-sheet .quest-sheet-body button {
+  --button-text-color: var(--ink);
+  --button-background-color: #e5d0a5;
+  --button-border-color: var(--rule);
+  --button-hover-text-color: var(--ink);
+  --button-hover-background-color: #f2e0bb;
+  --button-hover-border-color: #624936;
+  color: var(--ink);
+}
+
+.my-quest-sheet .quest-sheet-body button:not(.icon) {
+  width: auto;
+  font-family: "Quest Fell", Georgia, serif;
+}
+
+.my-quest-sheet .quest-sheet-body button.icon {
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: inherit;
+  font-size: 0.8rem;
+}
+
+.my-quest-sheet .quest-sheet-body button.icon:hover {
+  background: #eddab3;
+  border-color: var(--rule);
+}
+
+.my-quest-sheet .quest-objective .objective-box {
+  position: relative;
+  flex: 0 0 1.6rem;
+  height: 1.6rem;
+}
+
+.my-quest-sheet .objective-box::before {
+  content: "";
+  position: absolute;
+  inset: 0.3rem;
+  border: 1.5px solid currentColor;
+  border-radius: 2px 0 3px;
+  transform: rotate(-4deg);
+}
+
+.my-quest-sheet .is-done .objective-box::after {
+  content: "";
+  position: absolute;
+  top: 0.07rem;
+  left: 0.62rem;
+  width: 0.42rem;
+  height: 1.04rem;
+  border: solid currentColor;
+  border-width: 0 2.5px 2px 0;
+  transform: rotate(35deg);
+}
+
+.my-quest-sheet .quest-sheet-body :is(input, select, button):focus-visible {
+  outline: 2px solid #77442b;
+  outline-offset: 1px;
+}
+
+.my-quest-sheet .quest-rewards ul {
+  margin: 0;
+  padding-inline-start: 1.4rem;
+  list-style-type: square;
+}
+
+.my-quest-sheet .quest-pages article {
+  margin-bottom: 0.85rem;
+}
+
+.my-quest-sheet .quest-pages article > header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--rule);
 }
 
 .my-quest-sheet .quest-pages header h2 {
-  margin: 0;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .my-quest-sheet .quest-page-content {

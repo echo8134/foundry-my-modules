@@ -10,10 +10,11 @@
     <section class="tab {{#if active}}active{{/if}}" data-group="status" data-tab="{{status}}">
       <ul class="quest-rows">
         {{#each quests}}
-        <li class="quest-row" data-quest-id="{{id}}" data-status="{{status}}">
+        <li class="quest-row" data-quest-id="{{id}}" data-status="{{status}}" style="--quest-tilt: {{tilt}}deg">
           <button type="button" class="quest-link" data-action="openQuest">
-            <img src="{{#if giver.img}}{{giver.img}}{{else}}icons/svg/book.svg{{/if}}" alt="{{giver.name}}">
-            <span>{{name}}</span>
+            <img src="{{#if giver.img}}{{giver.img}}{{else}}icons/svg/book.svg{{/if}}" alt="">
+            <span class="quest-name">{{name}}</span>
+            {{#if giver.name}}<em class="quest-byline">{{giver.name}}</em>{{/if}}
             <small aria-label="{{localize 'MY_MODULES.Quests.Progress' done=done total=total}}">{{done}} / {{total}}</small>
           </button>
           {{#if @root.isGM}}

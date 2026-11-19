@@ -49,7 +49,9 @@ class QuestLog extends HandlebarsApplicationMixin(ApplicationV2) {
   async _prepareContext() {
     const quests = listQuests().map((quest) => {
       const objectives = quest.objectives.flatMap((objective) => [objective, ...(objective.children ?? [])]);
-      return { ...quest, done: objectives.filter((o) => o.done).length, total: objectives.length };
+      const seed = Array.from(quest.id).reduce((sum, char) => sum + char.charCodeAt(0), 0);
+      const tilt = ((seed % 41) - 20) / 10;
+      return { ...quest, tilt, done: objectives.filter((o) => o.done).length, total: objectives.length };
     });
     const tabs = QUEST_STATUSES.filter((status) => game.user.isGM || status !== "hidden").map((status) => ({
       status,
@@ -62,7 +64,9 @@ class QuestLog extends HandlebarsApplicationMixin(ApplicationV2) {
 
   _onFirstRender(context, options) {
     super._onFirstRender(context, options);
-    if (game.user.isGM) this._createContextMenu(this._statusOptions, "[data-quest-id]", { fixed: true });
+    if (game.user.isGM) {
+      this._createContextMenu(this._statusOptions, "[data-quest-id]", { fixed: true, classes: ["quest-status-menu"] });
+    }
   }
 
   _statusOptions() {
