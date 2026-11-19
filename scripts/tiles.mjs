@@ -1,4 +1,5 @@
 import { MODULE_ID } from "./constants.mjs";
+import { questView } from "./quests/data.mjs";
 
 const playback = new WeakMap();
 
@@ -8,29 +9,40 @@ async function restartSound(tile, src) {
   return foundry.audio.AudioHelper.play({ src }, false);
 }
 
+function visibleQuest(uuid) {
+  const id = typeof uuid === "string" && uuid.match(/^JournalEntry\.([^.]+)$/)?.[1];
+  return id ? questView(game.journal.get(id)) : null;
+}
+
 function activateTile(tile) {
   const { clickSound, quest } = tile.document.flags[MODULE_ID];
   if (clickSound) {
     const sound = restartSound(tile, clickSound).catch((error) => console.error(MODULE_ID, error));
     playback.set(tile, sound);
   }
-  if (typeof quest === "string" && /^JournalEntry\.[^.]+$/.test(quest)) {
-    game.modules.get(MODULE_ID).api.quests.openQuest(quest);
-  }
+  if (visibleQuest(quest)) game.modules.get(MODULE_ID).api.quests.openQuest(quest);
 }
 
 function tileAt(event) {
-  if (!canvas.ready) return null;
-  const point = canvas.canvasCoordinatesFromClient({ x: event.clientX, y: event.clientY });
+  if (!canvas.ready || canvas.activeLayer === canvas.tiles || ui.controls.tool?.creation) return null;
+  const events = canvas.app.renderer.events;
+  const screen = new PIXI.Point();
+  events.mapPositionToPoint(screen, event.clientX, event.clientY);
+  const point = canvas.stage.worldTransform.applyInverse(screen);
   const objects = canvas.tiles.objects;
   if (objects.sortDirty) objects.sortChildren();
   let hit = null;
   for (const tile of objects.children) {
     const doc = tile.document;
     const flags = doc.flags[MODULE_ID];
-    const clickable = flags?.clickSound || flags?.quest;
-    if ((!clickable && !hit) || !tile.visible || !doc.alpha || !doc.shape.testPoint(point)) continue;
-    if (tile.mesh && !tile.mesh.containsCanvasPoint(point, Math.max(1 / 255, doc.texture.alphaThreshold))) continue;
+    if ((!flags && !hit) || !tile.visible || !doc.shape.testPoint(point)) continue;
+    const clickable = flags?.clickSound || visibleQuest(flags?.quest);
+    if (doc.alpha === 0) {
+      // A switched-off scene variant also has zero opacity.
+      if (!clickable || flags.restore) continue;
+    } else if (tile.mesh && !tile.mesh.containsCanvasPoint(point, Math.max(1 / 255, doc.texture.alphaThreshold))) {
+      continue;
+    }
     hit = clickable ? tile : null;
   }
   if (!hit) return null;
@@ -42,10 +54,10 @@ function tileAt(event) {
   ) {
     return null;
   }
-  const events = canvas.app.renderer.events.rootBoundary;
-  const target = events.hitTest(event.clientX, event.clientY);
+  const boundary = events.rootBoundary;
+  const target = boundary.hitTest(screen.x, screen.y);
   if (target === canvas.stage) return hit;
-  return target && events.propagationPath(target).some((item) => item instanceof foundry.canvas.placeables.Tile)
+  return target && boundary.propagationPath(target).some((item) => item instanceof foundry.canvas.placeables.Tile)
     ? hit
     : null;
 }
@@ -94,13 +106,11 @@ function listenForClicks({ app }) {
 
   function onDown(event) {
     press = null;
-    if (event.target !== board || event.button !== 0) return;
+    if (event.button !== 0) return;
     if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
     const tile = tileAt(event);
     if (!tile) return;
     press = { tile, id: event.pointerId, x: event.clientX, y: event.clientY };
-    // Foundry selects a tile or starts a creation tool on press, before it knows whether this is a click.
-    if (canvas.activeLayer === canvas.tiles || ui.controls.tool?.creation) event.stopPropagation();
   }
 
   function onMove(event) {
@@ -120,7 +130,7 @@ function listenForClicks({ app }) {
     board.classList.remove("my-clickable-tile");
   }
 
-  document.addEventListener("pointerdown", onDown, { ...options, capture: true });
+  board.addEventListener("pointerdown", onDown, options);
   board.addEventListener("pointermove", onMove, options);
   board.addEventListener("pointerup", onUp, options);
   board.addEventListener("pointerleave", reset, options);
