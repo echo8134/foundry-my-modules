@@ -58,9 +58,11 @@ As GM, click **Create quest** to start a hidden quest in the journal folder name
 
 #### Write a quest from a script
 
-Create an ordinary `JournalEntry` with `flags.foundry-my-modules.quest`. The [quest specification](docs/quests-spec.md#data-model) describes the flag fields. The GM client keeps journal ownership in sync. Hidden quests are GM-only. Other statuses grant Observer to the users listed in `personal`, or to every player when the list is empty.
+Create an ordinary `JournalEntry` with `flags.foundry-my-modules.quest`. The [quest specification](docs/quests-spec.md#data-model) describes the flag fields. A quest's ownership follows its data, so the GM client reverts manual ownership edits. Hidden quests are GM-only. Other statuses grant Observer to the users listed in `personal`, or to every player when the list is empty.
 
-Keep objective and reward IDs stable across imports. When refreshing an objective list, match existing objectives by ID and carry their `done` and `hidden` values forward. Hidden objectives and rewards are filtered from the interface. Foundry sends world documents to clients, so players can inspect those flag values outside the sheet.
+Keep objective and reward IDs stable across imports. Omit `done` and `hidden` to keep the GM's values for matching objective IDs, including children. Always write the whole `objectives` array. An index path such as `objectives.0.done` makes Foundry replace the array and drop the other objectives.
+
+Hidden objectives and rewards are filtered from the interface. Foundry sends world documents to clients, so players can inspect those flag values outside the sheet.
 
 ```js
 const quests = game.modules.get("foundry-my-modules").api.quests;

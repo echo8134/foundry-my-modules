@@ -1,8 +1,11 @@
 import { MODULE_ID } from "../constants.mjs";
 
 export const QUEST_STATUSES = ["active", "available", "completed", "failed", "hidden"];
+export const statusLabel = (status) => `MY_MODULES.Quests.Status.${status}`;
 const FLAG = `flags.${MODULE_ID}.quest`;
 const localize = (key) => game.i18n.localize(`MY_MODULES.Quests.${key}`);
+const asArray = (value) => (Array.isArray(value) ? value : []);
+const questItems = (value) => asArray(value).filter((item) => foundry.utils.isPlainObject(item));
 
 function emptyQuest() {
   return {
@@ -40,8 +43,10 @@ const statusOf = (quest) => (QUEST_STATUSES.includes(quest.status) ? quest.statu
 function questOwnership(quest) {
   const { NONE, OBSERVER } = CONST.DOCUMENT_OWNERSHIP_LEVELS;
   if (statusOf(quest) === "hidden") return { default: NONE };
-  if (!quest.personal?.length) return { default: OBSERVER };
-  return { default: NONE, ...Object.fromEntries(quest.personal.map((id) => [id, OBSERVER])) };
+  const personal = asArray(quest.personal);
+  if (!personal.length) return { default: OBSERVER };
+  const users = personal.filter((id) => game.users.has(id));
+  return { default: NONE, ...Object.fromEntries(users.map((id) => [id, OBSERVER])) };
 }
 
 export function questView(entry) {
@@ -49,10 +54,11 @@ export function questView(entry) {
   if (!flag) return null;
   const status = statusOf(flag);
   const gm = game.user.isGM;
-  if (!gm && (status === "hidden" || (flag.personal?.length && !flag.personal.includes(game.user.id)))) return null;
+  const personal = asArray(flag.personal);
+  if (!gm && (status === "hidden" || (personal.length && !personal.includes(game.user.id)))) return null;
   if (!entry.testUserPermission(game.user, "OBSERVER")) return null;
 
-  const visible = (items = []) => items.filter((item) => gm || !item.hidden);
+  const visible = (items) => questItems(items).filter((item) => gm || !item.hidden);
   const objectives = visible(flag.objectives).map((objective) => ({
     ...objective,
     children: visible(objective.children)
@@ -65,15 +71,21 @@ export function questView(entry) {
     giver: { name: "", img: "", uuid: null, ...flag.giver },
     objectives,
     rewards: visible(flag.rewards),
-    sort: flag.sort ?? 0
+    sort: Number.isFinite(flag.sort) ? flag.sort : 0
   });
 }
 
 export function listQuests() {
-  return game.journal
-    .map(questView)
-    .filter(Boolean)
-    .sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name));
+  const quests = [];
+  for (const entry of game.journal) {
+    try {
+      const quest = questView(entry);
+      if (quest) quests.push(quest);
+    } catch (error) {
+      console.warn(`${MODULE_ID} | Skipping quest ${entry.uuid}`, error);
+    }
+  }
+  return quests.sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name));
 }
 
 function folderName() {
@@ -87,9 +99,10 @@ function findFolder(name) {
 const folderRequests = new Map();
 
 export async function ensureQuestFolder() {
+  if (!game.users.activeGM?.isSelf) return;
   const name = folderName();
   const existing = findFolder(name);
-  if (existing || !game.user.isGM) return existing;
+  if (existing) return existing;
   if (!folderRequests.has(name)) {
     folderRequests.set(
       name,
@@ -104,14 +117,15 @@ export async function createQuest() {
   const folder = await ensureQuestFolder();
   return JournalEntry.create({
     name: localize("NewQuest"),
-    folder: folder.id,
+    folder: folder?.id ?? null,
     flags: { [MODULE_ID]: { quest: emptyQuest() } },
     pages: [
-      { name: localize("Description"), type: "text", sort: 0 },
+      { name: "Beschreibung", type: "text", sort: 0, flags: { [MODULE_ID]: { questPage: "description" } } },
       {
-        name: localize("GMNotes"),
+        name: "SL-Notizen",
         type: "text",
         sort: CONST.SORT_INTEGER_DENSITY,
+        flags: { [MODULE_ID]: { questPage: "gmNotes" } },
         ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.NONE }
       }
     ]
@@ -139,7 +153,7 @@ export function updateQuest(entry, { name, status, giver }) {
 }
 
 function locateObjective(roots, id) {
-  for (const list of [roots, ...roots.map((root) => root.children ?? [])]) {
+  for (const list of [roots, ...roots.map((root) => root.children)]) {
     const index = list.findIndex((item) => item.id === id);
     if (index >= 0) return { list, index, item: list[index] };
   }
@@ -147,10 +161,7 @@ function locateObjective(roots, id) {
 
 function siblings(roots, parentId) {
   if (parentId === null) return roots;
-  const parent = roots.find((item) => item.id === parentId);
-  if (!parent) return;
-  parent.children ??= [];
-  return parent.children;
+  return roots.find((item) => item.id === parentId)?.children;
 }
 
 // A blur followed by a click can submit two edits before the first document update arrives.
@@ -159,7 +170,8 @@ const objectiveWrites = new foundry.utils.Semaphore();
 function changeObjectives(entry, change) {
   return objectiveWrites.add(async () => {
     const flag = requireQuest(entry);
-    const roots = foundry.utils.deepClone(flag.objectives ?? []);
+    const roots = foundry.utils.deepClone(questItems(flag.objectives));
+    for (const root of roots) root.children = questItems(root.children);
     if (change(roots)) await entry.update({ [`${FLAG}.objectives`]: roots });
   });
 }
@@ -219,12 +231,29 @@ function preCreate(entry) {
   if (!game.user.isGM || !flag) return;
   const ownership = questOwnership(flag);
   if (!foundry.utils.equals(entry.ownership, ownership)) entry.updateSource({ ownership: _replace(ownership) });
-  const folder = !entry.folder && findFolder(folderName());
+  const folder = game.users.activeGM?.isSelf && !entry.folder && findFolder(folderName());
   if (folder) entry.updateSource({ folder: folder.id });
+}
+
+function flattenObjectives(roots) {
+  return questItems(roots).flatMap((root) => [root, ...questItems(root.children)]);
+}
+
+function preserveObjectiveState(existing, incoming) {
+  const byId = new Map(flattenObjectives(existing).map((objective) => [objective.id, objective]));
+  for (const objective of flattenObjectives(incoming)) {
+    const previous = byId.get(objective.id);
+    if (!objective.id || !previous) continue;
+    for (const key of ["done", "hidden"]) {
+      if (objective[key] === undefined && previous[key] !== undefined) objective[key] = previous[key];
+    }
+  }
 }
 
 function preUpdate(entry, changes, options) {
   if (!game.user.isGM || entry.inCompendium || !("flags" in changes || "ownership" in changes)) return;
+  const objectives = foundry.data.operators.DataFieldOperator.get(changes.flags?.[MODULE_ID]?.quest?.objectives);
+  if (Array.isArray(objectives)) preserveObjectiveState(flagOf(entry)?.objectives, objectives);
   const flags = changes.flags
     ? foundry.utils.mergeObject(
         { flags: entry.flags },

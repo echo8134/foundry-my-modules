@@ -99,6 +99,42 @@ await run(async () => {
       assert(!(await player.$(`${LOG} [data-status=hidden]`)), "the player has a hidden tab");
     });
 
+    await check("new quest pages have stable script identifiers and names", async () => {
+      const pages = await gm.evaluate(
+        (m, id) => game.journal.get(id).pages.map((page) => [page.getFlag(m, "questPage"), page.name]),
+        MODULE_ID,
+        questId
+      );
+      const names = Object.fromEntries(pages);
+      assert(
+        pages.length === 2 && names.description === "Beschreibung" && names.gmNotes === "SL-Notizen",
+        `unexpected quest pages: ${JSON.stringify(pages)}`
+      );
+    });
+
+    await check("a quest with null objectives appears in the API and the log", async () => {
+      const count = await gm.evaluate(
+        async (m, id) => {
+          await game.journal.get(id).update({
+            [`flags.${m}.quest.objectives`]: null,
+            [`flags.${m}.quest.status`]: "available"
+          });
+          return game.modules
+            .get(m)
+            .api.quests.list()
+            .find((quest) => quest.id === id)?.objectives.length;
+        },
+        MODULE_ID,
+        questId
+      );
+      assert(count === 0, "quest missing or returned invalid objectives");
+      await waitFor(
+        player,
+        (r) => /0\s*\/\s*0/.test(document.querySelector(`${r}[data-status=available]`)?.textContent),
+        row
+      );
+    });
+
     await check("the GM adds two objectives, hides one and makes the quest active", async () => {
       visibleId = await addObjective(gm, sheet, questId, 0, PUBLIC);
       hiddenId = await addObjective(gm, sheet, questId, 1, SECRET);
@@ -150,7 +186,7 @@ await run(async () => {
         async (m, id) => {
           const app = foundry.applications.instances.get(`my-quest-sheet-${id}`);
           const rendered = new Promise((resolve) => app.addEventListener("render", resolve, { once: true }));
-          await game.journal.get(id).update({ [`flags.${m}.quest.sort`]: 10 });
+          await game.journal.get(id).update({ [`flags.${m}.quest.giver.uuid`]: "Actor.previousGiver" });
           await rendered;
         },
         MODULE_ID,
@@ -162,6 +198,12 @@ await run(async () => {
       );
       await gm.keyboard.press("Tab");
       await waitFor(player, (s) => document.querySelector(`${s} .quest-giver`)?.textContent.includes("Carolyn"), sheet);
+      const uuid = await player.evaluate(
+        (m, id) => game.journal.get(id).getFlag(m, "quest").giver.uuid,
+        MODULE_ID,
+        questId
+      );
+      assert(uuid === null, `renamed giver UUID: ${uuid}`);
     });
 
     await check("the GM nests, promotes and drags an objective without changing its ID", async () => {
@@ -213,6 +255,27 @@ await run(async () => {
         PUBLIC
       );
       await waitFor(player, (r) => /1\s*\/\s*1/.test(document.querySelector(r)?.textContent), row);
+    });
+
+    await check("a bridge rewrite preserves the GM's ticks and visibility by objective ID", async () => {
+      const rewritten = await gm.evaluate(
+        async (m, id, visible, hidden) => {
+          const entry = game.journal.get(id);
+          await entry.update({
+            [`flags.${m}.quest.objectives`]: [
+              { id: visible, text: "Updated objective", children: [{ id: hidden, text: "Updated child" }] }
+            ]
+          });
+          return entry.getFlag(m, "quest").objectives[0];
+        },
+        MODULE_ID,
+        questId,
+        visibleId,
+        hiddenId
+      );
+      assert(rewritten.done === true && rewritten.children[0].hidden === true, "GM objective state lost");
+      await waitFor(player, (s) => document.querySelector(`${s} s`)?.textContent.trim() === "Updated objective", sheet);
+      assert(!(await player.$(`${sheet} [data-objective-id="${hiddenId}"]`)), "hidden child visible after rewrite");
     });
 
     await check(

@@ -6,13 +6,13 @@ import {
   listQuests,
   QUEST_STATUSES,
   questView,
+  statusLabel,
   updateQuest
 } from "./data.mjs";
 import { QuestSheet } from "./sheet.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 const title = "MY_MODULES.Quests.Log";
-const statusLabel = (status) => `MY_MODULES.Quests.Status.${status}`;
 const rowEntry = (target) => game.journal.get(target.closest("[data-quest-id]").dataset.questId);
 const sheets = new WeakMap();
 let log;

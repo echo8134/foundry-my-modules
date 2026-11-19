@@ -7,6 +7,7 @@ import {
   moveObjective,
   QUEST_STATUSES,
   questView,
+  statusLabel,
   updateQuest
 } from "./data.mjs";
 
@@ -90,10 +91,10 @@ export class QuestSheet extends HandlebarsApplicationMixin(ApplicationV2) {
       gm: game.user.isGM,
       statuses: QUEST_STATUSES.map((value) => ({
         value,
-        label: `MY_MODULES.Quests.Status.${value}`,
+        label: statusLabel(value),
         selected: quest.status === value
       })),
-      statusLabel: `MY_MODULES.Quests.Status.${quest.status}`,
+      statusLabel: statusLabel(quest.status),
       objectives: objectiveRows(quest.objectives),
       rewards: await Promise.all(quest.rewards.map(rewardView)),
       pages: await Promise.all(pages.sort((a, b) => a.sort - b.sort).map(pageView))
@@ -150,7 +151,7 @@ export class QuestSheet extends HandlebarsApplicationMixin(ApplicationV2) {
       case "status":
         return updateQuest(this.entry, { status: value });
       case "giver":
-        return updateQuest(this.entry, { giver: { name: value } });
+        return updateQuest(this.entry, { giver: { name: value, uuid: null } });
       case "giverImage":
         return updateQuest(this.entry, { giver: { img: value } });
       case "objectiveText":
