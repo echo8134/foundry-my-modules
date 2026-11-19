@@ -1,3 +1,4 @@
+import { rejects } from "node:assert/strict";
 import { assert, check, join, joinGamemaster, MODULE_ID, PLAYER_NAME, run, waitFor } from "./harness.mjs";
 
 const SOUND = "sounds/drums.wav";
@@ -19,6 +20,21 @@ async function clickAt(page, point) {
   await page.bringToFront();
   const { x, y } = await canvasPoint(page, point);
   await page.mouse.click(x, y);
+}
+
+async function dragFrom(page, point, dx, dy) {
+  const { x, y } = await canvasPoint(page, point);
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + dx, y + dy, { steps: 12 });
+  await page.mouse.up();
+}
+
+async function expectNoMoreSounds(page, count) {
+  await rejects(
+    page.waitForFunction((n) => tileSounds.length !== n, { timeout: 500 }, count),
+    { name: "TimeoutError" }
+  );
 }
 
 async function watchAudio(page) {
@@ -170,7 +186,7 @@ await run(async () => {
       await player.evaluate(() => canvas.tokens.releaseAll());
       await clickAt(player, { x: 450, y: 450 });
       await waitFor(player, (id) => canvas.tokens.controlled.some((t) => t.document.actorId === id), actorId);
-      assert(await player.evaluate(() => tileSounds.length === 2), "drag or token selection played the portrait");
+      await expectNoMoreSounds(player, 2);
     });
 
     await check(
@@ -193,13 +209,10 @@ await run(async () => {
           questId
         );
         await clickAt(player, note);
-        await player.waitForSelector(sheet, { visible: true, timeout: 500 }).then(
-          () => {
-            throw new Error("player opened a hidden quest");
-          },
-          (error) => {
-            if (error.name !== "TimeoutError") throw error;
-          }
+        await rejects(player.waitForSelector(sheet, { visible: true, timeout: 500 }), { name: "TimeoutError" });
+        assert(
+          !(await player.evaluate(() => getComputedStyle(canvas.app.view).cursor.includes("pointer"))),
+          "hidden quest still shows a hand"
         );
       }
     );
@@ -207,46 +220,67 @@ await run(async () => {
     await check("an unflagged tile has no click action for a player", async () => {
       await clickAt(player, plain);
       await clickAt(player, { x: 315, y: 450 });
+      await expectNoMoreSounds(player, 2);
+      await rejects(player.waitForSelector(".my-quest-sheet", { visible: true, timeout: 500 }), {
+        name: "TimeoutError"
+      });
       assert(
-        await player.evaluate(
-          () =>
-            tileSounds.length === 2 &&
-            !document.querySelector(".my-quest-sheet") &&
-            !getComputedStyle(canvas.app.view).cursor.includes("pointer")
-        ),
-        "plain tile acted on the click"
+        !(await player.evaluate(() => getComputedStyle(canvas.app.view).cursor.includes("pointer"))),
+        "plain tile shows a hand"
       );
     });
 
     await check("only the painted edge of a rotated ring plays its sound", async () => {
       await clickAt(player, { x: 600, y: 650 });
       await clickAt(player, { x: 686, y: 650 });
-      assert(await player.evaluate(() => tileSounds.length === 2), "the hole or the unrotated edge played a sound");
+      await expectNoMoreSounds(player, 2);
       await clickAt(player, { x: 600, y: 736 });
       await waitFor(player, () => tileSounds[2]?.sound?.playing);
       assert(await player.evaluate(() => tileSounds.length === 3), "the painted edge played more than once");
     });
 
-    await check("the GM can click the portrait on the Tiles layer without selecting or moving it", async () => {
-      await gm.evaluate(() => canvas.tiles.activate());
-      await clickAt(gm, portrait);
-      await waitFor(gm, () => tileSounds.length === 1);
-      assert(
-        await gm.evaluate(() => {
-          const tile = canvas.scene.tiles.getName("Portrait");
-          return !canvas.tiles.controlled.length && tile.x === 300 && tile.y === 400;
-        }),
-        "GM click changed the tile"
-      );
-      await gm.click("#scene-controls-layers [data-control=notes]");
-      await gm.click("#scene-controls-tools [data-tool=journal]");
-      await clickAt(gm, portrait);
-      await waitFor(gm, () => tileSounds.length === 2);
-      assert(
-        await gm.evaluate(() => !document.querySelector("dialog [name=journal]")),
-        "tile click started placing a note"
-      );
+    await check("a zero-opacity hotspot uses the whole rotated rectangle", async () => {
+      await gm.evaluate(() => canvas.scene.tiles.getName("Ring").update({ alpha: 0 }));
+      await waitFor(player, () => canvas.scene.tiles.getName("Ring").alpha === 0);
+      await clickAt(player, { x: 686, y: 650 });
+      await expectNoMoreSounds(player, 3);
+      await clickAt(player, { x: 600, y: 650 });
+      await waitFor(player, () => tileSounds[3]?.sound?.playing);
+    });
+
+    await check("the GM can test the portrait on the token layer when the board is offset", async () => {
+      await gm.evaluate(() => canvas.tokens.activate());
+      await gm.bringToFront();
+      const { x, y } = await canvasPoint(gm, portrait);
+      const offset = await gm.addStyleTag({ content: "#board { translate: 100px 0; }" });
+      try {
+        await gm.mouse.click(x + 100, y);
+        await waitFor(gm, () => tileSounds[0]?.sound?.playing);
+      } finally {
+        await offset.evaluate((style) => style.remove());
+      }
+    });
+
+    await check("the GM can start a wall over the flagged portrait", async () => {
+      await gm.click("#scene-controls-layers [data-control=walls]");
+      await gm.click("#scene-controls-tools [data-tool=wall]");
+      await waitFor(gm, () => canvas.activeLayer === canvas.walls && ui.controls.tool?.creation);
+      await dragFrom(gm, portrait, 0, 150);
+      await waitFor(gm, () => canvas.scene.walls.size === 1);
+      await expectNoMoreSounds(gm, 1);
+    });
+
+    await check("the GM can select and move the flagged portrait on the Tiles layer", async () => {
       await gm.click("#scene-controls-layers [data-control=tiles]");
+      await waitFor(gm, () => canvas.scene.tiles.getName("Portrait").object.eventMode === "static");
+      const { x, y } = await canvasPoint(gm, portrait);
+      await gm.mouse.move(x, y);
+      await waitFor(gm, () => canvas.tiles.hover?.document.name === "Portrait");
+      await gm.mouse.click(x, y);
+      await waitFor(gm, () => canvas.scene.tiles.getName("Portrait").object.controlled);
+      await expectNoMoreSounds(gm, 1);
+      await dragFrom(gm, portrait, 0, 150);
+      await waitFor(player, () => canvas.scene.tiles.getName("Portrait").y > 400);
     });
 
     await check("TileConfig saves and clears the audio picker and quest UUID on the same tile", async () => {
