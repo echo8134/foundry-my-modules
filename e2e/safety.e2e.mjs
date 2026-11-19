@@ -44,9 +44,15 @@ await run(async () => {
     );
     const player = await join(PLAYER_NAME);
     const observer = await join(observerName);
-    const clients = [gm, player, observer];
+    const secondGM = await gm.browserContext().newPage();
+    await secondGM.setViewport(gm.viewport());
+    await secondGM.goto(gm.url(), { waitUntil: "domcontentloaded" });
+    await secondGM.waitForFunction(() => globalThis.game?.ready && globalThis.canvas?.ready, { timeout: 180000 });
+    const gmTabs = [gm, secondGM];
+    const clients = [...gmTabs, player, observer];
     const playerId = await player.evaluate(() => game.user.id);
     const gmId = await gm.evaluate(() => game.user.id);
+    assert(await secondGM.evaluate((id) => game.user.id === id && game.users.activeGM.isSelf, gmId), "wrong second GM");
     await check("the card control below Quests opens for everyone and preserves the canvas tool", async () => {
       for (const client of clients) {
         const before = await client.evaluate(() => [ui.controls.control.name, ui.controls.tool.name]);
@@ -66,86 +72,143 @@ await run(async () => {
         );
       }
     });
-    await check(
-      "a player's X-card reaches three clients and keeps the note and sender out of public traffic and chat data",
-      async () => {
-        await observer.evaluate((id) => {
+    await check("two GM tabs relay one public X-card and keep its note until the GM dismisses it", async () => {
+      for (const client of [...gmTabs, observer]) {
+        await client.evaluate((id) => {
           window.safetyTraffic = [];
           game.socket.on(`module.${id}`, (...args) => window.safetyTraffic.push(args));
         }, MODULE_ID);
-        const previous = await gm.evaluate(() => game.messages.map((m) => m.id));
-        await player.type("#safety-note", privateNote);
-        await player.click(action("sendCard"));
-        await Promise.all(clients.map((p) => p.waitForSelector(overlay, { visible: true })));
-        assert(
-          (await gm.$eval(overlay, (el) => el.textContent)).includes(privateNote),
-          "GM did not see the literal private note"
-        );
-        for (const p of [player, observer]) {
-          assert(!(await p.$eval(overlay, (el) => el.textContent)).includes(privateNote), "player saw the GM note");
-        }
-        for (const p of clients) {
-          await waitFor(
-            p,
-            (ids) =>
-              game.messages.some(
-                (m) => !ids.includes(m.id) && m.alias === game.i18n.localize("MY_MODULES.Safety.Card")
-              ),
-            previous
-          );
-          const msg = await p.evaluate(
-            (ids) =>
-              game.messages
-                .find((m) => !ids.includes(m.id) && m.alias === game.i18n.localize("MY_MODULES.Safety.Card"))
-                .toObject(),
-            previous
-          );
-          assert(
-            msg.author === gmId && !msg.speaker.actor && !msg.speaker.token && !msg.speaker.scene,
-            "wrong author or non-neutral speaker"
-          );
-          const json = JSON.stringify(msg);
-          assert(
-            ![playerId, PLAYER_NAME, privateNote].some((s) => json.includes(s)),
-            "sender or GM note in ChatMessage data"
-          );
-          assert(!msg.whisper.length && !msg.blind, "card was not public");
-          if (p === gm) createdMessages.push(msg._id);
-          await waitFor(
-            p,
-            (id) => {
-              const row = document.querySelector(`[data-message-id="${id}"]`);
-              return (
-                row?.textContent.includes(game.i18n.localize("MY_MODULES.Safety.Prompt")) &&
-                // biome-ignore lint/performance/useDomNodeTextContent: The check needs the visible chat header.
-                row.querySelector(".message-sender")?.innerText.trim() === game.i18n.localize("MY_MODULES.Safety.Card")
-              );
-            },
-            msg._id
-          );
-        }
-        const traffic = await observer.evaluate(() => window.safetyTraffic);
-        assert(
-          traffic.length === 1 && traffic[0][0].action === "showCard" && traffic[0][1] === gmId,
-          "observer received traffic besides the GM announcement"
-        );
-        assert(
-          !JSON.stringify(traffic).includes(privateNote) && !JSON.stringify(traffic).includes(playerId),
-          "private request reached observer"
-        );
-        await player.click(overlay);
-        await player.waitForSelector(overlay, { hidden: true });
-        await gm.waitForSelector(overlay, { hidden: true, timeout: 10000 });
       }
-    );
-    await check("any player can add a line or veil and every open list receives both", async () => {
+      const previous = await gm.evaluate(() => game.messages.map((m) => m.id));
+      await player.type("#safety-note", privateNote);
+      await player.click(action("sendCard"));
+      await Promise.all(clients.map((p) => p.waitForSelector(overlay, { visible: true })));
+      const noteSelector = `${overlay} #my-safety-private-note`;
+      const noteTabs = [];
+      for (const tab of gmTabs) {
+        if (await tab.$(noteSelector)) noteTabs.push(tab);
+      }
+      assert(noteTabs.length > 0, "neither GM tab received the private note");
+      for (const p of [player, observer]) {
+        assert(!(await p.$eval(overlay, (el) => el.textContent)).includes(privateNote), "player saw the GM note");
+        assert(!(await p.$eval(windowId, (el) => el.textContent)).includes(privateNote), "note in player window");
+      }
+      await player.click(overlay);
+      await player.waitForSelector(overlay, { hidden: true });
+      await observer.waitForSelector(overlay, { hidden: true, timeout: 15000 });
+      for (const tab of noteTabs) {
+        assert(
+          await tab.$eval(
+            noteSelector,
+            (el, note) => el.textContent.includes(note) && getComputedStyle(el).userSelect === "text",
+            privateNote
+          ),
+          "GM note did not outlast the public overlay or was not selectable"
+        );
+        await tab.click(noteSelector);
+        await tab.waitForSelector(noteSelector, { visible: true });
+        await tab.click(`${overlay} button`);
+        await tab.waitForSelector(overlay, { hidden: true });
+        const history = await tab.$$eval("#my-safety-session-notes li", (items) =>
+          items.map((el) => el.textContent.trim())
+        );
+        assert(
+          history.length === 1 && history[0] === privateNote,
+          "dismissed GM note missing or duplicated in history"
+        );
+      }
+      const gmRequests = await Promise.all(
+        gmTabs.map((tab) => tab.evaluate(() => window.safetyTraffic.filter(([data]) => data.action === "xCard")))
+      );
+      const requestId = gmRequests[0][0]?.[0].requestId;
+      assert(
+        requestId &&
+          gmRequests.every(
+            (requests) => requests.length === 1 && requests[0][0].requestId === requestId && requests[0][1] === playerId
+          ),
+        "GM tabs did not receive the same stamped request"
+      );
+      for (const p of clients) {
+        await waitFor(
+          p,
+          (ids) =>
+            game.messages.some((m) => !ids.includes(m.id) && m.alias === game.i18n.localize("MY_MODULES.Safety.Card")),
+          previous
+        );
+        const cards = await p.evaluate(
+          (ids) =>
+            game.messages
+              .filter((m) => !ids.includes(m.id) && m.alias === game.i18n.localize("MY_MODULES.Safety.Card"))
+              .map((m) => m.toObject()),
+          previous
+        );
+        assert(
+          cards.length === 1 && cards[0]._id === requestId,
+          `expected one chat card with the request ID, found ${cards.length}`
+        );
+        const [msg] = cards;
+        assert(
+          msg.author === gmId && !msg.speaker.actor && !msg.speaker.token && !msg.speaker.scene,
+          "wrong author or non-neutral speaker"
+        );
+        const json = JSON.stringify(msg);
+        assert(
+          ![playerId, PLAYER_NAME, privateNote].some((s) => json.includes(s)),
+          "sender or GM note in ChatMessage data"
+        );
+        assert(!msg.whisper.length && !msg.blind, "card was not public");
+        if (p === gm) createdMessages.push(msg._id);
+        await waitFor(
+          p,
+          (id) => {
+            const row = document.querySelector(`[data-message-id="${id}"]`);
+            return (
+              row?.textContent.includes(game.i18n.localize("MY_MODULES.Safety.Prompt")) &&
+              // biome-ignore lint/performance/useDomNodeTextContent: The check needs the visible chat header.
+              row.querySelector(".message-sender")?.innerText.trim() === game.i18n.localize("MY_MODULES.Safety.Card")
+            );
+          },
+          msg._id
+        );
+      }
+      const traffic = await observer.evaluate(() => window.safetyTraffic);
+      assert(
+        traffic.length === 1 && traffic[0][0].action === "showCard" && traffic[0][1] === gmId,
+        "observer received traffic besides the GM announcement"
+      );
+      assert(
+        !JSON.stringify(traffic).includes(privateNote) && !JSON.stringify(traffic).includes(playerId),
+        "private request reached observer"
+      );
+    });
+    await check("two GM tabs store concurrent line and veil requests once each, including a retried add", async () => {
       await Promise.all(clients.map((p) => p.click(limitsTab)));
       await Promise.all([add(player, "line", line), add(observer, "veil", veil)]);
+      await waitFor(gm, () => window.safetyTraffic.filter(([data]) => data.action === "add").length === 2);
+      const request = await gm.evaluate(
+        () => window.safetyTraffic.find(([data]) => data.action === "add" && data.kind === "line")[0]
+      );
+      await waitFor(gm, () => document.querySelectorAll("#my-safety-tools [data-entry]").length === 2);
+      await player.evaluate(
+        (channel, data) => {
+          game.socket.emit(channel, data, { recipients: [game.users.activeGM.id] });
+        },
+        `module.${MODULE_ID}`,
+        request
+      );
+      for (const tab of gmTabs) {
+        await waitFor(
+          tab,
+          (id) => window.safetyTraffic.filter(([data]) => data.action === "add" && data.requestId === id).length === 2,
+          request.requestId
+        );
+      }
       for (const p of clients) {
         await waitFor(p, () => document.querySelectorAll("#my-safety-tools [data-entry]").length === 2);
         const entries = await p.evaluate((id) => game.settings.get(id, "safetyBoundaries"), MODULE_ID);
         assert(
-          entries.some((e) => e.kind === "line" && e.text === line) &&
+          entries.length === 2 &&
+            entries.some((e) => e.id === request.requestId && e.kind === "line" && e.text === line) &&
             entries.some((e) => e.kind === "veil" && e.text === veil),
           "missing line or veil"
         );
