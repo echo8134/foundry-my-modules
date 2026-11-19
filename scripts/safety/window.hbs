@@ -1,0 +1,56 @@
+<div class="safety-body">
+  {{#if tabs}}
+  <nav class="tabs safety-tabs" aria-label="{{localize 'MY_MODULES.Safety.Title'}}">
+    <button type="button" class="{{#if showCard}}active{{/if}}" data-action="tab" data-group="safety" data-tab="card" aria-pressed="{{showCard}}">
+      <i class="fa-solid fa-cards-blank" inert></i>{{localize "MY_MODULES.Safety.Card"}}
+    </button>
+    <button type="button" class="{{#unless showCard}}active{{/unless}}" data-action="tab" data-group="safety" data-tab="limits" aria-pressed="{{#if showCard}}false{{else}}true{{/if}}">
+      <i class="fa-solid fa-book-open" inert></i>{{localize "MY_MODULES.Safety.Limits"}}
+    </button>
+  </nav>
+  {{/if}}
+  {{#if card}}
+  <section class="tab safety-card-form {{#if showCard}}active{{/if}}" data-group="safety" data-tab="card">
+    <div class="safety-prompt">
+      <span class="safety-symbol" aria-hidden="true">X</span>
+      <h2>{{localize "MY_MODULES.Safety.Prompt"}}</h2>
+    </div>
+    <label for="safety-note">{{localize "MY_MODULES.Safety.Note"}}</label>
+    <input id="safety-note" type="text" autocomplete="off">
+    <p class="safety-hint">{{localize "MY_MODULES.Safety.Privacy"}}</p>
+    <button type="button" data-action="sendCard">{{localize "MY_MODULES.Safety.Send"}}</button>
+  </section>
+  {{/if}}
+  {{#if limits}}
+  <section class="tab safety-limits {{#unless showCard}}active{{/unless}}" data-group="safety" data-tab="limits">
+    <div class="safety-columns">
+      {{#each columns}}
+      <section data-kind="{{kind}}">
+        <h2>{{localize title}}</h2><p class="safety-hint">{{localize hint}}</p>
+        <div class="safety-add">
+          <input id="safety-add-{{kind}}" type="text" aria-label="{{localize add}}" placeholder="{{localize add}}" autocomplete="off">
+          <button type="button" class="icon fa-solid fa-plus" data-action="addEntry" aria-label="{{localize add}}" data-tooltip="{{add}}"></button>
+        </div>
+        <ul>
+          {{#each entries}}
+          <li data-entry="{{id}}">
+            {{#if @root.gm}}
+            <input type="text" id="safety-entry-{{id}}" aria-label="{{localize 'MY_MODULES.Safety.Edit'}}" value="{{text}}">
+            <button type="button" class="icon fa-solid fa-check" data-action="editEntry" aria-label="{{localize 'MY_MODULES.Safety.Save'}}" data-tooltip="MY_MODULES.Safety.Save"></button>
+            <button type="button" class="icon fa-solid fa-trash" data-action="removeEntry" aria-label="{{localize 'MY_MODULES.Safety.Remove'}}" data-tooltip="MY_MODULES.Safety.Remove"></button>
+            {{else}}{{text}}{{/if}}
+          </li>
+          {{/each}}
+        </ul>
+      </section>
+      {{/each}}
+    </div>
+    <p class="safety-hint">{{localize "MY_MODULES.Safety.Privacy"}}</p>
+  </section>
+  {{/if}}
+  {{#if door}}
+  <footer><button type="button" data-action="openDoor">
+    <i class="fa-solid fa-door-open" inert></i>{{localize "MY_MODULES.Safety.Break"}}
+  </button><small>{{localize "MY_MODULES.Safety.Named"}}</small></footer>
+  {{/if}}
+</div>

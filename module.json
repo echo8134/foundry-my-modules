@@ -12,8 +12,9 @@
     "minimum": "14",
     "verified": "14"
   },
+  "socket": true,
   "esmodules": ["scripts/main.mjs"],
-  "styles": ["styles/cursors.css", "styles/levels.css", "styles/quests.css"],
+  "styles": ["styles/cursors.css", "styles/levels.css", "styles/quests.css", "styles/safety.css"],
   "languages": [
     {
       "lang": "de",

@@ -1,0 +1,222 @@
+#my-safety-tools .window-content {
+  padding: 0;
+  overflow-y: auto;
+  background: #e6d6b8 url("../assets/quests/parchment.webp") center / cover;
+  color: #30241c;
+  color-scheme: light;
+  font:
+    1.05rem / 1.35 "Quest Fell",
+    Georgia,
+    serif;
+}
+
+.safety-body {
+  --button-text-color: #35261d;
+  --button-background-color: #e7d7b9;
+  --button-border-color: #9c8562;
+  --button-hover-text-color: #291a12;
+  --button-hover-background-color: #f7ecd7;
+  --input-text-color: #30241c;
+  --input-background-color: #f9eed88c;
+  --input-border-color: #9c8562;
+}
+
+.safety-tabs {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.7rem 1rem;
+  background:
+    linear-gradient(#29201ab3, #29201ab3),
+    url("../assets/quests/board.webp") center / cover;
+}
+
+.safety-tabs button,
+.safety-body [data-action="sendCard"] {
+  font:
+    1.06rem / 1 "Quest Fell SC",
+    Georgia,
+    serif;
+}
+
+.safety-tabs button {
+  background: #c9b799;
+  color: #32261d;
+}
+.safety-tabs button.active {
+  color: #38261d;
+  background: #f6e9cb;
+  box-shadow: inset 0 -3px #804338;
+}
+
+.safety-body .tab {
+  display: none;
+  padding: 1.1rem 1.3rem;
+}
+.safety-body .tab.active {
+  display: block;
+}
+
+.safety-prompt {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  padding-bottom: 1rem;
+}
+
+.safety-symbol {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 3.8rem;
+  aspect-ratio: 3 / 4;
+  border: 3px double #814436;
+  border-radius: 0.25rem;
+  background: #eadcc2 url("../assets/quests/note.webp") center / cover;
+  box-shadow: 1px 2px 4px #38261d55;
+  color: #772f25;
+  font:
+    3.3rem / 1 "Quest Fell",
+    Georgia,
+    serif;
+  transform: rotate(-5deg);
+}
+
+.safety-body h2 {
+  margin: 0;
+  color: #483225;
+  border: 0;
+  font:
+    1.65rem / 1.15 "Quest Fell",
+    Georgia,
+    serif;
+}
+.safety-body input {
+  margin-block: 0.2rem;
+  background: #f7ecd9;
+  border: 1px solid #9c8562;
+  color: #30241c;
+}
+.safety-body input::placeholder {
+  color: #675748;
+}
+.safety-hint {
+  margin: 0.3rem 0 0.7rem;
+  font-size: 0.9rem;
+  color: #59483b;
+}
+.safety-body [data-action="sendCard"] {
+  width: 100%;
+  color: #fff2d9;
+  background: #71372d;
+  border-color: #573026;
+}
+.safety-body [data-action="sendCard"]:hover {
+  background: #884336;
+}
+
+.safety-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.safety-columns > section + section {
+  border-inline-start: 1px solid #a28b6c;
+  padding-inline-start: 1rem;
+}
+.safety-columns ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.safety-columns li,
+.safety-add {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+.safety-columns li {
+  padding-block: 0.3rem;
+  border-bottom: 1px dotted #a28b6c;
+  overflow-wrap: anywhere;
+}
+.safety-add {
+  margin-block: 0.6rem;
+}
+.safety-columns input {
+  min-width: 0;
+}
+.safety-columns button.icon {
+  flex: none;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+}
+.safety-body footer {
+  border-top: 1px solid #a28b6c;
+  padding: 0.6rem 1.3rem;
+}
+.safety-body :where(footer) small {
+  display: block;
+  margin-top: 0.2rem;
+  color: #59483b;
+}
+.safety-body footer button {
+  height: auto;
+  min-height: 1.8rem;
+  white-space: normal;
+}
+
+#my-safety-overlay {
+  max-width: 95vw;
+  max-height: 95vh;
+  margin: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: 0 8px 30px #110c0b9c;
+  color: #38261d;
+  text-align: center;
+  cursor: pointer;
+}
+#my-safety-overlay::backdrop {
+  background: #181310ba;
+}
+.safety-signal {
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
+  width: min(25rem, 95vw);
+  max-height: 90vh;
+  overflow: auto;
+  padding: 2rem;
+  background: #ebdec4 url("../assets/quests/parchment.webp") center / cover;
+  outline: 3px double #956d46;
+  outline-offset: -0.55rem;
+  font:
+    1.5rem / 1.2 "Quest Fell",
+    Georgia,
+    serif;
+  text-shadow: none;
+}
+.safety-signal .safety-symbol {
+  width: 7rem;
+  font-size: 6rem;
+}
+#my-safety-private-note {
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+#my-safety-overlay button {
+  border: 1px solid #9c8562;
+  background: #e7d7b9;
+  color: #35261d;
+  font:
+    1rem / 1.2 "Quest Fell",
+    Georgia,
+    serif;
+}
+
+/* D&D 5e adds the author’s avatar and name below the neutral speaker alias. */
+.my-safety-chat .message-sender :is(.avatar, .subtitle) {
+  display: none;
+}

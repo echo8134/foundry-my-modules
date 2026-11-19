@@ -46,6 +46,16 @@ A token of a villager, a guard or a hunter gets its own name when the GM puts it
 - The world setting "Format of random token names" shapes the name: `{name}` is the drawn name, `{actor}` the prototype token's name, so `{name} ({actor})` gives "Bogdan (Guard)".
 - The dice button in the token HUD rolls a new name. `api.rollName(actor)` returns one for macros.
 
+### Safety tools
+
+Open the card icon below **Quests**. The GM can switch **X-card**, **Lines and veils**, and **Open door** on or off independently in the world settings. All three start enabled.
+
+- **X-card** asks the table to move on. Write an optional note for the active GM, then click **Show the X-card**. Everyone sees a card for a few seconds and a public chat message. Click the overlay to dismiss it. Only the active GM sees the note, and it is never saved in chat.
+- **Lines & veils** keeps two lists between sessions. Add a line for a topic to leave out, or a veil for something that can happen off screen. Any user can add an entry. GMs can edit it with the check mark or remove it with the trash button.
+- **Open door** posts a break request to public chat under your own name.
+
+X-cards and list changes need an active GM. The card, public chat, and saved list omit the contributor’s name. Foundry 14 sends the contributor’s user ID to the relay GM at the socket level, where a GM with developer tools can inspect it. Other players receive only the GM’s public result. Use one game tab for the relay GM account. Foundry delivers each request to every open session of that account.
+
 ### Clickable tiles
 
 To give a portrait a sound or link a note to a quest, open the tile's configuration as GM. On the **Appearance** tab, find **My Modules**. Set either or both fields and save. Clear a field and save to remove that action.
