@@ -13,6 +13,7 @@
   "MY_MODULES.Names.Reroll": "Roll a new name",
   "MY_MODULES.Names.Format.Name": "Format of random token names",
   "MY_MODULES.Names.Format.Hint": "For figures with name tables. {name} is the drawn name, {actor} the prototype token's name, for example \"{name} ({actor})\".",
+  "MY_MODULES.Quests.Control": "Quests",
   "MY_MODULES.Quests.Log": "Quest Log",
   "MY_MODULES.Quests.Create": "Create quest",
   "MY_MODULES.Quests.Delete": "Delete quest",

@@ -13,6 +13,7 @@
   "MY_MODULES.Names.Reroll": "Neuen Namen würfeln",
   "MY_MODULES.Names.Format.Name": "Format zufälliger Token-Namen",
   "MY_MODULES.Names.Format.Hint": "Für Figuren mit Namenstabellen. {name} ist der gezogene Name, {actor} der Name aus dem Prototyp-Token, zum Beispiel \"{name} ({actor})\".",
+  "MY_MODULES.Quests.Control": "Quests",
   "MY_MODULES.Quests.Log": "Questlog",
   "MY_MODULES.Quests.Create": "Quest erstellen",
   "MY_MODULES.Quests.Delete": "Quest löschen",

@@ -121,15 +121,27 @@ export function setupQuestLog() {
   });
   Hooks.on("renderJournalDirectory", addDirectoryButton);
   Hooks.on("getSceneControlButtons", (controls) => {
-    if (!controls.notes) return;
-    controls.notes.tools.questLog = {
-      name: "questLog",
-      title,
-      order: Object.keys(controls.notes.tools).length + 1,
-      icon: "fa-solid fa-book-open",
-      button: true,
-      onChange: () => quests.open()
+    const icon = "fa-solid fa-scroll";
+    controls.quests = {
+      name: "quests",
+      title: "MY_MODULES.Quests.Control",
+      order: Object.keys(controls).length + 1,
+      icon,
+      tools: {
+        questLog: { name: "questLog", title, order: 0, icon, button: true, onChange: quests.open }
+      }
     };
+  });
+  Hooks.on("renderSceneControls", (app, element) => {
+    // Foundry renders every top-level control as a layer tab. Run the button tool directly to keep the active layer.
+    const button = element.querySelector('button[data-control="quests"][data-action="control"]');
+    if (!button) return;
+    delete button.dataset.action;
+    button.classList.remove("layer");
+    button.removeAttribute("role");
+    button.removeAttribute("aria-controls");
+    button.removeAttribute("aria-pressed");
+    button.addEventListener("click", app.controls.quests.tools.questLog.onChange);
   });
   for (const action of ["create", "update", "delete"]) {
     Hooks.on(`${action}JournalEntry`, (entry) => {

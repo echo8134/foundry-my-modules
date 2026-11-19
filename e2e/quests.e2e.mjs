@@ -1,6 +1,7 @@
 import { assert, check, join, joinGamemaster, MODULE_ID, PLAYER_NAME, run, waitFor } from "./harness.mjs";
 
 const LOG = ".my-quest-log";
+const QUESTS_CONTROL = "#scene-controls-layers button[data-control=quests]";
 const NAME = "MM Quest: Das Fieberkraut";
 const PUBLIC = "Finde das Fieberkraut";
 const SECRET = "Befrage die Spionin";
@@ -50,14 +51,34 @@ await run(async () => {
   let player, questId, sheet, row, visibleId, hiddenId;
 
   try {
-    await check("the Journal directory and the Notes scene controls each open the quest log", async () => {
+    await check("the GM opens the log from the Journal and from Quests while using a Notes tool", async () => {
       await pressButton(gm, "#sidebar-tabs [data-tab=journal]");
       await pressButton(gm, "#journal .my-quest-directory");
       await pressButton(gm, `${LOG} [data-action=close]`);
       await waitFor(gm, (s) => !document.querySelector(s), LOG);
       await pressButton(gm, "[data-action=control][data-control=notes]");
-      await pressButton(gm, "[data-action=tool][data-tool=questLog]");
+      await pressButton(gm, "[data-action=tool][data-tool=journal]");
+      await pressButton(gm, QUESTS_CONTROL);
       await gm.waitForSelector(`${LOG} [data-action=createQuest]`, { visible: true });
+      assert(
+        await gm.evaluate(
+          () =>
+            ui.controls.control.name === "notes" &&
+            ui.controls.tool.name === "journal" &&
+            canvas.activeLayer === canvas.notes
+        ),
+        "opening the log changed the GM's Notes control, tool, or layer"
+      );
+    });
+
+    await check("the player opens the log with one click on the top-level Quests control", async () => {
+      player = await join(PLAYER_NAME);
+      await player.waitForSelector(QUESTS_CONTROL, { visible: true });
+      assert((await player.$eval(QUESTS_CONTROL, (el) => el.getAttribute("aria-label"))) === "Quests", "control label");
+      await pressButton(player, QUESTS_CONTROL);
+      await player.waitForSelector(LOG, { visible: true });
+      await pressButton(player, `${LOG} [data-action=close]`);
+      await waitFor(player, (s) => !document.querySelector(s), LOG);
     });
 
     await check("the GM creates a hidden quest that the player cannot find with Ctrl+Q", async () => {
@@ -76,7 +97,6 @@ await run(async () => {
       await change(gm, `${sheet} [name=name]`, NAME);
       await waitFor(gm, (id, name) => game.journal.get(id).name === name, questId, NAME);
 
-      player = await join(PLAYER_NAME);
       await player.bringToFront();
       await player.keyboard.down("Control");
       try {

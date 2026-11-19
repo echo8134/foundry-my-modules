@@ -2,7 +2,7 @@
   "id": "foundry-my-modules",
   "title": "My Modules",
   "description": "Small table fixes for one group: hide cursors from the player list, list every scene level, switch a level's variants from the level navigation, name generic figures from RollTables, and keep a journal-based quest log.",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "authors": [
     {
       "name": "echo8134"
