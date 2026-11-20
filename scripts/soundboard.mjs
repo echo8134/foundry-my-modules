@@ -60,7 +60,10 @@ function toggle(track) {
 }
 
 function renderBoard(_app, element) {
-  element.querySelector(".my-soundboard")?.remove();
+  const previous = element.querySelector(".my-soundboard");
+  const scrollTop = previous?.scrollTop ?? 0;
+  const focusedUuid = previous?.querySelector("button:focus")?.dataset.uuid;
+  previous?.remove();
   if (!game.user.isGM || !game.settings.get(MODULE_ID, "soundboardEnabled")) return;
   const footer = element.querySelector(".directory-footer");
   if (!footer) return;
@@ -93,6 +96,8 @@ function renderBoard(_app, element) {
     panel.append(hint);
   }
   footer.before(panel);
+  panel.scrollTop = scrollTop;
+  if (focusedUuid) panel.querySelector(`[data-uuid="${CSS.escape(focusedUuid)}"]`)?.focus({ preventScroll: true });
 }
 
 function refreshBoard() {
