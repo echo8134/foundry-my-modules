@@ -7,7 +7,8 @@ const OWN_FLAG = "hideOwnCursor";
 
 const hidesOwnCursor = (user) => user.getFlag(MODULE_ID, OWN_FLAG) === true;
 const hiddenByMe = () => new Set(game.settings.get(MODULE_ID, HIDDEN_SETTING));
-const cursorShown = (user) => !hidesOwnCursor(user) && !hiddenByMe().has(user.id);
+const canToggleCursor = (user) => game.user.isGM || !user.isGM;
+const cursorShown = (user) => !hidesOwnCursor(user) && (!canToggleCursor(user) || !hiddenByMe().has(user.id));
 
 function refreshCursors() {
   for (const user of game.users) canvas.controls?.getCursorForUser(user.id)?.refreshVisibility(user);
@@ -21,7 +22,7 @@ async function toggleOwn() {
 async function toggleOther(userId, everyone) {
   const hidden = hiddenByMe();
   const show = hidden.has(userId);
-  const targets = everyone ? game.users.filter((u) => !u.isSelf).map((u) => u.id) : [userId];
+  const targets = everyone ? game.users.filter((u) => !u.isSelf && canToggleCursor(u)).map((u) => u.id) : [userId];
   for (const id of targets) show ? hidden.delete(id) : hidden.add(id);
   await game.settings.set(MODULE_ID, HIDDEN_SETTING, [...hidden]);
 }
@@ -29,7 +30,7 @@ async function toggleOther(userId, everyone) {
 function addToggles(_app, element) {
   for (const row of element.querySelectorAll("li.player[data-user-id]")) {
     const user = game.users.get(row.dataset.userId);
-    if (!user) continue;
+    if (!user || !canToggleCursor(user)) continue;
     const shown = user.isSelf ? !hidesOwnCursor(user) : cursorShown(user);
     const button = document.createElement("button");
     button.type = "button";

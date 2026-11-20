@@ -1,5 +1,3 @@
-// Drives a running Foundry world with two browsers, a Gamemaster and a player, and checks the cursor toggles.
-// The test writes a player user, a scene activation and user flags, so it runs only in a world kept for it.
 import { assert, check, join, joinGamemaster, MODULE_ID, PLAYER_NAME, run, waitFor } from "./harness.mjs";
 
 // Wiggles the mouse over the canvas until the other client has drawn the cursor and its visibility settles.
@@ -22,8 +20,7 @@ const clickToggle = (page, userId, modifiers = {}) =>
     modifiers.shift === true
   );
 
-await run(async () => {
-  const gm = await joinGamemaster();
+async function checkCursors(gm, peerName) {
   await gm.evaluate(async (moduleId) => {
     await game.user.unsetFlag(moduleId, "hideOwnCursor");
     const scene = game.scenes.active ?? game.scenes.contents[0];
@@ -31,23 +28,29 @@ await run(async () => {
   }, MODULE_ID);
 
   const player = await join(PLAYER_NAME, "");
+  const peer = await join(peerName);
   const gmId = await gm.evaluate(() => game.user.id);
   const playerId = await player.evaluate(() => game.user.id);
+  const peerId = await peer.evaluate(() => game.user.id);
   await player.evaluate((id) => game.settings.set(id, "hiddenCursors", []), MODULE_ID);
 
-  await check("every row of the player list carries a toggle", async () => {
-    const rows = await player.$$eval("#players li.player", (lis) =>
-      lis.map((li) => li.querySelector(".my-cursor-toggle") !== null)
-    );
-    assert(rows.length >= 2 && rows.every(Boolean), `rows with toggle: ${JSON.stringify(rows)}`);
+  await check("players see toggles on player rows and the GM sees toggles on all three rows", async () => {
+    for (const viewer of [gm, player]) {
+      for (const id of [gmId, playerId, peerId]) {
+        const row = `#players li.player[data-user-id="${id}"]`;
+        await viewer.waitForSelector(row);
+        const hasToggle = await viewer.$eval(row, (li) => !!li.querySelector(".my-cursor-toggle"));
+        assert(hasToggle === (viewer === gm || id !== gmId), `unexpected cursor control in row ${id}`);
+      }
+    }
   });
 
   await check("the toggle is invisible until the row is hovered", async () => {
-    const selector = `#players li.player[data-user-id="${gmId}"] .my-cursor-toggle`;
+    const selector = `#players li.player[data-user-id="${peerId}"] .my-cursor-toggle`;
     const opacity = () => player.$eval(selector, (b) => Number(getComputedStyle(b).opacity));
     assert((await opacity()) === 0, `opacity without hover is ${await opacity()}`);
     // Chromium updates :hover only on mouse movement, and the list may re-render under a still mouse.
-    const row = await player.$eval(`#players li.player[data-user-id="${gmId}"]`, (li) => {
+    const row = await player.$eval(`#players li.player[data-user-id="${peerId}"]`, (li) => {
       const r = li.getBoundingClientRect();
       return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
     });
@@ -64,6 +67,12 @@ await run(async () => {
     assert((await cursorVisibleTo(gm, player, playerId)) === true, "GM does not see the player cursor");
   });
 
+  await check("the GM cursor stays visible with an old player preference to hide it", async () => {
+    await player.evaluate((m, id) => game.settings.set(m, "hiddenCursors", [id]), MODULE_ID, gmId);
+    assert((await cursorVisibleTo(player, gm, gmId)) === true, "an old player preference hid the GM cursor");
+    await player.evaluate((m) => game.settings.set(m, "hiddenCursors", []), MODULE_ID);
+  });
+
   await check("the GM hides their own cursor from everyone with the toggle on their row", async () => {
     await clickToggle(gm, gmId);
     await waitFor(player, (id, m) => game.users.get(id).getFlag(m, "hideOwnCursor") === true, gmId, MODULE_ID);
@@ -77,29 +86,36 @@ await run(async () => {
     assert((await cursorVisibleTo(player, gm, gmId)) === true, "player does not see the GM cursor again");
   });
 
-  await check("the player hides the GM cursor only for themselves", async () => {
-    await clickToggle(player, gmId);
-    await waitFor(player, (m, id) => game.settings.get(m, "hiddenCursors").includes(id), MODULE_ID, gmId);
-    assert((await cursorVisibleTo(player, gm, gmId)) === false, "player still sees the GM cursor");
-    const toggleOff = await player.$eval(`#players li.player[data-user-id="${gmId}"] .my-cursor-toggle`, (b) =>
+  await check("the player hides a peer's cursor only for themselves", async () => {
+    await clickToggle(player, peerId);
+    await waitFor(player, (m, id) => game.settings.get(m, "hiddenCursors").includes(id), MODULE_ID, peerId);
+    assert((await cursorVisibleTo(player, peer, peerId)) === false, "player still sees the peer cursor");
+    const toggleOff = await player.$eval(`#players li.player[data-user-id="${peerId}"] .my-cursor-toggle`, (b) =>
       b.classList.contains("off")
     );
-    assert(toggleOff, "the GM row does not show the hidden state");
+    assert(toggleOff, "the peer row does not show the hidden state");
     await player.mouse.move(700, 450);
     await waitFor(
       player,
       (id) =>
         getComputedStyle(document.querySelector(`#players li.player[data-user-id="${id}"] .my-cursor-toggle`))
           .opacity === "0",
-      gmId
+      peerId
     );
-    assert((await cursorVisibleTo(gm, player, playerId)) === true, "GM lost the player cursor");
+    assert((await cursorVisibleTo(gm, peer, peerId)) === true, "GM lost the peer cursor");
   });
 
-  await check("shift-click on a hidden row shows every cursor again", async () => {
-    await clickToggle(player, gmId, { shift: true });
+  await check("shift-click shows and hides other players' cursors without hiding GM cursors", async () => {
+    await clickToggle(player, peerId, { shift: true });
     await waitFor(player, (m) => game.settings.get(m, "hiddenCursors").length === 0, MODULE_ID);
-    assert((await cursorVisibleTo(player, gm, gmId)) === true, "player does not see the GM cursor again");
+    assert((await cursorVisibleTo(player, peer, peerId)) === true, "player does not see the peer cursor again");
+    await clickToggle(player, peerId, { shift: true });
+    await waitFor(player, (m, id) => game.settings.get(m, "hiddenCursors").includes(id), MODULE_ID, peerId);
+    const hidden = await player.evaluate((m) => game.settings.get(m, "hiddenCursors"), MODULE_ID);
+    assert(!hidden.includes(gmId), "shift-click stored a GM cursor preference");
+    assert((await cursorVisibleTo(player, gm, gmId)) === true, "shift-click hid the GM cursor");
+    await clickToggle(player, peerId, { shift: true });
+    await waitFor(player, (m) => game.settings.get(m, "hiddenCursors").length === 0, MODULE_ID);
   });
 
   await check("a ping still shows while the GM cursor is hidden", async () => {
@@ -117,4 +133,18 @@ await run(async () => {
     await waitFor(player, () => globalThis.__pings > 0);
     await clickToggle(gm, gmId);
   });
+}
+
+await run(async () => {
+  const gm = await joinGamemaster();
+  const peerName = `Cursor peer ${Date.now()}`;
+  const peerId = await gm.evaluate(
+    async (name) => (await User.create({ name, role: CONST.USER_ROLES.PLAYER })).id,
+    peerName
+  );
+  try {
+    await checkCursors(gm, peerName);
+  } finally {
+    await gm.evaluate((id) => game.users.get(id).delete(), peerId);
+  }
 });

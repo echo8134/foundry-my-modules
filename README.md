@@ -17,10 +17,10 @@ Foundry offers each new release through the module's Update button.
 <details>
 <summary><h3>Hide cursors</h3></summary>
 
-Hover a row of the player list, bottom left, and a check mark appears; it fades out when the mouse leaves.
+Hover a player’s row in the player list at the bottom left to see its cursor toggle. GMs also see toggles on GM rows.
 
 - On your own row it hides your cursor from everyone, for example the GM's while preparing a reveal.
-- On another row it hides that person's cursor from you only. Shift-click applies it to everyone.
+- On another row it hides that person's cursor from you only. Shift-click applies the same choice to all other users whose cursors you can toggle.
 - Pings still show. The choice is stored per user, so it follows you to every device.
 
 </details>
