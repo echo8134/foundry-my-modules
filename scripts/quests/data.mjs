@@ -49,15 +49,17 @@ function questOwnership(quest) {
   return { default: NONE, ...Object.fromEntries(users.map((id) => [id, OBSERVER])) };
 }
 
+function canView(entry, flag) {
+  if (!flag || !entry.testUserPermission(game.user, "OBSERVER")) return false;
+  const personal = asArray(flag.personal);
+  return game.user.isGM || (statusOf(flag) !== "hidden" && (!personal.length || personal.includes(game.user.id)));
+}
+
 export function questView(entry) {
   const flag = flagOf(entry);
-  if (!flag) return null;
-  const status = statusOf(flag);
+  if (!canView(entry, flag)) return null;
   const gm = game.user.isGM;
-  const personal = asArray(flag.personal);
-  if (!gm && (status === "hidden" || (personal.length && !personal.includes(game.user.id)))) return null;
-  if (!entry.testUserPermission(game.user, "OBSERVER")) return null;
-
+  const parent = typeof flag.parent === "string" && game.journal.get(flag.parent.split(".")[1]);
   const visible = (items) => questItems(items).filter((item) => gm || !item.hidden);
   const objectives = visible(flag.objectives).map((objective) => ({
     ...objective,
@@ -67,7 +69,11 @@ export function questView(entry) {
     id: entry.id,
     uuid: entry.uuid,
     name: entry.name,
-    status,
+    status: statusOf(flag),
+    primary: flag.primary === true,
+    parent:
+      parent && parent.uuid === flag.parent && parent !== entry && canView(parent, flagOf(parent)) ? parent.uuid : null,
+    ...(gm ? { personal: asArray(flag.personal) } : {}),
     giver: { name: "", img: "", uuid: null, ...flag.giver },
     objectives,
     rewards: visible(flag.rewards),
@@ -86,6 +92,18 @@ export function listQuests() {
     }
   }
   return quests.sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name));
+}
+
+export function eligibleParents(entry, quests) {
+  const parents = new Map(quests.map((quest) => [quest.uuid, quest.parent]));
+  return quests.filter((quest) => {
+    const visited = new Set([entry.uuid]);
+    for (let uuid = quest.uuid; uuid; uuid = parents.get(uuid)) {
+      if (visited.has(uuid)) return false;
+      visited.add(uuid);
+    }
+    return true;
+  });
 }
 
 function folderName() {
@@ -143,13 +161,42 @@ export function deleteQuest(entry) {
   return entry.deleteDialog();
 }
 
-export function updateQuest(entry, { name, status, giver }) {
+export function updateQuest(entry, { name, status, giver, personal, parent, primary }) {
   requireQuest(entry);
   const update = {};
   if (name?.trim()) update.name = name.trim();
   if (QUEST_STATUSES.includes(status)) update[`${FLAG}.status`] = status;
   if (giver) update[`${FLAG}.giver`] = giver;
+  if (Array.isArray(personal)) update[`${FLAG}.personal`] = [...new Set(personal)];
+  if (parent === null || (parent && eligibleParents(entry, listQuests()).some((quest) => quest.uuid === parent))) {
+    update[`${FLAG}.parent`] = parent;
+  }
+  if (typeof primary === "boolean") update[`${FLAG}.primary`] = primary;
+  if (primary) {
+    return primaryWrites.add(() =>
+      JournalEntry.updateDocuments([...clearOtherPrimaries(entry), { _id: entry.id, ...update }])
+    );
+  }
   return entry.update(update);
+}
+
+function clearOtherPrimaries(keep) {
+  return game.journal
+    .filter((entry) => entry !== keep && flagOf(entry)?.primary === true)
+    .map((entry) => ({ _id: entry.id, [`${FLAG}.primary`]: false }));
+}
+
+// Vault imports can set the journal flag directly, including in a batch.
+const primaryWrites = new foundry.utils.Semaphore();
+
+function reconcilePrimary(preferred) {
+  if (!game.users.activeGM?.isSelf) return;
+  return primaryWrites.add(async () => {
+    const keep = flagOf(preferred)?.primary ? preferred : game.journal.find((entry) => flagOf(entry)?.primary === true);
+    if (!keep) return;
+    const updates = clearOtherPrimaries(keep);
+    if (updates.length) await JournalEntry.updateDocuments(updates);
+  });
 }
 
 function locateObjective(roots, id) {
@@ -226,6 +273,45 @@ export function deleteObjective(entry, id) {
   });
 }
 
+const rewardWrites = new foundry.utils.Semaphore();
+
+function changeRewards(entry, change) {
+  return rewardWrites.add(async () => {
+    const rewards = foundry.utils.deepClone(questItems(requireQuest(entry).rewards));
+    if (change(rewards)) await entry.update({ [`${FLAG}.rewards`]: rewards });
+  });
+}
+
+export function addReward(entry, text, uuid = null) {
+  return changeRewards(entry, (rewards) => {
+    const slug = text.slugify({ strict: true }) || "reward";
+    let id = slug;
+    for (let n = 2; rewards.some((reward) => reward.id === id); n++) id = `${slug}-${n}`;
+    rewards.push({ id, text, uuid, hidden: false, locked: true });
+    return true;
+  });
+}
+
+export function editReward(entry, id, changes) {
+  return changeRewards(entry, (rewards) => {
+    const reward = rewards.find((reward) => reward.id === id);
+    if (!reward) return false;
+    for (const key of ["text", "hidden", "locked"]) {
+      if (changes[key] !== undefined) reward[key] = changes[key];
+    }
+    return true;
+  });
+}
+
+export function deleteReward(entry, id) {
+  return changeRewards(entry, (rewards) => {
+    const index = rewards.findIndex((reward) => reward.id === id);
+    if (index < 0) return false;
+    rewards.splice(index, 1);
+    return true;
+  });
+}
+
 function preCreate(entry) {
   const flag = flagOf(entry);
   if (!game.user.isGM || !flag) return;
@@ -239,21 +325,27 @@ function flattenObjectives(roots) {
   return questItems(roots).flatMap((root) => [root, ...questItems(root.children)]);
 }
 
-function preserveObjectiveState(existing, incoming) {
-  const byId = new Map(flattenObjectives(existing).map((objective) => [objective.id, objective]));
-  for (const objective of flattenObjectives(incoming)) {
-    const previous = byId.get(objective.id);
-    if (!objective.id || !previous) continue;
-    for (const key of ["done", "hidden"]) {
-      if (objective[key] === undefined && previous[key] !== undefined) objective[key] = previous[key];
+function preserveState(existing, incoming, keys) {
+  const byId = new Map(existing.map((item) => [item.id, item]));
+  for (const item of incoming) {
+    const previous = byId.get(item.id);
+    if (!item.id || !previous) continue;
+    for (const key of keys) {
+      if (item[key] === undefined && previous[key] !== undefined) item[key] = previous[key];
     }
   }
 }
 
 function preUpdate(entry, changes, options) {
   if (!game.user.isGM || entry.inCompendium || !("flags" in changes || "ownership" in changes)) return;
-  const objectives = foundry.data.operators.DataFieldOperator.get(changes.flags?.[MODULE_ID]?.quest?.objectives);
-  if (Array.isArray(objectives)) preserveObjectiveState(flagOf(entry)?.objectives, objectives);
+  const incoming = changes.flags?.[MODULE_ID]?.quest;
+  const existing = flagOf(entry);
+  const objectives = foundry.data.operators.DataFieldOperator.get(incoming?.objectives);
+  if (Array.isArray(objectives)) {
+    preserveState(flattenObjectives(existing?.objectives), flattenObjectives(objectives), ["done", "hidden"]);
+  }
+  const rewards = foundry.data.operators.DataFieldOperator.get(incoming?.rewards);
+  if (Array.isArray(rewards)) preserveState(questItems(existing?.rewards), questItems(rewards), ["hidden", "locked"]);
   const flags = changes.flags
     ? foundry.utils.mergeObject(
         { flags: entry.flags },
@@ -297,10 +389,17 @@ export function setupQuestData() {
   });
   Hooks.on("preCreateJournalEntry", preCreate);
   Hooks.on("preUpdateJournalEntry", preUpdate);
-  Hooks.on("createJournalEntry", reconcile);
-  Hooks.on("updateJournalEntry", reconcile);
+  Hooks.on("createJournalEntry", (entry) => {
+    if (flagOf(entry)?.primary) reconcilePrimary(entry);
+    return reconcile(entry);
+  });
+  Hooks.on("updateJournalEntry", (entry, changes) => {
+    if (changes.flags && flagOf(entry)?.primary === true) reconcilePrimary(entry);
+    return reconcile(entry);
+  });
   Hooks.once("ready", async () => {
     if (game.users.activeGM?.isSelf) {
+      await reconcilePrimary();
       for (const entry of game.journal) await reconcile(entry);
     }
   });

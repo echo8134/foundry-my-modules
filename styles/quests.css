@@ -43,7 +43,7 @@
 }
 
 .my-quest-log .quest-tabs button,
-.my-quest-log [data-action="createQuest"] {
+.my-quest-log .quest-log-footer button {
   height: auto;
   border: 0;
   border-radius: 2% 3% 4% 1%;
@@ -94,6 +94,37 @@
   list-style: none;
 }
 
+.my-quest-log .quest-group,
+.my-quest-log .quest-group > ul {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.my-quest-log .quest-group > ul {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.my-quest-log .quest-group li {
+  margin-inline-start: min(calc(var(--quest-depth) * 1.1rem), 33%);
+}
+
+.my-quest-log .quest-ancestor button {
+  width: 100%;
+  height: auto;
+  color: var(--ink);
+  background: #e4d4b5 url("../assets/quests/note.webp") center / cover;
+  font: inherit;
+  white-space: normal;
+}
+
+.my-quest-log .quest-name i {
+  color: #7a4b1c;
+  font-size: 0.75em;
+}
+
 .my-quest-log .quest-row {
   position: relative;
   margin: 0;
@@ -132,6 +163,11 @@
   line-height: 1.15;
   white-space: normal;
   text-shadow: none;
+}
+
+.my-quest-log .quest-row:not([data-depth="0"]) .quest-link {
+  min-height: 0;
+  padding: 1.35rem 0.45rem 0.6rem;
 }
 
 .my-quest-log .quest-link img {
@@ -217,10 +253,11 @@
 .my-quest-log footer {
   display: flex;
   justify-content: end;
+  gap: 0.5rem;
   padding: 0.55rem 1.1rem 0.7rem;
 }
 
-.my-quest-log [data-action="createQuest"] {
+.my-quest-log .quest-log-footer button {
   padding-inline: 1rem;
   background:
     linear-gradient(#f0dfb9b3, #f0dfb9b3),
@@ -508,8 +545,8 @@
 
 .my-quest-sheet .quest-rewards ul {
   margin: 0;
-  padding-inline-start: 1.4rem;
-  list-style-type: square;
+  padding: 0;
+  list-style: none;
 }
 
 .my-quest-sheet .quest-pages article {
@@ -531,4 +568,158 @@
 
 .my-quest-sheet .quest-page-content {
   overflow-wrap: anywhere;
+}
+
+.my-quest-sheet .quest-reward {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.25rem;
+  margin: 0;
+  padding: 0.2rem 0.35rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.my-quest-sheet .quest-reward img {
+  width: 1.8rem;
+  height: 1.8rem;
+  object-fit: cover;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+}
+
+.my-quest-sheet .quest-reward :is(.reward-label, input) {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.my-quest-sheet .quest-reward[draggable="true"] {
+  cursor: grab;
+  background: #8a642d12;
+}
+
+.my-quest-sheet :is(.quest-rewards, .quest-assignment) .hint {
+  margin: 0.35rem 0;
+  color: var(--faded-ink);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.my-quest-sheet :is(.quest-subquests, .quest-assignment) {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 1.15rem;
+}
+
+.my-quest-sheet .quest-sheet-body .quest-subquests h2 {
+  margin: 0;
+  border: 0;
+  color: var(--ink);
+  font:
+    1.35rem / 1.2 "Quest Fell SC",
+    Georgia,
+    serif;
+}
+
+.my-quest-sheet .quest-subquests button {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  height: auto;
+  text-align: left;
+  white-space: normal;
+}
+
+.my-quest-sheet .quest-assignment {
+  padding-top: 0.75rem;
+  border-top: 3px double var(--rule);
+}
+
+.my-quest-sheet .quest-assignment label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.my-quest-sheet .quest-assignment select {
+  --color-select-option-bg: #eddfc3;
+  max-width: 65%;
+  color: var(--ink);
+  background: #eddfc3;
+}
+
+.my-quest-sheet .quest-assignment fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.8rem;
+  border: 1px solid var(--rule);
+}
+
+.my-quest-sheet .quest-assignment fieldset .hint {
+  width: 100%;
+}
+
+#my-quest-tracker .window-header {
+  background:
+    linear-gradient(#302017a8, #211811bf),
+    #49392b url("../assets/quests/board.webp") center / cover;
+}
+
+#my-quest-tracker .window-content {
+  padding: 0;
+  background:
+    linear-gradient(#f8e9c67d, #f8e9c67d),
+    #dfcda4 url("../assets/quests/parchment.webp") center / cover;
+  color: #2a2018;
+  font:
+    1rem / 1.35 "Quest Fell",
+    Georgia,
+    serif;
+}
+
+#my-quest-tracker .quest-tracker-list {
+  max-height: 60vh;
+  padding: 0.4rem 0.85rem;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  scrollbar-color: #806d52 transparent;
+}
+
+#my-quest-tracker section[data-quest-id] + section {
+  border-top: 1px solid #775e4375;
+}
+
+#my-quest-tracker [data-action="toggleObjectives"] {
+  justify-content: start;
+  gap: 0.5rem;
+  width: 100%;
+  height: auto;
+  padding: 0.35rem 0;
+  border: 0;
+  background: transparent;
+  color: #2a2018;
+  font:
+    1.2rem / 1.2 "Quest Fell SC",
+    Georgia,
+    serif;
+  text-align: start;
+  white-space: normal;
+}
+
+#my-quest-tracker [data-action="toggleObjectives"] i {
+  width: 0.6rem;
+  color: #693124;
+  font-size: 0.7rem;
+}
+
+#my-quest-tracker ul {
+  margin: 0 0 0.6rem;
+  padding-inline-start: 2rem;
+  list-style: square;
+}
+
+#my-quest-tracker .quest-tracker-child {
+  margin-inline-start: 1rem;
+  list-style: circle;
 }

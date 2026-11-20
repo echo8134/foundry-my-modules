@@ -79,11 +79,19 @@ As GM, click **Create quest** to start a hidden quest in the journal folder name
 - Use the checkbox to mark an objective done and the eye to hide it. Drag the grip to reorder objectives. Indent a goal beneath the preceding goal, or outdent it to return it to the top level.
 - Use the pencil beside a page to open Foundry's page editor. New quests have a description page and a GM notes page. Players see the pages they can observe and the public objectives and rewards. Open sheets update when the journal changes.
 
+#### Rewards, personal quests, and the tracker
+
+- Drop an Item from the sidebar or a compendium onto the quest sheet, or click **Add text reward** and edit the line. New rewards start locked. Use the eye to hide a reward or the lock to release it. Players can drag an unlocked Item onto their character sheet. For compendium Items, they need access to the source pack. Text rewards stay on the quest sheet.
+- At the bottom of the sheet, select the players who may see a personal quest. Clear every selection to share it with the whole party. The **Hidden** status keeps it GM-only.
+- Choose a **Parent quest** to list this quest and its status on the parent’s sheet. Click a sub-quest there to open it. The board groups related quests together in each status tab.
+- Mark a **Primary quest** on its sheet. Choosing another transfers the star. **Ctrl+Shift+Q** opens the primary quest for anyone who can see it.
+- Click **Quest Tracker** on the board or press **Ctrl+Alt+Q** to show or close the panel. It lists active quests and their unfinished objectives. Click a quest title to fold its objectives, or drag the panel by its title bar. Each browser remembers the position and folded quests for each player in the world.
+
 #### Write a quest from a script
 
 Create an ordinary `JournalEntry` with `flags.foundry-my-modules.quest`. The [quest specification](docs/quests-spec.md#data-model) describes the flag fields. A quest's ownership follows its data, so the GM client reverts manual ownership edits. Hidden quests are GM-only. Other statuses grant Observer to the users listed in `personal`, or to every player when the list is empty.
 
-Keep objective and reward IDs stable across imports. Omit `done` and `hidden` to keep the GM's values for matching objective IDs, including children. Always write the whole `objectives` array. An index path such as `objectives.0.done` makes Foundry replace the array and drop the other objectives.
+Keep objective and reward IDs stable across imports. Omit `done` and `hidden` to keep the GM's values for matching objective IDs, including children. For rewards, omit `hidden` and `locked` to preserve those values by ID. Always write the whole `objectives` or `rewards` array. An index path such as `objectives.0.done` makes Foundry replace the array and drop the other objectives.
 
 Hidden objectives and rewards are filtered from the interface. Foundry sends world documents to clients, so players can inspect those flag values outside the sheet.
 

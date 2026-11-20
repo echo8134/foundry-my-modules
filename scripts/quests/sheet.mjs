@@ -1,9 +1,14 @@
 import { MODULE_ID } from "../constants.mjs";
 import {
   addObjective,
+  addReward,
   createQuestPage,
   deleteObjective,
+  deleteReward,
   editObjective,
+  editReward,
+  eligibleParents,
+  listQuests,
   moveObjective,
   QUEST_STATUSES,
   questView,
@@ -33,10 +38,16 @@ function objectiveRows(roots) {
 }
 
 async function rewardView(reward) {
-  if (reward.text || !reward.uuid) return reward;
-  const item = await foundry.utils.fromUuid(reward.uuid).catch(() => null);
-  if (item?.documentName !== "Item" || !item.testUserPermission(game.user, "LIMITED")) return reward;
-  return { ...reward, text: item.name };
+  const item = reward.uuid && (await foundry.utils.fromUuid(reward.uuid).catch(() => null));
+  const visibleItem = item?.documentName === "Item" && item.testUserPermission(game.user, "LIMITED");
+  const locked = reward.locked !== false;
+  return {
+    ...reward,
+    text: reward.text || (visibleItem ? item.name : ""),
+    img: visibleItem ? item.img : null,
+    locked,
+    draggable: item?.documentName === "Item" && !locked && !reward.hidden
+  };
 }
 
 async function pageView(page) {
@@ -69,9 +80,10 @@ export class QuestSheet extends HandlebarsApplicationMixin(ApplicationV2) {
     sheet: { template: `modules/${MODULE_ID}/scripts/quests/sheet.hbs`, scrollable: [""] }
   };
 
-  constructor(entry) {
+  constructor(entry, showSheet) {
     super({ id: `my-quest-sheet-${entry.id}` });
     this.entry = entry;
+    this.showSheet = showSheet;
   }
 
   _configureRenderOptions(options) {
@@ -84,11 +96,36 @@ export class QuestSheet extends HandlebarsApplicationMixin(ApplicationV2) {
     const context = await super._prepareContext(options);
     const quest = questView(this.entry);
     if (!quest) return context;
+    const quests = listQuests();
+    const gm = game.user.isGM;
     const pages = this.entry.pages.filter((page) => page.testUserPermission(game.user, "OBSERVER"));
     return {
       ...context,
       quest,
-      gm: game.user.isGM,
+      gm,
+      players: gm
+        ? game.users
+            .filter((user) => !user.isGM)
+            .map((user) => ({
+              id: user.id,
+              name: user.name,
+              selected: quest.personal.includes(user.id)
+            }))
+        : [],
+      parents: gm
+        ? eligibleParents(this.entry, quests).map((parent) => ({
+            uuid: parent.uuid,
+            name: parent.name,
+            selected: parent.uuid === quest.parent
+          }))
+        : [],
+      subquests: quests
+        .filter((child) => child.parent === quest.uuid)
+        .map((child) => ({
+          id: child.id,
+          name: child.name,
+          statusLabel: statusLabel(child.status)
+        })),
       statuses: QUEST_STATUSES.map((value) => ({
         value,
         label: statusLabel(value),
@@ -118,12 +155,20 @@ export class QuestSheet extends HandlebarsApplicationMixin(ApplicationV2) {
 
   _attachPartListeners(partId, element, options) {
     super._attachPartListeners(partId, element, options);
+    element.addEventListener("dragstart", (event) => {
+      const row = event.target.closest("[data-reward-id]");
+      if (!row || row.closest(".quest-page-content")) return;
+      const reward = questView(this.entry)?.rewards.find((r) => r.id === row.dataset.rewardId);
+      if (!row.draggable || !reward?.uuid || reward.locked !== false || reward.hidden) return event.preventDefault();
+      event.dataTransfer.setData("text/plain", JSON.stringify({ type: "Item", uuid: reward.uuid }));
+      event.dataTransfer.effectAllowed = "copy";
+    });
     if (!game.user.isGM) return;
     for (const input of element.querySelectorAll("input[type=text][name]")) {
       input.addEventListener("blur", this.#saveText);
     }
     element.addEventListener("change", ({ target }) => {
-      if (target.matches("select, file-picker")) this.#changeField(target).catch(reportError);
+      if (target.matches("select, file-picker, input[type=checkbox]")) this.#changeField(target).catch(reportError);
     });
     element.addEventListener("keydown", (event) => {
       if (event.key === "Enter" && event.target.matches("input[type=text]")) event.target.blur();
@@ -136,7 +181,7 @@ export class QuestSheet extends HandlebarsApplicationMixin(ApplicationV2) {
       event.dataTransfer.effectAllowed = "move";
     });
     element.addEventListener("dragover", (event) => {
-      if (event.target.closest(`.quest-giver, ${rowSelector}`)) event.preventDefault();
+      if (event.dataTransfer.types.includes("text/plain")) event.preventDefault();
     });
     element.addEventListener("drop", (event) => this.#drop(event).catch(reportError));
   }
@@ -150,24 +195,35 @@ export class QuestSheet extends HandlebarsApplicationMixin(ApplicationV2) {
         return updateQuest(this.entry, { name: value.trim() });
       case "status":
         return updateQuest(this.entry, { status: value });
+      case "primary":
+        return updateQuest(this.entry, { primary: input.checked });
+      case "personal": {
+        const selected = input.closest("fieldset").querySelectorAll("input:checked");
+        return updateQuest(this.entry, { personal: Array.from(selected, (option) => option.value) });
+      }
+      case "parent":
+        return updateQuest(this.entry, { parent: value || null });
       case "giver":
         return updateQuest(this.entry, { giver: { name: value, uuid: null } });
       case "giverImage":
         return updateQuest(this.entry, { giver: { img: value } });
       case "objectiveText":
         return editObjective(this.entry, input.closest(rowSelector).dataset.objectiveId, { text: value });
+      case "rewardText":
+        return editReward(this.entry, input.closest("[data-reward-id]").dataset.rewardId, { text: value });
     }
   }
 
   _onClickAction(event, button) {
-    if (event.button === 0 && game.user.isGM && !button.closest(".quest-page-content")) {
-      this.#edit(button).catch(reportError);
-    }
+    if (event.button !== 0 || button.closest(".quest-page-content")) return;
+    if (button.dataset.action === "openSubquest") return this.showSheet(game.journal.get(button.dataset.questId));
+    if (game.user.isGM) this.#edit(button).catch(reportError);
   }
 
   async #edit(button) {
     const row = button.closest(rowSelector)?.dataset;
     const id = row?.objectiveId;
+    const rewardId = button.closest("[data-reward-id]")?.dataset.rewardId;
     switch (button.dataset.action) {
       case "addObjective":
         return addObjective(this.entry, game.i18n.localize("MY_MODULES.Quests.NewObjective"));
@@ -181,6 +237,14 @@ export class QuestSheet extends HandlebarsApplicationMixin(ApplicationV2) {
         return moveObjective(this.entry, id, button.dataset.under);
       case "outdent":
         return moveObjective(this.entry, id, null, button.dataset.before || null);
+      case "addReward":
+        return addReward(this.entry, game.i18n.localize("MY_MODULES.Quests.NewReward"));
+      case "deleteReward":
+        return deleteReward(this.entry, rewardId);
+      case "toggleRewardHidden":
+        return editReward(this.entry, rewardId, { hidden: button.getAttribute("aria-pressed") !== "true" });
+      case "toggleRewardLock":
+        return editReward(this.entry, rewardId, { locked: button.getAttribute("aria-pressed") !== "true" });
       case "addPage":
         return createQuestPage(this.entry);
       case "editPage":
@@ -191,9 +255,14 @@ export class QuestSheet extends HandlebarsApplicationMixin(ApplicationV2) {
   async #drop(event) {
     const giver = event.target.closest(".quest-giver");
     const row = event.target.closest(rowSelector);
+    const data = TextEditor.implementation.getDragEventData(event);
+    if (data.type === "Item" && data.uuid) {
+      event.preventDefault();
+      const item = await CONFIG.Item.documentClass.fromDropData(data);
+      return addReward(this.entry, item.name, item.uuid);
+    }
     if (!giver && !row) return;
     event.preventDefault();
-    const data = TextEditor.implementation.getDragEventData(event);
     if (giver && data.type === "Actor") {
       const actor = await CONFIG.Actor.documentClass.fromDropData(data);
       if (actor) return updateQuest(this.entry, { giver: { name: actor.name, img: actor.img, uuid: actor.uuid } });

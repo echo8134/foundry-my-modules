@@ -10,6 +10,7 @@ import {
   updateQuest
 } from "./data.mjs";
 import { QuestSheet } from "./sheet.mjs";
+import { refreshQuestTracker, toggleQuestTracker } from "./tracker.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 const title = "MY_MODULES.Quests.Log";
@@ -19,8 +20,31 @@ let log;
 
 function showSheet(entry) {
   if (!questView(entry)) return null;
-  if (!sheets.has(entry)) sheets.set(entry, new QuestSheet(entry));
+  if (!sheets.has(entry)) sheets.set(entry, new QuestSheet(entry, showSheet));
   return sheets.get(entry).render({ force: true });
+}
+
+// A parent from another status tab appears as a link above its children.
+function questGroups(quests, status) {
+  const children = Map.groupBy(quests, (quest) => quest.parent);
+  const visited = new Set();
+  function branch(quest, depth) {
+    if (visited.has(quest.uuid)) return [];
+    visited.add(quest.uuid);
+    const nested = (children.get(quest.uuid) ?? []).flatMap((child) => branch(child, depth + 1));
+    const contextOnly = quest.status !== status;
+    if (contextOnly && !nested.length) return [];
+    return [{ ...quest, depth, contextOnly }, ...nested];
+  }
+
+  const groups = [];
+  // The second pass also reaches cycles in imported journals.
+  for (const root of [...(children.get(null) ?? []), ...quests]) {
+    if (visited.has(root.uuid)) continue;
+    const rows = branch(root, 0);
+    if (rows.length) groups.push(rows);
+  }
+  return groups;
 }
 
 class QuestLog extends HandlebarsApplicationMixin(ApplicationV2) {
@@ -31,6 +55,7 @@ class QuestLog extends HandlebarsApplicationMixin(ApplicationV2) {
     window: { title, icon: "fa-solid fa-book-open", resizable: true },
     actions: {
       openQuest: (_event, target) => showSheet(rowEntry(target)),
+      toggleTracker: toggleQuestTracker,
       deleteQuest: (_event, target) => deleteQuest(rowEntry(target)),
       async createQuest() {
         const entry = await createQuest();
@@ -57,7 +82,7 @@ class QuestLog extends HandlebarsApplicationMixin(ApplicationV2) {
       status,
       active: this.tabGroups.status === status,
       label: statusLabel(status),
-      quests: quests.filter((quest) => quest.status === status)
+      groups: questGroups(quests, status)
     }));
     return { tabs, isGM: game.user.isGM };
   }
@@ -65,7 +90,7 @@ class QuestLog extends HandlebarsApplicationMixin(ApplicationV2) {
   _onFirstRender(context, options) {
     super._onFirstRender(context, options);
     if (game.user.isGM) {
-      this._createContextMenu(this._statusOptions, "[data-quest-id]", { fixed: true, classes: ["quest-status-menu"] });
+      this._createContextMenu(this._statusOptions, ".quest-row", { fixed: true, classes: ["quest-status-menu"] });
     }
   }
 
@@ -105,15 +130,29 @@ function addDirectoryButton(_app, element) {
   footer.append(button);
 }
 
-function refreshSheet(entry, deleted = false) {
-  const sheet = sheets.get(entry);
+function refreshSheet(sheet, deleted = false) {
   if (!sheet) return;
-  if (deleted || !questView(entry)) sheet.close({ animate: false });
+  if (deleted || !questView(sheet.entry)) sheet.close({ animate: false });
   else sheet.render();
+}
+
+function refreshOpenSheets(deletedEntry) {
+  for (const app of foundry.applications.instances.values()) {
+    if (app instanceof QuestSheet) refreshSheet(app, app.entry === deletedEntry);
+  }
 }
 
 export function setupQuestLog() {
   Hooks.once("init", () => {
+    game.keybindings.register(MODULE_ID, "primaryQuest", {
+      name: "MY_MODULES.Quests.OpenPrimary",
+      editable: [{ key: "KeyQ", modifiers: ["Control", "Shift"] }],
+      onDown: () => {
+        const primary = listQuests().find((quest) => quest.primary);
+        if (primary) showSheet(game.journal.get(primary.id));
+        return true;
+      }
+    });
     game.keybindings.register(MODULE_ID, "questLog", {
       name: title,
       editable: [{ key: "KeyQ", modifiers: ["Control"] }],
@@ -150,14 +189,20 @@ export function setupQuestLog() {
     button.removeAttribute("aria-pressed");
     button.addEventListener("click", app.controls.quests.tools.questLog.onChange);
   });
+  for (const action of ["createUser", "updateUser", "deleteUser"]) {
+    Hooks.on(action, (_user, changes) => {
+      if (game.user.isGM && (action !== "updateUser" || "name" in changes || "role" in changes)) refreshOpenSheets();
+    });
+  }
   for (const action of ["create", "update", "delete"]) {
     Hooks.on(`${action}JournalEntry`, (entry) => {
       if (entry.pack) return;
       log?.render();
-      refreshSheet(entry, action === "delete");
+      refreshQuestTracker();
+      refreshOpenSheets(action === "delete" ? entry : null);
     });
     Hooks.on(`${action}JournalEntryPage`, (page) => {
-      if (!page.pack) refreshSheet(page.parent);
+      if (!page.pack) refreshSheet(sheets.get(page.parent));
     });
   }
 }

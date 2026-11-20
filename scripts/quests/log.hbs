@@ -9,19 +9,29 @@
     {{#each tabs}}
     <section class="tab {{#if active}}active{{/if}}" data-group="status" data-tab="{{status}}">
       <ul class="quest-rows">
-        {{#each quests}}
-        <li class="quest-row" data-quest-id="{{id}}" data-status="{{status}}" style="--quest-tilt: {{tilt}}deg">
-          <button type="button" class="quest-link" data-action="openQuest">
-            <img src="{{#if giver.img}}{{giver.img}}{{else}}icons/svg/book.svg{{/if}}" alt="">
-            <span class="quest-name">{{name}}</span>
-            {{#if giver.name}}<em class="quest-byline">{{giver.name}}</em>{{/if}}
-            <small aria-label="{{localize 'MY_MODULES.Quests.Progress' done=done total=total}}">{{done}} / {{total}}</small>
-          </button>
-          {{#if @root.isGM}}
-          <button type="button" class="icon fa-solid fa-trash" data-action="deleteQuest"
-                  aria-label="{{localize 'MY_MODULES.Quests.Delete'}}" data-tooltip="MY_MODULES.Quests.Delete"></button>
+        {{#each groups}}
+        <li class="quest-group"><ul>
+          {{#each this}}
+          {{#if contextOnly}}
+          <li class="quest-ancestor" data-depth="{{depth}}" style="--quest-depth: {{depth}}">
+            <button type="button" data-action="openQuest" data-quest-id="{{id}}">{{name}}</button>
+          </li>
+          {{else}}
+            <li class="quest-row" data-quest-id="{{id}}" data-status="{{status}}" data-depth="{{depth}}" style="--quest-tilt: {{tilt}}deg; --quest-depth: {{depth}}">
+              <button type="button" class="quest-link" data-action="openQuest">
+                <img src="{{#if giver.img}}{{giver.img}}{{else}}icons/svg/book.svg{{/if}}" alt="">
+                <span class="quest-name">{{#if primary}}<i class="fa-solid fa-star" aria-label="{{localize 'MY_MODULES.Quests.Primary'}}" data-tooltip="MY_MODULES.Quests.Primary"></i> {{/if}}{{name}}</span>
+                {{#if giver.name}}<em class="quest-byline">{{giver.name}}</em>{{/if}}
+                <small aria-label="{{localize 'MY_MODULES.Quests.Progress' done=done total=total}}">{{done}} / {{total}}</small>
+              </button>
+              {{#if @root.isGM}}
+              <button type="button" class="icon fa-solid fa-trash" data-action="deleteQuest"
+                      aria-label="{{localize 'MY_MODULES.Quests.Delete'}}" data-tooltip="MY_MODULES.Quests.Delete"></button>
+              {{/if}}
+            </li>
           {{/if}}
-        </li>
+          {{/each}}
+        </ul></li>
         {{else}}
         <li class="quest-empty">{{localize 'MY_MODULES.Quests.Empty'}}</li>
         {{/each}}
@@ -29,7 +39,8 @@
     </section>
     {{/each}}
   </div>
-  {{#if isGM}}
-  <footer><button type="button" data-action="createQuest"><i class="fa-solid fa-plus" inert></i>{{localize 'MY_MODULES.Quests.Create'}}</button></footer>
-  {{/if}}
+  <footer class="quest-log-footer">
+    <button type="button" data-action="toggleTracker" data-tooltip="MY_MODULES.Quests.Tracker.Toggle"><i class="fa-solid fa-list-check" inert></i>{{localize "MY_MODULES.Quests.Tracker.Title"}}</button>
+    {{#if isGM}}<button type="button" data-action="createQuest"><i class="fa-solid fa-plus" inert></i>{{localize 'MY_MODULES.Quests.Create'}}</button>{{/if}}
+  </footer>
 </div>
