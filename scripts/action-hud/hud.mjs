@@ -215,7 +215,7 @@ export function setupActionHud() {
       scope: "client",
       config: true,
       type: Boolean,
-      default: false,
+      default: true,
       onChange: refresh
     });
     game.settings.register(MODULE_ID, POSITIONS, { scope: "client", config: false, type: Object, default: {} });

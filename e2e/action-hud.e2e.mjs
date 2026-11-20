@@ -316,7 +316,7 @@ await run(async () => {
       await waitFor(player, (s) => document.querySelector(s)?.textContent.includes("×2"), entry("item", potion));
     });
 
-    await check("a player can use their assigned character's HUD without a token on the scene", async () => {
+    await check("the assigned character follows a fresh player client across tokenless scenes", async () => {
       const previousCharacter = await gm.evaluate(
         (name) => game.users.getName(name).character?.id ?? null,
         PLAYER_NAME
@@ -335,9 +335,25 @@ await run(async () => {
           (id) => game.user.character?.id === id && !canvas.scene.tokens.some((t) => t.actorId === id),
           ids.actor
         );
+        const actorBar = `${HUD} [data-actor="Actor.${ids.actor}"]`;
+        await player.waitForSelector(actorBar, { visible: true, timeout: 10000 });
+        const emptySceneId = await gm.evaluate(async () => {
+          const scene = await Scene.create({
+            name: "Empty HUD test scene",
+            ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER }
+          });
+          hudTestDocuments.push(scene);
+          return scene.id;
+        });
+        for (const sceneId of [emptySceneId, ids.scene]) {
+          await waitFor(player, (id) => game.scenes.has(id), sceneId);
+          await player.evaluate((id) => game.scenes.get(id).view(), sceneId);
+          await waitFor(player, (id) => canvas.ready && canvas.scene.id === id, sceneId);
+          await player.waitForSelector(actorBar, { visible: true });
+        }
+        await player.evaluate((id) => game.settings.set(id, "actionHudAlwaysShowCharacter", false), MODULE_ID);
         await player.waitForSelector(HUD, { hidden: true });
         await player.evaluate((id) => game.settings.set(id, "actionHudAlwaysShowCharacter", true), MODULE_ID);
-        const actorBar = `${HUD} [data-actor="Actor.${ids.actor}"]`;
         await player.waitForSelector(actorBar, { visible: true });
         await click(player, group("conditions"));
         await click(player, entry("condition", "prone"));
