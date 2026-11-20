@@ -139,6 +139,16 @@ api.rollName(actor); // a name from the actor's name tables, or null
 
 ## Release
 
+End each pull request description with `## Release notes`. Write one bullet per change a GM or player will notice. For example:
+
+```markdown
+## Release notes
+
+- Players can open the quest log with Ctrl+Q.
+```
+
+For an internal change, write `- N/A` under the heading. If you push a change directly to `main`, you can put the same section in the commit message. The release includes the collected notes and a link to the full history.
+
 Raise `version` in `module.json` and `package.json` and push to `main`. The Release workflow publishes `module.json` and `module.zip` as release `v<version>` when that release does not exist yet.
 
 ## License

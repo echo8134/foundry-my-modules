@@ -1,0 +1,35 @@
+name: Bug report
+description: Report something that went wrong in Foundry.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Which scene, token, or setting did you start with? What did you click?
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Expected and actual result
+      description: What did you expect to see? What happened instead?
+    validations:
+      required: true
+  - type: dropdown
+    id: role
+    attributes:
+      label: Who saw the problem?
+      options:
+        - GM
+        - Player
+        - Both
+        - Unsure
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Foundry, game system, and module versions
+      description: Include the versions you know.
+      placeholder: "Foundry 14 build …, dnd5e …, My Modules …"

@@ -1,0 +1,16 @@
+name: Feature idea
+description: Suggest something that would help your table.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: wish
+    attributes:
+      label: What would you like to do?
+      description: Describe what a player or GM should be able to do in Foundry.
+    validations:
+      required: true
+  - type: textarea
+    id: situation
+    attributes:
+      label: When would you use it?
+      description: A moment from your last session or a workaround you use now helps explain the idea.
