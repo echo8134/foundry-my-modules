@@ -17,7 +17,7 @@ export async function check(name, fn) {
     console.log(`PASS ${name}`);
   } catch (error) {
     failed = true;
-    console.log(`FAIL ${name}: ${error.message}`);
+    console.log(`FAIL ${name}: ${error.stack ?? error.message}`);
     throw error;
   }
 }
@@ -26,7 +26,7 @@ export function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-export const waitFor = (page, fn, ...args) => page.waitForFunction(fn, { timeout: 10000 }, ...args);
+export const waitFor = (page, fn, ...args) => page.waitForFunction(fn, { polling: 100, timeout: 30000 }, ...args);
 
 const status = await fetch(`${FOUNDRY_URL}/api/status`).then((r) => r.json());
 if (status.world !== TEST_WORLD) {
@@ -43,6 +43,8 @@ const browser = await puppeteer.launch({
 export async function join(name, password = "") {
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
+  // Three software-rendered clients share a GPU process in the two-GM visibility tests.
+  await page.evaluateOnNewDocument(() => localStorage.setItem("core.maxFPS", "20"));
   page.on("pageerror", (error) => {
     if (!error.message.includes("could not be found to register")) console.error(`[${name}] ${error.message}`);
   });
@@ -67,9 +69,13 @@ export async function join(name, password = "") {
   );
   assert(joined.ok, `join as ${name} failed: ${joined.body}`);
   await page.goto(`${FOUNDRY_URL}/game`, { waitUntil: "domcontentloaded" });
-  await page.waitForFunction(() => globalThis.game?.ready === true && globalThis.canvas?.ready === true, {
-    timeout: 180000
-  });
+  await page.waitForFunction(
+    () => globalThis.game?.ready === true && globalThis.canvas?.ready === true && !canvas.loading,
+    {
+      timeout: 180000
+    }
+  );
+  await page.evaluate(() => game.constructor.getWorldStatus(game.socket));
   return page;
 }
 
@@ -100,7 +106,8 @@ export async function joinGamemaster() {
 export async function run(body) {
   try {
     await body();
-  } catch {
+  } catch (error) {
+    if (!failed) console.error(error);
     failed = true;
   } finally {
     await browser.close();
