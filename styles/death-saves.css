@@ -1,0 +1,4 @@
+.my-private-death-tray .death-tray {
+  /* biome-ignore lint/complexity/noImportantStyles: The dnd5e sheet sets display on the tray with a more specific selector. */
+  display: none !important;
+}

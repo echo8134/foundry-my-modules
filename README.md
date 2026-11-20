@@ -143,7 +143,7 @@ In the module’s world settings, select the GM who receives **Private death sav
 
 When you roll a death save for your character, only you and the selected GM see the result in chat. The same rule applies when you skip the dialog. Other players see that someone rolled privately.
 
-D&D 5e tracks successes, failures, and recovery as usual. Anyone with access to the full character sheet can still read its death save counters.
+D&D 5e tracks successes, failures, and recovery as usual. On a player character’s sheet, the assigned player and the selected GM can see the death save counters. If nobody is assigned to the character, its player owners can see them. Foundry still sends the actor data to clients with sheet access.
 
 </details>
 

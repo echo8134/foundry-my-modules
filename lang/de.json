@@ -29,7 +29,7 @@
   "MY_MODULES.DeathSaves.SelectGM": "Wähle in den Moduleinstellungen ein gültiges Spielleitungskonto für verdeckte Todesrettungswürfe.",
   "MY_MODULES.DeathSaves.JournalName": "Homebrew Regeln",
   "MY_MODULES.DeathSaves.PageName": "Verdeckte Todesrettungswürfe",
-  "MY_MODULES.DeathSaves.Journal": "<p>Todesrettungswürfe würfelst du auf deinem Charakterbogen. Im Chat sehen nur du und das in den Moduleinstellungen ausgewählte Spielleitungskonto das Ergebnis. Das gilt auch, wenn du den Würfeldialog überspringst.</p><p>Foundry zählt Erfolge und Fehlschläge auf deinem Charakterbogen. Eine natürliche 1 zählt als zwei Fehlschläge. Ob deine Verbündeten dir helfen, entscheiden sie anhand dessen, was sie im Kampf mitbekommen.</p>",
+  "MY_MODULES.DeathSaves.Journal": "<p>Todesrettungswürfe würfelst du auf deinem Charakterbogen. Im Chat sehen nur du und das in den Moduleinstellungen ausgewählte Spielleitungskonto das Ergebnis. Das gilt auch, wenn du den Würfeldialog überspringst.</p><p>Foundry zählt Erfolge und Fehlschläge auf deinem Charakterbogen. Mitspieler sehen den Stand nicht, wenn sie deinen Bogen öffnen. Eine natürliche 1 zählt als zwei Fehlschläge. Ob deine Verbündeten dir helfen, entscheiden sie anhand dessen, was sie im Kampf mitbekommen.</p>",
   "MY_MODULES.Levels.FullList.Name": "Alle Ebenen zeigen",
   "MY_MODULES.Levels.FullList.Hint": "Die Ebenen-Navigation unter dem Szenennamen zeigt alle Ebenen untereinander, ohne Scrollen.",
   "MY_MODULES.Variants.Default": "Grundzustand",

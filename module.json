@@ -19,7 +19,8 @@
     "styles/levels.css",
     "styles/quests.css",
     "styles/safety.css",
-    "styles/action-hud.css"
+    "styles/action-hud.css",
+    "styles/death-saves.css"
   ],
   "languages": [
     {

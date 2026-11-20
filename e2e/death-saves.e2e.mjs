@@ -28,6 +28,33 @@ async function setRecipient(gm, clients, recipient) {
   );
 }
 
+async function assertSheetAudience(clients, actorId, viewers) {
+  await Promise.all(
+    clients.map((page) =>
+      waitFor(
+        page,
+        (id, visible) => {
+          const actor = game.actors.get(id);
+          const sheet = actor.sheet.element;
+          if (!sheet?.querySelector(".meter.hit-dice")) return false;
+          const tray = sheet.querySelector(".death-tray");
+          if (!visible) return !tray?.checkVisibility();
+          return (
+            tray?.checkVisibility() &&
+            ["success", "failure"].every(
+              (key) =>
+                tray.querySelectorAll(`[data-prop="system.attributes.death.${key}"] .pip.filled`).length ===
+                actor.system.attributes.death[key]
+            )
+          );
+        },
+        actorId,
+        viewers.includes(page)
+      )
+    )
+  );
+}
+
 async function rollFromSheet(player, button, mode, locked) {
   await player.locator(button).setTimeout(10000).click();
   await player.waitForSelector(ROLL_MODE, { visible: true });
@@ -188,7 +215,10 @@ await run(async () => {
           name: names.actor,
           type: "character",
           system: { attributes: { hp: { value: 0, max: 10 } } },
-          ownership: { [game.users.getName(playerName).id]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER }
+          ownership: {
+            [game.users.getName(playerName).id]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
+            [game.users.getName(names.observer).id]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER
+          }
         });
         return actor.id;
       },
@@ -265,9 +295,45 @@ await run(async () => {
       }, rules._id);
     });
 
-    const button = await player.evaluate(async (id) => {
+    await check("only the owner and selected GM see the counters on a player character's sheet", async () => {
+      await Promise.all(
+        clients.map((page) =>
+          page.evaluate(async (id) => {
+            await game.actors.get(id).sheet.render({ force: true });
+          }, actorId)
+        )
+      );
+      await assertSheetAudience(clients, actorId, [gm, player]);
+      const alternate = await otherGM.evaluate(() => game.user.id);
+      await setRecipient(gm, clients, alternate);
+      await assertSheetAudience(clients, actorId, [otherGM, player]);
+      await setRecipient(gm, clients, recipient);
+      await assertSheetAudience(clients, actorId, [gm, player]);
+    });
+
+    await check("assigning a shared character hides its counters from the other owner", async () => {
+      await gm.evaluate(
+        async (id, user) => {
+          await game.actors.get(id).update({ [`ownership.${user}`]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER });
+          await game.users.get(user).update({ character: id });
+        },
+        actorId,
+        observerId
+      );
+      await assertSheetAudience(clients, actorId, [gm, observer]);
+      await gm.evaluate(
+        async (id, user) => {
+          await game.users.get(user).update({ character: null });
+          await game.actors.get(id).update({ [`ownership.${user}`]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER });
+        },
+        actorId,
+        observerId
+      );
+      await assertSheetAudience(clients, actorId, [gm, player]);
+    });
+
+    const button = await player.evaluate((id) => {
       const sheet = game.actors.get(id).sheet;
-      await sheet.render({ force: true });
       if (!sheet.element.querySelector(".death-tray.open")) {
         sheet.element.querySelector('[data-action="toggleDeathTray"]').click();
       }
@@ -277,6 +343,7 @@ await run(async () => {
     await check("the native dialog restricts player death saves to the chosen GM and their author", async () => {
       const id = await nextRoll(gm, actorId, () => rollFromSheet(player, button, "gm", true));
       await assertAudience(clients, id, recipient);
+      await assertSheetAudience(clients, actorId, [gm, player]);
       await player.evaluate(async (id) => {
         await game.messages.get(id).update({ whisper: [], blind: false });
       }, id);
@@ -321,6 +388,7 @@ await run(async () => {
 
     await check("turning off the rule restores the normal death save dialog", async () => {
       await setRecipient(gm, clients, "off");
+      await assertSheetAudience(clients, actorId, clients);
       await reset(player, actorId);
       const id = await nextRoll(gm, actorId, () => rollFromSheet(player, button, "public", false));
       await assertAudience(clients, id);
