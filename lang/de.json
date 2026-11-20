@@ -1,7 +1,9 @@
 {
   "MY_MODULES.ActionHud.title": "Aktionsleiste",
   "MY_MODULES.ActionHud.enabled": "Aktionsleiste anzeigen",
-  "MY_MODULES.ActionHud.hint": "Zeigt die Aktionen des ersten ausgewählten Tokens, wenn dir sein Akteur gehört.",
+  "MY_MODULES.ActionHud.hint": "Zeigt die Aktionsleiste für diesen Client an.",
+  "MY_MODULES.ActionHud.alwaysShowCharacter": "Aktionsleiste für meinen Charakter immer anzeigen",
+  "MY_MODULES.ActionHud.alwaysShowCharacterHint": "Zeigt Spielern die Aktionsleiste ihres zugewiesenen Charakters, wenn kein eigener Token ausgewählt ist. Das gilt auch, wenn der Charakter keinen Token in der Szene hat.",
   "MY_MODULES.ActionHud.toggle": "Aktionsleiste ein-/ausblenden",
   "MY_MODULES.ActionHud.move": "Ziehen, um die Aktionsleiste zu verschieben. Doppelklicken, um sie wieder an der Makroleiste auszurichten.",
   "MY_MODULES.ActionHud.attacks": "Angriffe",

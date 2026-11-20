@@ -128,6 +128,8 @@ if (first) await quests.openQuest(first.uuid);
 
 Select a token you own to see its combat actions above the hotbar. The GM can use any token. If you select several, the bar follows the first. Drag the actor’s name to move the bar. Double-click the name to return the bar to the hotbar. **Alt+H** toggles the client setting **Show action HUD**.
 
+Players can turn on **Always show my character’s action HUD** in their client settings. When the first selected token is yours, the HUD shows its actions. Otherwise, it shows your assigned character if you own it, even on a scene without that character’s token. This option is off by default.
+
 Click a group to open it and click it again to fold it away. **Attacks**, **Spells**, **Features**, and **Items** use the item through dnd5e. The attack list shows equipped weapons and other usable items with an attack activity. The spell list starts with cantrips and groups spells by level. Spells with the at-will, ritual, innate, or pact casting method appear even when unprepared. Slot counts, uses, and quantities update as you play. Right-click an item to open its sheet.
 
 **Rolls** shows modifiers for ability checks, saving throws, and skills. **Conditions** toggles dnd5e effects. Click Exhaustion to add one level or right-click it to remove one. **Rests** starts a short or long rest. Shift-click to skip the configuration dialog where dnd5e supports it.
