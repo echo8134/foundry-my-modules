@@ -12,6 +12,7 @@
         <label class="quest-byline">{{localize "MY_MODULES.Quests.Giver"}} <input type="text" name="giver" value="{{quest.giver.name}}"></label>
       {{else}}
         <span class="quest-stamp">{{localize statusLabel}}</span>
+        {{#if quest.primary}}<span><i class="fa-solid fa-star" inert></i> {{localize "MY_MODULES.Quests.Primary"}}</span>{{/if}}
         <h1 class="quest-title">{{quest.name}}</h1>
         {{#if quest.giver.name}}<p class="quest-byline">{{localize "MY_MODULES.Quests.Giver"}} · {{quest.giver.name}}</p>{{/if}}
       {{/if}}
@@ -59,17 +60,52 @@
     {{#if gm}}<button type="button" data-action="addObjective"><i class="fa-solid fa-plus" inert></i>{{localize "MY_MODULES.Quests.AddObjective"}}</button>{{/if}}
   </section>
 
-  {{#if rewards.length}}
+  {{#if (or gm rewards.length)}}
     <section class="quest-rewards">
       <h2>{{localize "MY_MODULES.Quests.Rewards"}}</h2>
       <ul>
         {{#each rewards}}
-          <li {{#if hidden}}class="is-hidden"{{/if}}>
-            {{#if hidden}}<i class="fa-solid fa-eye-slash" title="{{localize 'MY_MODULES.Quests.Hidden'}}"></i>{{/if}}
-            {{#if text}}{{text}}{{else}}{{localize "DOCUMENT.Item"}}{{/if}}
+          <li data-reward-id="{{id}}" draggable="{{#if draggable}}true{{else}}false{{/if}}"
+              class="quest-reward{{#if hidden}} is-hidden{{/if}}">
+            {{#if img}}<img src="{{img}}" alt="" draggable="false">
+            {{else}}<i class="fa-solid {{#if uuid}}fa-gift{{else}}fa-coins{{/if}}" inert></i>{{/if}}
+            {{#if (and @root.gm (not uuid))}}
+              <input type="text" name="rewardText" id="{{@root.quest.id}}-reward-{{id}}" value="{{text}}"
+                     aria-label="{{localize 'MY_MODULES.Quests.RewardText'}}">
+            {{else}}
+              <span class="reward-label">{{#if text}}{{text}}{{else if uuid}}{{localize "DOCUMENT.Item"}}{{/if}}</span>
+            {{/if}}
+            {{#if @root.gm}}
+              <button type="button" data-action="toggleRewardHidden" aria-pressed="{{#if hidden}}true{{else}}false{{/if}}"
+                      class="icon fa-solid {{#if hidden}}fa-eye-slash{{else}}fa-eye{{/if}}"
+                      aria-label="{{localize 'MY_MODULES.Quests.Hidden'}}" data-tooltip="MY_MODULES.Quests.Hidden"></button>
+              <button type="button" data-action="toggleRewardLock" aria-pressed="{{#if locked}}true{{else}}false{{/if}}"
+                      class="icon fa-solid {{#if locked}}fa-lock{{else}}fa-lock-open{{/if}}"
+                      aria-label="{{localize 'MY_MODULES.Quests.Locked'}}" data-tooltip="MY_MODULES.Quests.Locked"></button>
+              <button type="button" data-action="deleteReward" class="icon fa-solid fa-trash"
+                      aria-label="{{localize 'MY_MODULES.Quests.DeleteReward'}}" data-tooltip="MY_MODULES.Quests.DeleteReward"></button>
+            {{else if uuid}}
+              {{#if locked}}<i class="fa-solid fa-lock" aria-label="{{localize 'MY_MODULES.Quests.Locked'}}" data-tooltip="MY_MODULES.Quests.Locked"></i>
+              {{else if draggable}}<i class="fa-solid fa-grip-vertical" aria-label="{{localize 'MY_MODULES.Quests.DragReward'}}" data-tooltip="MY_MODULES.Quests.DragReward"></i>{{/if}}
+            {{/if}}
           </li>
         {{/each}}
       </ul>
+      {{#if gm}}
+        <p class="hint">{{localize "MY_MODULES.Quests.DropItem"}}</p>
+        <button type="button" data-action="addReward"><i class="fa-solid fa-plus" inert></i>{{localize "MY_MODULES.Quests.AddReward"}}</button>
+      {{/if}}
+    </section>
+  {{/if}}
+
+  {{#if subquests.length}}
+    <section class="quest-subquests">
+      <h2>{{localize "MY_MODULES.Quests.Subquests"}}</h2>
+      {{#each subquests}}
+        <button type="button" data-action="openSubquest" data-quest-id="{{id}}">
+          <span>{{name}}</span> <em>{{localize statusLabel}}</em>
+        </button>
+      {{/each}}
     </section>
   {{/if}}
 
@@ -89,5 +125,21 @@
     {{/each}}
     {{#if gm}}<button type="button" data-action="addPage"><i class="fa-solid fa-plus" inert></i>{{localize "MY_MODULES.Quests.AddPage"}}</button>{{/if}}
   </section>
+  {{#if gm}}
+    <div class="quest-assignment">
+      <label><input type="checkbox" name="primary" {{checked quest.primary}}> {{localize "MY_MODULES.Quests.Primary"}}</label>
+      <label>{{localize "MY_MODULES.Quests.Parent"}}
+        <select name="parent">
+          <option value="">{{localize "MY_MODULES.Quests.NoParent"}}</option>
+          {{#each parents}}<option value="{{uuid}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
+        </select>
+      </label>
+      <fieldset>
+        <legend>{{localize "MY_MODULES.Quests.Personal"}}</legend>
+        {{#each players}}<label><input type="checkbox" name="personal" value="{{id}}" {{checked selected}}> {{name}}</label>{{/each}}
+        <p class="hint">{{localize "MY_MODULES.Quests.PersonalHint"}}</p>
+      </fieldset>
+    </div>
+  {{/if}}
   {{/if}}
 </div>

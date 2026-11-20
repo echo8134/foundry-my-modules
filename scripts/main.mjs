@@ -5,6 +5,7 @@ import { setupLevels } from "./levels.mjs";
 import { rollName, setupNames } from "./names.mjs";
 import { setupQuestData } from "./quests/data.mjs";
 import { quests, setupQuestLog } from "./quests/log.mjs";
+import { setupQuestTracker } from "./quests/tracker.mjs";
 import { setupSafetyTools } from "./safety/window.mjs";
 import { setupTiles } from "./tiles.mjs";
 import { getVariants, setVariant } from "./variants.mjs";
@@ -15,6 +16,7 @@ setupLevels();
 setupNames();
 setupQuestData();
 setupQuestLog();
+setupQuestTracker();
 setupSafetyTools();
 setupTiles();
 
