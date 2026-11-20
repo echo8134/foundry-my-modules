@@ -315,6 +315,79 @@ await run(async () => {
       );
       await waitFor(player, (s) => document.querySelector(s)?.textContent.includes("×2"), entry("item", potion));
     });
+
+    await check("a player can use their assigned character's HUD without a token on the scene", async () => {
+      const previousCharacter = await gm.evaluate(
+        (name) => game.users.getName(name).character?.id ?? null,
+        PLAYER_NAME
+      );
+      try {
+        await gm.evaluate(
+          async ({ scene, hero, actor }, name) => {
+            await game.scenes.get(scene).tokens.get(hero).delete();
+            await game.users.getName(name).update({ character: actor });
+          },
+          ids,
+          PLAYER_NAME
+        );
+        await waitFor(
+          player,
+          (id) => game.user.character?.id === id && !canvas.scene.tokens.some((t) => t.actorId === id),
+          ids.actor
+        );
+        await player.waitForSelector(HUD, { hidden: true });
+        await player.evaluate((id) => game.settings.set(id, "actionHudAlwaysShowCharacter", true), MODULE_ID);
+        const actorBar = `${HUD} [data-actor="Actor.${ids.actor}"]`;
+        await player.waitForSelector(actorBar, { visible: true });
+        await click(player, group("conditions"));
+        await click(player, entry("condition", "prone"));
+        await waitFor(gm, (id) => game.actors.get(id).statuses.has("prone"), ids.actor);
+
+        const potion = ids.items["Healing Draught"];
+        await click(player, group("items"));
+        await gm.evaluate(
+          ({ actor, items }) =>
+            game.actors.get(actor).items.get(items["Healing Draught"]).update({ "system.quantity": 4 }),
+          ids
+        );
+        await waitFor(player, (s) => document.querySelector(s)?.textContent.includes("×4"), entry("item", potion));
+
+        await gm.evaluate(
+          ({ scene, guard }, name) =>
+            game.scenes
+              .get(scene)
+              .tokens.get(guard)
+              .baseActor.update({
+                [`ownership.${game.users.getName(name).id}`]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
+              }),
+          ids,
+          PLAYER_NAME
+        );
+        await waitFor(player, (id) => canvas.tokens.get(id).actor.isOwner, ids.guard);
+        await player.evaluate((id) => canvas.tokens.get(id).control(), ids.guard);
+        await waitFor(
+          player,
+          (id, s) => document.querySelector(s)?.dataset.actor === canvas.tokens.get(id).actor.uuid,
+          ids.guard,
+          `${HUD} [data-actor]`
+        );
+        await player.evaluate(() => canvas.tokens.releaseAll());
+        await player.waitForSelector(actorBar, { visible: true });
+        await player.evaluate((id) => game.settings.set(id, "actionHudEnabled", false), MODULE_ID);
+        await player.waitForSelector(HUD, { hidden: true });
+        await player.evaluate((id) => game.settings.set(id, "actionHudEnabled", true), MODULE_ID);
+        await player.waitForSelector(actorBar, { visible: true });
+        await gm.evaluate(({ scene, guard }) => game.scenes.get(scene).tokens.get(guard).delete(), ids);
+        await gm.evaluate((name) => game.users.getName(name).update({ character: null }), PLAYER_NAME);
+        await player.waitForSelector(HUD, { hidden: true });
+      } finally {
+        await gm.evaluate(
+          (name, character) => game.users.getName(name).update({ character }),
+          PLAYER_NAME,
+          previousCharacter
+        );
+      }
+    });
   } finally {
     await gm.evaluate(async () => {
       await game.scenes.active?.view();

@@ -1,6 +1,7 @@
 import { setupActionHud } from "./action-hud/hud.mjs";
 import { MODULE_ID } from "./constants.mjs";
 import { setupCursors } from "./cursors.mjs";
+import { setupDeathSaves } from "./death-saves.mjs";
 import { setupLevels } from "./levels.mjs";
 import { rollName, setupNames } from "./names.mjs";
 import { setupQuestData } from "./quests/data.mjs";
@@ -12,6 +13,7 @@ import { getVariants, setVariant } from "./variants.mjs";
 
 setupActionHud();
 setupCursors();
+setupDeathSaves();
 setupLevels();
 setupNames();
 setupQuestData();

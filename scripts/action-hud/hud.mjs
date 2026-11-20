@@ -2,13 +2,25 @@ import { MODULE_ID } from "../constants.mjs";
 import { actionGroups } from "./groups.mjs";
 
 const ENABLED = "actionHudEnabled";
+const ALWAYS_SHOW_CHARACTER = "actionHudAlwaysShowCharacter";
 const POSITIONS = "actionHudPositions";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
-function selectedActor() {
-  if (!canvas?.ready || !game.settings.get(MODULE_ID, ENABLED)) return null;
-  const actor = canvas.tokens.controlled[0]?.actor;
-  return actor?.isOwner ? actor : null;
+function controlledToken() {
+  return canvas?.ready ? canvas.tokens?.controlled[0] : null;
+}
+
+function assignedCharacter() {
+  if (game.user.isGM || !game.settings.get(MODULE_ID, ALWAYS_SHOW_CHARACTER)) return null;
+  return game.user.character;
+}
+
+function resolveActor() {
+  if (!game.settings.get(MODULE_ID, ENABLED)) return null;
+  const actor = controlledToken()?.actor;
+  if (actor?.isOwner) return actor;
+  const character = assignedCharacter();
+  return character?.isOwner ? character : null;
 }
 
 const dialogOptions = (event) => (event.shiftKey ? { configure: false } : {});
@@ -61,15 +73,15 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
   };
 
   currentActor(target) {
-    const actor = selectedActor();
+    const actor = resolveActor();
     return actor?.uuid === target.closest("[data-actor]")?.dataset.actor ? actor : null;
   }
 
   async _prepareContext() {
-    const actor = selectedActor();
+    const actor = resolveActor();
     if (!actor) return {};
-    if (this.actorId !== actor.uuid) this.group = null;
-    this.actorId = actor.uuid;
+    if (this.actorUuid !== actor.uuid) this.group = null;
+    this.actorUuid = actor.uuid;
     const groups = actionGroups(actor);
     return { actor, groups, open: groups.find((g) => g.id === this.group) };
   }
@@ -185,7 +197,7 @@ export function setupActionHud() {
     if (game.system.id !== "dnd5e") return;
     const hud = new ActionHud();
     const refresh = foundry.utils.debounce(() => {
-      if (selectedActor()) hud.render({ force: true });
+      if (resolveActor()) hud.render({ force: true });
       else hud.close({ animate: false });
     }, 25);
     game.settings.register(MODULE_ID, ENABLED, {
@@ -197,6 +209,15 @@ export function setupActionHud() {
       default: true,
       onChange: refresh
     });
+    game.settings.register(MODULE_ID, ALWAYS_SHOW_CHARACTER, {
+      name: "MY_MODULES.ActionHud.alwaysShowCharacter",
+      hint: "MY_MODULES.ActionHud.alwaysShowCharacterHint",
+      scope: "client",
+      config: true,
+      type: Boolean,
+      default: false,
+      onChange: refresh
+    });
     game.settings.register(MODULE_ID, POSITIONS, { scope: "client", config: false, type: Object, default: {} });
     game.keybindings.register(MODULE_ID, "actionHud", {
       name: "MY_MODULES.ActionHud.toggle",
@@ -206,24 +227,26 @@ export function setupActionHud() {
         return true;
       }
     });
+    Hooks.once("ready", refresh);
     Hooks.on("canvasReady", refresh);
+    Hooks.on("canvasTearDown", refresh);
     Hooks.on("controlToken", refresh);
     Hooks.on("updateUser", (user, changes) => {
-      if (user.isSelf && "role" in changes) refresh();
+      if (user.isSelf && ("role" in changes || "character" in changes)) refresh();
     });
-    Hooks.on("canvasTearDown", () => hud.close({ animate: false }));
     for (const action of ["create", "update", "delete"]) {
       for (const type of ["Actor", "Item", "ActiveEffect", "Token"]) {
         const hook = `${action}${type}`;
         Hooks.on(hook, (doc, changes) => {
           if (hook === "updateToken" && !("actorId" in changes || "actorLink" in changes || "delta" in changes)) return;
           if (hook === "updateActor" && onlyRecordsTokenMovement(changes)) return;
-          const token = canvas?.tokens?.controlled[0];
-          if (!token) return;
+          const token = controlledToken()?.document;
+          const character = assignedCharacter();
           for (let parent = doc; parent; parent = parent.parent) {
             if (
-              parent === token.document ||
-              (parent.documentName === "Actor" && parent.id === token.document.actorId)
+              parent === token ||
+              (parent.documentName === "Actor" &&
+                (parent.id === token?.actorId || parent === character || parent.uuid === hud.actorUuid))
             ) {
               refresh();
               break;

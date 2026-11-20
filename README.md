@@ -14,7 +14,8 @@ Foundry offers each new release through the module's Update button.
 
 ## Features
 
-### Hide cursors
+<details>
+<summary><h3>Hide cursors</h3></summary>
 
 Hover a row of the player list, bottom left, and a check mark appears; it fades out when the mouse leaves.
 
@@ -22,11 +23,17 @@ Hover a row of the player list, bottom left, and a check mark appears; it fades 
 - On another row it hides that person's cursor from you only. Shift-click applies it to everyone.
 - Pings still show. The choice is stored per user, so it follows you to every device.
 
-### Every level in the level navigation
+</details>
+
+<details>
+<summary><h3>Every level in the level navigation</h3></summary>
 
 The client setting "Show every level" lists all levels of a scene under the scene name, instead of three rows and a scroll bar. The client setting "Levels as a dropdown" folds the list into one row that names the current level; a click on it folds the list out and in. Both are off by default.
 
-### Scene variants at their level
+</details>
+
+<details>
+<summary><h3>Scene variants at their level</h3></summary>
 
 A scene can carry variants of its levels, such as feast, night, burning or ruined. The GM switches them in the level navigation; players see nothing of it.
 
@@ -36,7 +43,10 @@ A scene can carry variants of its levels, such as feast, night, burning or ruine
 
 ![The GM switches the cathedral's ground floor between its variants in the level navigation](docs/variants-demo.gif)
 
-### Names for generic figures
+</details>
+
+<details>
+<summary><h3>Names for generic figures</h3></summary>
 
 A token of a villager, a guard or a hunter gets its own name when the GM puts it on the scene, drawn from RollTables the GM keeps in Foundry.
 
@@ -46,7 +56,10 @@ A token of a villager, a guard or a hunter gets its own name when the GM puts it
 - The world setting "Format of random token names" shapes the name: `{name}` is the drawn name, `{actor}` the prototype token's name, so `{name} ({actor})` gives "Bogdan (Guard)".
 - The dice button in the token HUD rolls a new name. `api.rollName(actor)` returns one for macros.
 
-### Safety tools
+</details>
+
+<details>
+<summary><h3>Safety tools</h3></summary>
 
 Open the card icon below **Quests**. The GM can switch **X-card**, **Lines and veils**, and **Open door** on or off independently in the world settings. All three start enabled.
 
@@ -56,7 +69,10 @@ Open the card icon below **Quests**. The GM can switch **X-card**, **Lines and v
 
 X-cards and list changes need an active GM. The card, public chat, and saved list omit the contributor’s name. Foundry 14 sends the contributor’s user ID to the relay GM at the socket level, where a GM with developer tools can inspect it. Other players receive only the GM’s public result. The relay handles each request once across the active GM’s open tabs.
 
-### Clickable tiles
+</details>
+
+<details>
+<summary><h3>Clickable tiles</h3></summary>
 
 To give a portrait a sound or link a note to a quest, open the tile's configuration as GM. On the **Appearance** tab, find **My Modules**. Set either or both fields and save. Clear a field and save to remove that action.
 
@@ -69,7 +85,10 @@ Transparent pixels let clicks through, and overlapping tokens keep their normal 
 
 Scripts can set the same fields on a Tile document with `flags.foundry-my-modules.clickSound` and `flags.foundry-my-modules.quest`.
 
-### Quest log
+</details>
+
+<details>
+<summary><h3>Quest log</h3></summary>
 
 Click **Quests** (the scroll icon below Notes on the left) to open the **Quest Log**. GMs and players can open it while keeping their current canvas tool selected. You can also use the button at the bottom of the Journal directory or press **Ctrl+Q**. Choose a status tab, then click a quest to read it. Each pinned note counts the objectives you can see, including child objectives.
 
@@ -102,13 +121,31 @@ const [first] = quests.list(); // Plain quest data visible to the current user
 if (first) await quests.openQuest(first.uuid);
 ```
 
-### Action HUD for D&D 5e
+</details>
+
+<details>
+<summary><h3>Action HUD for D&D 5e</h3></summary>
 
 Select a token you own to see its combat actions above the hotbar. The GM can use any token. If you select several, the bar follows the first. Drag the actor’s name to move the bar. Double-click the name to return the bar to the hotbar. **Alt+H** toggles the client setting **Show action HUD**.
+
+Players can turn on **Always show my character’s action HUD** in their client settings. When the first selected token is yours, the HUD shows its actions. Otherwise, it shows your assigned character if you own it, even on a scene without that character’s token. This option is off by default.
 
 Click a group to open it and click it again to fold it away. **Attacks**, **Spells**, **Features**, and **Items** use the item through dnd5e. The attack list shows equipped weapons and other usable items with an attack activity. The spell list starts with cantrips and groups spells by level. Spells with the at-will, ritual, innate, or pact casting method appear even when unprepared. Slot counts, uses, and quantities update as you play. Right-click an item to open its sheet.
 
 **Rolls** shows modifiers for ability checks, saving throws, and skills. **Conditions** toggles dnd5e effects. Click Exhaustion to add one level or right-click it to remove one. **Rests** starts a short or long rest. Shift-click to skip the configuration dialog where dnd5e supports it.
+
+</details>
+
+<details>
+<summary><h3>Private death saves for D&D 5e</h3></summary>
+
+In the module’s world settings, select the GM who receives **Private death saves**. This enables the house rule and adds a **House rules** journal with a page the whole table can read.
+
+When you roll a death save for your character, only you and the selected GM see the result in chat. The same rule applies when you skip the dialog. Other players see that someone rolled privately.
+
+D&D 5e tracks successes, failures, and recovery as usual. Anyone with access to the full character sheet can still read its death save counters.
+
+</details>
 
 ## Variant data
 
