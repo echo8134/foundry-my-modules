@@ -121,7 +121,7 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
     const hotbar = bounds("hotbar");
     const left = (bounds("ui-left-column-1")?.right ?? 0) + gap;
     const right = (bounds("ui-right")?.left ?? innerWidth) - gap;
-    const bottom = hotbar?.height ? hotbar.top - 16 : innerHeight - gap;
+    const bottom = hotbar?.width ? hotbar.top - (hotbar.height ? 16 : 0) : innerHeight - gap;
     el.style.maxWidth = `${Math.max(0, right - left)}px`;
     const { width, height } = el.getBoundingClientRect();
     const center = hotbar?.width ? hotbar.left + hotbar.width / 2 : (left + right) / 2;

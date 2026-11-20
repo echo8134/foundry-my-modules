@@ -1,4 +1,7 @@
 {
+  "MY_MODULES.Hotbar.Hide": "Hide macro hotbar",
+  "MY_MODULES.Hotbar.Hint": "Hide your macro hotbar in this browser.",
+  "MY_MODULES.Hotbar.Toggle": "Toggle macro hotbar",
   "MY_MODULES.ActionHud.title": "Action HUD",
   "MY_MODULES.ActionHud.enabled": "Show action HUD",
   "MY_MODULES.ActionHud.hint": "Show combat actions for the first selected token you own.",

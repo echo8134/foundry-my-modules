@@ -94,6 +94,10 @@ const [first] = quests.list(); // Plain quest data visible to the current user
 if (first) await quests.openQuest(first.uuid);
 ```
 
+### Hide the GM macro hotbar
+
+Press **Alt+B** or click the keyboard icon in the Token controls to hide or restore your macro hotbar. The **Hide macro hotbar** client setting remembers your choice for this GM in this browser. The docked action HUD moves into the space you free. Players keep their own hotbars.
+
 ### Action HUD for D&D 5e
 
 Select a token you own to see its combat actions above the hotbar. The GM can use any token. If you select several, the bar follows the first. Drag the actor’s name to move the bar. Double-click the name to return the bar to the hotbar. **Alt+H** toggles the client setting **Show action HUD**.

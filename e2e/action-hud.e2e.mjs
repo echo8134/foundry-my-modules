@@ -156,6 +156,44 @@ await run(async () => {
       await player.waitForSelector(group("attacks"), { visible: true });
     });
 
+    await check(
+      "the GM can hide and restore the macro hotbar while the HUD follows and the player's bar stays visible",
+      async () => {
+        const toggle = '[data-tool="myMacroHotbar"]';
+        await gm.bringToFront();
+        await gm.evaluate((id) => canvas.tokens.get(id).control(), ids.hero);
+        await gm.waitForSelector(HUD, { visible: true });
+        await gm.waitForSelector(toggle, { visible: true });
+        assert(!(await player.$(toggle)), "player has a GM hotbar toggle");
+        const top = await gm.$eval(HUD, (el) => el.getBoundingClientRect().top);
+        const barTop = await gm.$eval("#hotbar", (el) => el.getBoundingClientRect().top);
+        await gm.keyboard.down("Alt");
+        try {
+          await gm.keyboard.press("KeyB");
+        } finally {
+          await gm.keyboard.up("Alt");
+        }
+        await gm.waitForSelector("#hotbar", { hidden: true });
+        await waitFor(
+          gm,
+          (selector, y) => document.querySelector(selector).getBoundingClientRect().bottom > y,
+          HUD,
+          barTop
+        );
+        await player.waitForSelector("#hotbar", { visible: true });
+        await click(gm, toggle);
+        await gm.waitForSelector("#hotbar", { visible: true });
+        await waitFor(
+          gm,
+          (selector, y) => Math.abs(document.querySelector(selector).getBoundingClientRect().top - y) < 1,
+          HUD,
+          top
+        );
+        await gm.evaluate(() => canvas.tokens.releaseAll());
+        await player.bringToFront();
+      }
+    );
+
     await check("the sentry's at-will spell appears with prepared set to zero", async () => {
       await gm.evaluate((id) => canvas.tokens.get(id).control(), ids.guard);
       await gm.waitForSelector(group("conditions"), { visible: true });

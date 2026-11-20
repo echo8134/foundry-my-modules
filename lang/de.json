@@ -1,4 +1,7 @@
 {
+  "MY_MODULES.Hotbar.Hide": "Makroleiste ausblenden",
+  "MY_MODULES.Hotbar.Hint": "Blendet deine Makroleiste in diesem Browser aus.",
+  "MY_MODULES.Hotbar.Toggle": "Makroleiste ein- oder ausblenden",
   "MY_MODULES.ActionHud.title": "Aktionsleiste",
   "MY_MODULES.ActionHud.enabled": "Aktionsleiste anzeigen",
   "MY_MODULES.ActionHud.hint": "Zeigt die Aktionen des ersten ausgewählten Tokens, wenn dir sein Akteur gehört.",
