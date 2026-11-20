@@ -1,4 +1,8 @@
 {
+  "MY_MODULES.Soundboard.Title": "Soundboard",
+  "MY_MODULES.Soundboard.Enabled": "Show GM soundboard",
+  "MY_MODULES.Soundboard.Playlist": "Soundboard playlist name",
+  "MY_MODULES.Soundboard.Empty": "Add sounds to a playlist named “{playlist}” to see them here.",
   "MY_MODULES.Hotbar.Hide": "Hide macro hotbar",
   "MY_MODULES.Hotbar.Hint": "Hide your macro hotbar in this browser.",
   "MY_MODULES.Hotbar.Toggle": "Toggle macro hotbar",

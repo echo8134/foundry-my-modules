@@ -7,6 +7,7 @@ import { rollName, setupNames } from "./names.mjs";
 import { setupQuestData } from "./quests/data.mjs";
 import { quests, setupQuestLog } from "./quests/log.mjs";
 import { setupSafetyTools } from "./safety/window.mjs";
+import { setupSoundboard } from "./soundboard.mjs";
 import { setupTiles } from "./tiles.mjs";
 import { getVariants, setVariant } from "./variants.mjs";
 
@@ -18,6 +19,7 @@ setupNames();
 setupQuestData();
 setupQuestLog();
 setupSafetyTools();
+setupSoundboard();
 setupTiles();
 
 Hooks.once("init", () => {

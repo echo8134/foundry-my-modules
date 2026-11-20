@@ -20,7 +20,8 @@
     "styles/quests.css",
     "styles/safety.css",
     "styles/action-hud.css",
-    "styles/hotbar.css"
+    "styles/hotbar.css",
+    "styles/soundboard.css"
   ],
   "languages": [
     {

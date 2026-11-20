@@ -94,6 +94,12 @@ const [first] = quests.list(); // Plain quest data visible to the current user
 if (first) await quests.openQuest(first.uuid);
 ```
 
+### GM soundboard
+
+Create a playlist named **Soundboard** and add your sound effects. Open the Playlists sidebar and click a parchment button below the playlists. Everyone hears that sound once at its configured volume through their interface audio channel. Click the same button again to stop it for everyone.
+
+Use the world setting **Soundboard playlist name** to choose another playlist. Turn off **Show GM soundboard** to hide the panel.
+
 ### Hide the GM macro hotbar
 
 Press **Alt+B** or click the keyboard icon in the Token controls to hide or restore your macro hotbar. The **Hide macro hotbar** client setting remembers your choice for this GM in this browser. The docked action HUD moves into the space you free. Players keep their own hotbars.
