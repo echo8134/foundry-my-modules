@@ -102,6 +102,7 @@ function prepareSceneEdit(scene, changes, options) {
   next.updateSource(changes);
   const base = baseName(next);
   const active = selections(getVariants(next), base);
+  const tokenHides = new Map();
   for (const token of next.tokens) {
     let edit = byId.get(token.id);
     if (!scene.tokens.has(token.id) && edit) {
@@ -119,15 +120,21 @@ function prepareSceneEdit(scene, changes, options) {
         addTokenPatch(edit, patch);
       }
     }
-    if (!edit || !("hidden" in edit) || !variantsOf(token).length) continue;
-    // Parent writes also bypass TokenDocument's attached Region propagation.
-    for (const region of token.attachments.regions) {
-      changes.regions ??= [];
-      const regions = foundry.data.operators.DataFieldOperator.get(changes.regions);
-      const regionEdit = regions.find((r) => r._id === region.id);
-      if (regionEdit) regionEdit.hidden = edit.hidden;
-      else regions.push({ _id: region.id, hidden: edit.hidden });
+    if (edit && "hidden" in edit && (variantsOf(token).length || token.getFlag(MODULE_ID, "releaseHidden") != null)) {
+      tokenHides.set(token.id, edit.hidden);
     }
+  }
+  // Parent writes also bypass TokenDocument's attached Region propagation.
+  if (!tokenHides.size || !next.regions.size) return;
+  const regionEdits = foundry.data.operators.DataFieldOperator.get(changes.regions) ?? [];
+  const regionsById = new Map(regionEdits.map((edit) => [edit._id, edit]));
+  for (const region of next.regions) {
+    const hidden = tokenHides.get(region._source.attachment.token);
+    if (hidden === undefined || region._source.hidden === hidden) continue;
+    const edit = regionsById.get(region.id);
+    if (edit) edit.hidden = hidden;
+    else regionEdits.push({ _id: region.id, hidden });
+    changes.regions ??= regionEdits;
   }
 }
 

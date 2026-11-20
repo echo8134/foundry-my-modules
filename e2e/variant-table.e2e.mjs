@@ -59,6 +59,13 @@ async function checkParentEdits(gm, player) {
           await scene.update({ tokens: scene.tokens.map((t) => t.toObject()) });
           await game.modules.get(m).api.setVariant(scene, scene.initialLevel.id, "Fest");
           if (scene.tokens.get(guard.id)._source.hidden) throw new Error("full parent save hid the guard permanently");
+          const region = await getDocumentClass("Region").createTokenEmanation(scene.tokens.get(guard.id), 5, {
+            name: "Round trip emanation",
+            visibility: CONST.REGION_VISIBILITY.ALWAYS
+          });
+          await scene.update({ tokens: [{ _id: guard.id, hidden: true, flags: { [m]: { variant: _del } } }] });
+          if (!scene.regions.get(region.id)._source.hidden)
+            throw new Error("bulk hide left the attached region visible");
           await scene.unsetFlag(m, "active");
           if (m in scene.flags && "active" in scene.flags[m]) throw new Error("unsetFlag retained the selection");
           await scene.tokens.get(guard.id).delete();
