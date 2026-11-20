@@ -2,12 +2,18 @@ import { MODULE_ID } from "./constants.mjs";
 
 const channel = `module.${MODULE_ID}`;
 const active = new Map();
+const pending = new Map();
+
+function isPressed(uuid) {
+  const command = pending.get(uuid);
+  return command ? command.action === "soundboardPlay" : active.has(uuid);
+}
 
 function updateButtons(uuid) {
   if (!game.user.isGM) return;
   for (const app of [ui.playlists, ui.playlists?.popout]) {
     const button = app?.element?.querySelector(`.my-soundboard [data-uuid="${CSS.escape(uuid)}"]`);
-    if (button) button.ariaPressed = String(active.has(uuid));
+    if (button) button.ariaPressed = String(isPressed(uuid));
   }
 }
 
@@ -19,7 +25,7 @@ function stop(uuid) {
   return playback.sound?.stop();
 }
 
-async function play({ uuid, src, volume }) {
+async function play({ uuid, src, volume, startedAt }) {
   stop(uuid);
   const playback = { sound: null };
   active.set(uuid, playback);
@@ -37,8 +43,10 @@ async function play({ uuid, src, volume }) {
     await sound.load();
     if (sound.failed) return finish();
     if (active.get(uuid) !== playback) return;
+    const elapsed = (game.time.serverTime - startedAt) / 1000;
+    if (elapsed >= sound.duration) return finish();
     sound.addEventListener("end", finish, { once: true });
-    await sound.play({ volume, loop: false });
+    await sound.play({ volume, loop: false, offset: Math.max(0, elapsed), delay: Math.max(0, -elapsed) });
   } catch (error) {
     finish();
     console.error(MODULE_ID, error);
@@ -47,16 +55,29 @@ async function play({ uuid, src, volume }) {
 
 function receive(data, senderId) {
   if (!game.users.get(senderId)?.isGM || typeof data?.uuid !== "string") return;
+  if (senderId === game.user.id && pending.get(data.uuid)?.requestId === data.requestId) {
+    pending.delete(data.uuid);
+  }
   if (data.action === "soundboardStop") return stop(data.uuid);
-  if (data.action === "soundboardPlay" && game.settings.get(MODULE_ID, "soundboardEnabled")) return play(data);
+  if (data.action !== "soundboardPlay" || !Number.isFinite(data.startedAt)) return;
+  if (game.settings.get(MODULE_ID, "soundboardEnabled")) return play(data);
 }
 
 function toggle(track) {
-  const data = active.has(track.uuid)
+  const data = isPressed(track.uuid)
     ? { action: "soundboardStop", uuid: track.uuid }
-    : { action: "soundboardPlay", uuid: track.uuid, src: track.path, volume: track.volume };
-  game.socket.emit(channel, data);
-  receive(data, game.user.id);
+    : {
+        action: "soundboardPlay",
+        uuid: track.uuid,
+        src: track.path,
+        volume: track.volume,
+        startedAt: game.time.serverTime
+      };
+  data.requestId = foundry.utils.randomID();
+  pending.set(track.uuid, data);
+  updateButtons(track.uuid);
+  // Foundry includes the sending socket only when its user is an explicit recipient.
+  game.socket.emit(channel, data, { recipients: game.users.map((user) => user.id) });
 }
 
 function renderBoard(_app, element) {
@@ -83,7 +104,7 @@ function renderBoard(_app, element) {
       button.type = "button";
       button.dataset.soundId = id;
       button.dataset.uuid = track.uuid;
-      button.ariaPressed = String(active.has(track.uuid));
+      button.ariaPressed = String(isPressed(track.uuid));
       button.disabled = !track.path;
       button.textContent = track.name;
       button.addEventListener("click", () => toggle(track));
