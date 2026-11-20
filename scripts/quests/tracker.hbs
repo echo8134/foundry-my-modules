@@ -1,0 +1,24 @@
+<div class="quest-tracker-list">
+  {{#each quests}}
+  <section data-quest-id="{{id}}">
+    <button type="button" data-action="toggleObjectives" aria-expanded="{{expanded}}">
+      <i class="fa-solid {{#if expanded}}fa-chevron-down{{else}}fa-chevron-right{{/if}}" inert></i>
+      {{name}}
+    </button>
+    {{#if expanded}}
+    {{#if objectives.length}}
+    <ul>
+      {{#each objectives}}
+      <li data-objective-id="{{id}}" {{#if indented}}class="quest-tracker-child"{{/if}}>
+        {{text}}
+        {{#if hidden}}<i class="fa-solid fa-eye-slash" title="{{localize 'MY_MODULES.Quests.Hidden'}}"></i>{{/if}}
+      </li>
+      {{/each}}
+    </ul>
+    {{/if}}
+    {{/if}}
+  </section>
+  {{else}}
+  <p>{{localize "MY_MODULES.Quests.Tracker.Empty"}}</p>
+  {{/each}}
+</div>
