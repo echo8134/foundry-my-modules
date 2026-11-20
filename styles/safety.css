@@ -21,6 +21,38 @@
   --input-border-color: #9c8562;
 }
 
+.safety-signals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(6.5rem, 100%), 1fr));
+  gap: 0.4rem;
+  padding: 0.7rem 1rem;
+}
+
+.safety-signals button {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 0.2rem;
+  height: auto;
+  padding: 0.45rem 0.2rem;
+  border: 1px solid #9c8562;
+  background: #f2e6cd;
+  color: #35261d;
+  font: inherit;
+  line-height: 1.15;
+}
+
+.safety-signals button:is(:hover, :focus-visible) {
+  background: #fff4dd;
+  outline: 2px solid #814436;
+  outline-offset: -2px;
+}
+
+.safety-signals i,
+.my-safety-announcement i {
+  color: #71372d;
+}
+
 .safety-tabs {
   display: flex;
   gap: 0.5rem;
@@ -164,6 +196,38 @@
   height: auto;
   min-height: 1.8rem;
   white-space: normal;
+}
+
+#my-safety-announcements {
+  position: fixed;
+  inset: 3.5rem 0 auto;
+  width: fit-content;
+  max-width: calc(100vw - 2rem);
+  margin: 0 auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  pointer-events: none;
+}
+
+#my-safety-announcements:popover-open {
+  display: grid;
+  justify-items: center;
+  gap: 0.4rem;
+}
+
+.my-safety-announcement {
+  padding: 0.6rem 1.1rem;
+  border: 3px double #956d46;
+  border-radius: 0.25rem;
+  background: #ebdec4 url("../assets/quests/parchment.webp") center / cover;
+  box-shadow: 0 2px 6px #110c0b66;
+  color: #38261d;
+  font:
+    1.35rem / 1.25 "Quest Fell",
+    Georgia,
+    serif;
+  text-align: center;
 }
 
 #my-safety-overlay {

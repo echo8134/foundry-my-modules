@@ -61,13 +61,16 @@ A token of a villager, a guard or a hunter gets its own name when the GM puts it
 <details>
 <summary><h3>Safety tools</h3></summary>
 
-Open the card icon below **Quests**. The GM can switch **X-card**, **Lines and veils**, and **Open door** on or off independently in the world settings. All three start enabled.
+Open the card icon below **Quests**. The GM can enable each of the following tools independently in the world settings. All four start enabled.
 
+- **Table signals** appear above the tabs. Choose **Pause** to ask the table to stop, **Play** when you are ready to continue, **Fast-forward** to skip a passage, or **Rewind** to revisit it. Everyone sees the symbol and message, even with a character sheet open. The group decides together when to continue.
 - **X-card** asks the table to move on. Write an optional note of up to 200 characters for the active GM, then click **Show the X-card**. Everyone sees a card and a public chat message. The public overlay closes after a few seconds or on click. If you include a note, the active GM can select its text and dismiss it with the button. Each GM tab keeps its ten latest notes in the safety window until the tab reloads.
 - **Lines & veils** keeps two lists between sessions. Add a line for a topic to leave out, or a veil for something that can happen off screen. Any user can add an entry. GMs can edit it with the check mark or remove it with the trash button.
 - **Open door** posts a break request to public chat under your own name.
 
-X-cards and list changes need an active GM. The card, public chat, and saved list omit the contributor’s name. Foundry 14 sends the contributor’s user ID to the relay GM at the socket level, where a GM with developer tools can inspect it. Other players receive only the GM’s public result. The relay handles each request once across the active GM’s open tabs.
+Table signals and X-cards play a short tone at your interface volume. Turn off **Safety alert sound** in your client settings to mute it.
+
+Table signals, X-cards and list changes need an active GM. The signals, X-card, public X-card chat message and saved list omit the contributor’s name. Foundry 14 sends the contributor’s user ID to the relay GM at the socket level, where a GM with developer tools can inspect it. Other players receive only the GM’s public result. The relay handles each request once across the active GM’s open tabs.
 
 </details>
 
@@ -189,6 +192,10 @@ End each pull request description with `## Release notes`. Write one bullet per 
 For an internal change, write `- N/A` under the heading. If you push a change directly to `main`, you can put the same section in the commit message. The release includes the collected notes and a link to the full history.
 
 Raise `version` in `module.json` and `package.json` and push to `main`. The Release workflow publishes `module.json` and `module.zip` as release `v<version>` when that release does not exist yet.
+
+## Credits
+
+The Pause, Resume, Fast-forward and Rewind signals adapt _Script Change_ by Beau Jágr Sheldon for Foundry VTT. [Script Change RPG Toolbox](https://briebeau.com/scriptchange) · [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
 
 ## License
 

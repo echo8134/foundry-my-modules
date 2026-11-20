@@ -2,11 +2,55 @@ import { MODULE_ID } from "../constants.mjs";
 
 const channel = `module.${MODULE_ID}`;
 const boundaries = "safetyBoundaries";
+export const SIGNALS = { pause: "fa-pause", play: "fa-play", fastForward: "fa-forward", rewind: "fa-backward" };
+export const SAFETY_TOOLS = ["signals", "xCard", "linesVeils", "openDoor"];
 export const enabled = (tool) => game.settings.get(MODULE_ID, tool);
 const label = (key) => game.i18n.localize(`MY_MODULES.Safety.${key}`);
 export const sessionNotes = [];
 
+function playCue() {
+  if (!enabled("safetySignalSound")) return;
+  // Foundry creates its interface audio channel on the first user gesture.
+  game.audio.unlock
+    .then(() => {
+      if (enabled("safetySignalSound")) {
+        return foundry.audio.AudioHelper.play({ src: CONFIG.sounds.notification, volume: 0.4 }, false);
+      }
+    })
+    .catch((error) => console.warn(MODULE_ID, error));
+}
+
+const isSignal = (id) => typeof id === "string" && Object.hasOwn(SIGNALS, id);
+
+function showSignal(signal) {
+  let stack = document.getElementById("my-safety-announcements");
+  if (!stack) {
+    stack = document.createElement("div");
+    stack.id = "my-safety-announcements";
+    stack.popover = "manual";
+    stack.setAttribute("role", "status");
+    stack.setAttribute("aria-atomic", "false");
+  }
+  const parent = document.querySelector("dialog:modal") ?? document.body;
+  if (stack.parentElement !== parent) parent.append(stack);
+  stack.showPopover();
+  const row = document.createElement("div");
+  row.className = "my-safety-announcement";
+  row.dataset.signal = signal;
+  const symbol = document.createElement("i");
+  symbol.className = `fa-solid ${SIGNALS[signal]}`;
+  symbol.setAttribute("aria-hidden", "true");
+  row.append(symbol, ` ${label(`signals.${signal}.Message`)}`);
+  stack.append(row);
+  setTimeout(() => {
+    row.remove();
+    if (!stack.childElementCount) stack.remove();
+  }, 6500);
+  playCue();
+}
+
 function showCard(note = "") {
+  playCue();
   const previous = document.getElementById("my-safety-overlay");
   const openNotes = previous?.open && previous.querySelector("#my-safety-private-note");
   let paragraph;
@@ -99,6 +143,12 @@ function finishRequest(requestId) {
   job.finish();
 }
 
+function relaySignal({ requestId, signal }) {
+  if (!enabled("signals")) return;
+  game.socket.emit(channel, { action: "showSignal", requestId, signal });
+  showSignal(signal);
+}
+
 async function relayCard({ requestId, note }) {
   if (!enabled("xCard") || game.messages.has(requestId)) return;
   const message = await ChatMessage.create(
@@ -130,6 +180,7 @@ async function runClaim({ requestId, tab }) {
   const renew = setInterval(() => claimRequest(requestId), 10000);
   try {
     if (job.data.action === "xCard") await relayCard(job.data);
+    else if (job.data.action === "signal") relaySignal(job.data);
     else await changeBoundary(job.data, job.senderId);
   } catch (error) {
     ui.notifications.error(error.message);
@@ -153,6 +204,8 @@ function queueRequest(data, senderId) {
     coolingDown.add(senderId);
     setTimeout(() => coolingDown.delete(senderId), 3000);
     data = { ...data, note: data.note.trim().slice(0, 200) };
+  } else if (data.action === "signal") {
+    if (!enabled("signals") || !isSignal(data.signal)) return;
   } else if (!["add", "edit", "remove"].includes(data.action)) return;
 
   const { promise, resolve } = Promise.withResolvers();
@@ -165,7 +218,7 @@ function queueRequest(data, senderId) {
     }
     return promise;
   };
-  if (data.action === "xCard") claim();
+  if (data.action === "xCard" || data.action === "signal") claim();
   // Wait for the previous writer on whichever GM tab won before reading the shared setting.
   else pendingWrite = pendingWrite.then(claim);
 }
@@ -175,11 +228,16 @@ function receive(data, senderId) {
   const { action, requestId } = data;
   if (typeof requestId !== "string" || !/^[a-zA-Z0-9]{16}$/.test(requestId)) return;
   const gm = game.users.activeGM;
+  if (!gm || !game.users.has(senderId)) return;
   if (action === "showCard") {
-    if (enabled("xCard") && senderId === gm?.id) showCard(pending.get(requestId)?.data.note);
+    if (enabled("xCard") && senderId === gm.id) showCard(pending.get(requestId)?.data.note);
     return;
   }
-  if (!gm?.isSelf) return;
+  if (action === "showSignal") {
+    if (senderId === gm.id && enabled("signals") && isSignal(data.signal)) showSignal(data.signal);
+    return;
+  }
+  if (!gm.isSelf) return;
   if (action === "claim" || action === "finished") {
     if (senderId !== gm.id) return;
     if (action === "claim") return runClaim(data);
@@ -190,7 +248,7 @@ function receive(data, senderId) {
 
 export function setupRelay(onToolsChanged, onBoundariesChanged) {
   Hooks.once("init", () => {
-    for (const tool of ["xCard", "linesVeils", "openDoor"]) {
+    for (const tool of SAFETY_TOOLS) {
       game.settings.register(MODULE_ID, tool, {
         name: `MY_MODULES.Safety.${tool}.Setting`,
         scope: "world",
@@ -200,6 +258,13 @@ export function setupRelay(onToolsChanged, onBoundariesChanged) {
         onChange: onToolsChanged
       });
     }
+    game.settings.register(MODULE_ID, "safetySignalSound", {
+      name: "MY_MODULES.Safety.safetySignalSound.Setting",
+      scope: "client",
+      config: true,
+      type: Boolean,
+      default: true
+    });
     game.settings.register(MODULE_ID, boundaries, {
       scope: "world",
       config: false,

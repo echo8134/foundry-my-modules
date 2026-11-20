@@ -1,4 +1,13 @@
 <div class="safety-body">
+  {{#if signals}}
+  <div class="safety-signals" role="group" aria-label="{{localize 'MY_MODULES.Safety.signals.Title'}}">
+    {{#each signals}}
+    <button type="button" data-action="signal" data-signal="{{@key}}" data-tooltip="MY_MODULES.Safety.signals.{{@key}}.Message">
+      <i class="fa-solid {{this}}" aria-hidden="true"></i>{{localize (concat "MY_MODULES.Safety.signals." @key ".Label")}}
+    </button>
+    {{/each}}
+  </div>
+  {{/if}}
   {{#if tabs}}
   <nav class="tabs safety-tabs" aria-label="{{localize 'MY_MODULES.Safety.Title'}}">
     <button type="button" class="{{#if showCard}}active{{/if}}" data-action="tab" data-group="safety" data-tab="card" aria-pressed="{{showCard}}">
