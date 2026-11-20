@@ -9,11 +9,15 @@ const label = (key) => game.i18n.localize(`MY_MODULES.Safety.${key}`);
 export const sessionNotes = [];
 
 function playCue() {
-  if (enabled("safetySignalSound")) {
-    foundry.audio.AudioHelper.play({ src: CONFIG.sounds.notification, volume: 0.4 }, false).catch((error) =>
-      console.warn(MODULE_ID, error)
-    );
-  }
+  if (!enabled("safetySignalSound")) return;
+  // Foundry creates its interface audio channel on the first user gesture.
+  game.audio.unlock
+    .then(() => {
+      if (enabled("safetySignalSound")) {
+        return foundry.audio.AudioHelper.play({ src: CONFIG.sounds.notification, volume: 0.4 }, false);
+      }
+    })
+    .catch((error) => console.warn(MODULE_ID, error));
 }
 
 const isSignal = (id) => typeof id === "string" && Object.hasOwn(SIGNALS, id);
