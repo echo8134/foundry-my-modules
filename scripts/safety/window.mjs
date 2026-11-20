@@ -1,5 +1,5 @@
 import { MODULE_ID } from "../constants.mjs";
-import { enabled, request, sessionNotes, setupRelay } from "./relay.mjs";
+import { enabled, request, SAFETY_TOOLS, SIGNALS, sessionNotes, setupRelay } from "./relay.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -9,6 +9,7 @@ class SafetyWindow extends HandlebarsApplicationMixin(ApplicationV2) {
     window: { title: "MY_MODULES.Safety.Title", icon: "fa-solid fa-cards-blank" },
     position: { width: 510 },
     actions: {
+      signal: (_event, button) => request({ action: "signal", signal: button.dataset.signal }),
       sendCard(_event, button) {
         const input = button.closest("section").querySelector("input");
         if (request({ action: "xCard", note: input.value.trim() })) input.value = "";
@@ -50,6 +51,7 @@ class SafetyWindow extends HandlebarsApplicationMixin(ApplicationV2) {
     return {
       card,
       limits,
+      signals: enabled("signals") && SIGNALS,
       tabs: card && limits,
       showCard: this.tabGroups.safety === "card",
       door: enabled("openDoor"),
@@ -87,7 +89,7 @@ function open() {
 const refreshWindow = () => safetyWindow?.render();
 
 function refreshTools() {
-  if (["xCard", "linesVeils", "openDoor"].some(enabled)) refreshWindow();
+  if (SAFETY_TOOLS.some(enabled)) refreshWindow();
   else safetyWindow?.close();
   ui.controls?.render({ reset: true });
 }
@@ -96,7 +98,7 @@ export function setupSafetyTools() {
   setupRelay(refreshTools, refreshWindow);
   Hooks.on(`${MODULE_ID}.safetyNotesChanged`, refreshWindow);
   Hooks.on("getSceneControlButtons", (controls) => {
-    if (!["xCard", "linesVeils", "openDoor"].some(enabled)) return;
+    if (!SAFETY_TOOLS.some(enabled)) return;
     const title = "MY_MODULES.Safety.Title";
     const icon = "fa-solid fa-cards-blank";
     controls.safety = {
