@@ -1,6 +1,6 @@
 {
   "name": "foundry-my-modules",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "type": "module",
   "description": "Small Foundry VTT table fixes for one group.",
