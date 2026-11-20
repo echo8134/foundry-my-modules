@@ -26,7 +26,7 @@ export function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-export const waitFor = (page, fn, ...args) => page.waitForFunction(fn, { polling: 100, timeout: 30000 }, ...args);
+export const waitFor = (page, fn, ...args) => page.waitForFunction(fn, { timeout: 30000 }, ...args);
 
 const status = await fetch(`${FOUNDRY_URL}/api/status`).then((r) => r.json());
 if (status.world !== TEST_WORLD) {
@@ -43,8 +43,6 @@ const browser = await puppeteer.launch({
 export async function join(name, password = "") {
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
-  // Three software-rendered clients share a GPU process in the two-GM visibility tests.
-  await page.evaluateOnNewDocument(() => localStorage.setItem("core.maxFPS", "20"));
   page.on("pageerror", (error) => {
     if (!error.message.includes("could not be found to register")) console.error(`[${name}] ${error.message}`);
   });
