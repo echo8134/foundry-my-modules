@@ -29,12 +29,12 @@ function repository(t) {
   function setVersion(version) {
     write("module.json", JSON.stringify({ id: "table", version, manifest: `${releases}/latest/download/module.json` }));
   }
-  function commit() {
+  function commit(subject = "Update fixture") {
     git("add", ".");
-    git("commit", "--quiet", "-m", "Update fixture");
+    git("commit", "--quiet", "-m", subject);
     return git("rev-parse", "HEAD");
   }
-  git("init", "--quiet");
+  git("init", "--quiet", "--initial-branch=main");
   git("config", "user.name", "Release Test");
   git("config", "user.email", "release@example.invalid");
   for (const path of ["styles/table.css", "lang/en.json", "assets/sounds/pause.ogg", "LICENSE", "README.md"]) {
@@ -65,6 +65,45 @@ test("module changes advance the published patch, retries and documentation skip
   git("tag", "v0.8.0", minor);
   write("assets/sounds/pause.ogg", "Updated sound");
   assert.equal(release("plan", "v0.8.0", commit()), "v0.8.1");
+});
+
+test("a merged feature bumps the minor once and honors a higher manifest version", (t) => {
+  const { release, git, write, setVersion, commit } = repository(t);
+  git("tag", "v0.8.3", commit());
+  git("switch", "--quiet", "-c", "signals");
+  write("scripts/signals.mjs", "export const pause = true;");
+  commit("feat(safety): add pause");
+  write("lang/en.json", '{"pause":"Pause"}');
+  commit("fix(safety): label the pause control");
+  git("switch", "--quiet", "main");
+  git("merge", "--no-ff", "-m", "Merge pull request #1 from table/signals", "signals");
+  setVersion("0.8.4");
+  assert.equal(release("plan", "v0.8.3", commit()), "v0.9.0");
+  setVersion("1.0.0");
+  assert.equal(release("plan", "v0.8.3", commit()), "v1.0.0");
+});
+
+test("a feature PR title counts for shipped changes and a documentation feature leaves fixes as patches", (t) => {
+  const { release, git, write, commit } = repository(t);
+  git("tag", "v0.8.3", commit());
+  write("README.md", "Usage instructions");
+  assert.equal(release("plan", "v0.8.3", commit("feat: add a guide")), "");
+  write("scripts/main.mjs", "export const enabled = false;");
+  assert.equal(release("plan", "v0.8.3", commit("fix: correct the default")), "v0.8.4");
+  git("switch", "--quiet", "-c", "signals");
+  write("scripts/signals.mjs", "export const stop = true;");
+  commit("Add a table signal");
+  git("switch", "--quiet", "main");
+  git(
+    "merge",
+    "--no-ff",
+    "-m",
+    "Merge pull request #1 from table/signals",
+    "-m",
+    "feat!: add a table signal",
+    "signals"
+  );
+  assert.equal(release("plan", "v0.8.3", "HEAD"), "v0.9.0");
 });
 
 test("the Foundry manifest and ZIP use the same versioned download and files from the requested revision", (t) => {

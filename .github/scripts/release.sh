@@ -15,23 +15,32 @@ check_tag() {
 }
 
 plan() {
-  local previous=$1 sha=$2 requested changed highest
+  local previous=$1 sha=$2 requested changed features major minor patch automatic
+  local module_paths=(module.json "${runtime_paths[@]}")
   requested=$(git show "$sha:module.json" | jq -er '.version | strings')
   check_tag "v$requested"
-
-  if [[ -n $previous ]]; then
-    check_tag "$previous"
-    git merge-base --is-ancestor "refs/tags/$previous" "$sha" || fail "$previous is outside the history of $sha"
-    changed=$(git diff --name-only "refs/tags/$previous" "$sha" -- module.json "${runtime_paths[@]}")
-    [[ -n $changed ]] || return 0
-
-    highest=$(printf '%s\n' "$previous" "v$requested" | sort -V | tail -n 1)
-    if [[ $highest == "$previous" ]]; then
-      echo "${previous%.*}.$((${previous##*.} + 1))"
-      return
-    fi
+  if [[ -z $previous ]]; then
+    echo "v$requested"
+    return
   fi
-  echo "v$requested"
+
+  check_tag "$previous"
+  git merge-base --is-ancestor "refs/tags/$previous" "$sha" || fail "$previous is outside the history of $sha"
+  changed=$(git diff --name-only "refs/tags/$previous" "$sha" -- "${module_paths[@]}")
+  [[ -n $changed ]] || return 0
+
+  features=$(git log --show-pulls -z --format='%s%n%b' "refs/tags/$previous..$sha" -- "${module_paths[@]}" |
+    awk -v RS='\0' -F '\n' '
+      { title = $1 ~ /^Merge pull request #[0-9]+ from / ? $2 : $1 }
+      title ~ /^feat(\([^)]+\))?!?: .+/ { print title }
+    ')
+  IFS=. read -r major minor patch <<< "${previous#v}"
+  if [[ -n $features ]]; then
+    automatic="v$major.$((minor + 1)).0"
+  else
+    automatic="v$major.$minor.$((patch + 1))"
+  fi
+  printf '%s\n' "$automatic" "v$requested" | sort -V | tail -n 1
 }
 
 package() {
