@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Test the release notes parser against the PR template
-        run: node --test .github/scripts/release-notes.test.mjs
+      - name: Test release planning, packaging and notes
+        run: node --test .github/scripts/*.test.mjs
       - name: Check the release notes in the PR description
         run: node .github/scripts/release-notes.mjs --check-pr

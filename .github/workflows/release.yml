@@ -1,6 +1,5 @@
 name: Release
 
-# A push to main whose module.json carries a version without a release publishes that release.
 on:
   push:
     branches: [main]
@@ -12,23 +11,18 @@ permissions:
 
 jobs:
   release:
+    if: github.ref == 'refs/heads/main'
+    concurrency:
+      group: module-release-main
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
-      - name: Read the version
-        id: version
-        run: echo "tag=v$(jq -r .version module.json)" >> "$GITHUB_OUTPUT"
-      - name: Publish the release if it is new
+          persist-credentials: false
+      - name: Publish module changes
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.version.outputs.tag }}
-        run: |
-          if gh release view "$TAG" > /dev/null 2>&1; then
-            echo "$TAG is already released"
-            exit 0
-          fi
-          node .github/scripts/release-notes.mjs > "$RUNNER_TEMP/release-notes.md"
-          git archive --format=zip -o module.zip HEAD module.json scripts styles lang assets/quests assets/fonts LICENSE README.md
-          gh release create "$TAG" module.json module.zip --target "$GITHUB_SHA" --title "$TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
+        run: bash .github/scripts/release.sh publish
