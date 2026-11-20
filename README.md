@@ -136,6 +136,17 @@ Click a group to open it and click it again to fold it away. **Attacks**, **Spel
 
 </details>
 
+<details>
+<summary><h3>Private death saves for D&D 5e</h3></summary>
+
+In the module’s world settings, select the GM who receives **Private death saves**. This enables the house rule and adds a **House rules** journal with a page the whole table can read.
+
+When you roll a death save for your character, only you and the selected GM see the result in chat. The same rule applies when you skip the dialog. Other players see that someone rolled privately.
+
+D&D 5e tracks successes, failures, and recovery as usual. Anyone with access to the full character sheet can still read its death save counters.
+
+</details>
+
 ## Variant data
 
 A variant is a set of documents (Tile, AmbientLight, AmbientSound, Wall) with the flag `flags.foundry-my-modules.variant`.
