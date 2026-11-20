@@ -4,6 +4,8 @@
   "MY_MODULES.ActionHud.hint": "Show the action HUD for this client.",
   "MY_MODULES.ActionHud.alwaysShowCharacter": "Always show my character’s action HUD",
   "MY_MODULES.ActionHud.alwaysShowCharacterHint": "Players can show the action HUD for their assigned character when no owned token is selected, even if the character has no token in the scene.",
+  "MY_MODULES.ActionHud.combineHotbar": "Combine action HUD and hotbar",
+  "MY_MODULES.ActionHud.combineHotbarHint": "Dock the action tabs above your macro slots in one frame. Turn this off to restore the separate HUD.",
   "MY_MODULES.ActionHud.toggle": "Toggle action HUD",
   "MY_MODULES.ActionHud.move": "Drag to move the action HUD. Double-click to return it to the hotbar.",
   "MY_MODULES.ActionHud.attacks": "Attacks",

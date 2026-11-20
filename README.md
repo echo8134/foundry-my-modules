@@ -130,6 +130,8 @@ Select a token you own to see its combat actions above the hotbar. The GM can us
 
 Players have **Always show my character’s action HUD** enabled by default. When the first selected token is yours, the HUD shows its actions. Otherwise, it shows your assigned character if you own it, even on a scene without that character’s token. Players can turn this off in their client settings.
 
+Enable **Combine action HUD and hotbar** in your client settings to dock the tabs and macro slots in one frame. Click macros, use their number keys, and change macro pages as usual. Turning the setting off restores your separate HUD at its previous position.
+
 Click a group to open it and click it again to fold it away. **Attacks**, **Spells**, **Features**, and **Items** use the item through dnd5e. The attack list shows equipped weapons and other usable items with an attack activity. The spell list starts with cantrips and groups spells by level. Spells with the at-will, ritual, innate, or pact casting method appear even when unprepared. Slot counts, uses, and quantities update as you play. Right-click an item to open its sheet.
 
 **Rolls** shows modifiers for ability checks, saving throws, and skills. **Conditions** toggles dnd5e effects. Click Exhaustion to add one level or right-click it to remove one. **Rests** starts a short or long rest. When your character is unconscious, open the skull tab **Death Saves** to roll with the same rules as the character sheet. Shift-click to skip the configuration dialog where dnd5e supports it.
