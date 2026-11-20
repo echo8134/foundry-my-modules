@@ -1,0 +1,22 @@
+name: Feature spec
+description: Define a change you are ready to build and how to check it.
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: What will a player or GM be able to do? Link the original idea if there is one.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: How to check it in Foundry
+      description: List the actions to take and what each person at the table should see.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and constraints
+      description: Mention any relevant game system, permissions, or work you plan to handle separately.
