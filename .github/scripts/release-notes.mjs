@@ -31,16 +31,11 @@ function releaseNotes() {
   const {
     GITHUB_REPOSITORY: repository,
     GITHUB_SHA: sha,
+    PREVIOUS_RELEASE_TAG: previous,
     GITHUB_SERVER_URL: server = "https://github.com"
   } = process.env;
   const url = `${server}/${repository}`;
-  // Start at the parent so a retry skips a tag already created for this release.
-  const [, parent] = run("git", "rev-list", "--parents", "-n1", sha).split(" ");
-  const previous =
-    parent &&
-    run("git", "describe", "--always", "--tags", "--abbrev=0", "--first-parent", "--match", "v[0-9]*", parent);
-  const hasPrevious = previous?.startsWith("v");
-  const range = hasPrevious ? `${previous}..${sha}` : sha;
+  const range = previous ? `${previous}..${sha}` : sha;
   const commits = new Set(run("git", "rev-list", "--reverse", "--topo-order", range).split("\n"));
   const seen = new Set();
   const entries = [];
@@ -61,7 +56,7 @@ function releaseNotes() {
     }
   }
 
-  const changes = hasPrevious ? `${url}/compare/${previous}...${sha}` : `${url}/commits/${sha}`;
+  const changes = previous ? `${url}/compare/${previous}...${sha}` : `${url}/commits/${sha}`;
   if (entries.length) console.log(`## What's changed\n\n${entries.join("\n")}\n`);
   console.log(`[Full changelog](${changes})`);
 }
