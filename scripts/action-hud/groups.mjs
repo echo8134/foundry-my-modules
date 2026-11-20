@@ -63,6 +63,10 @@ function rolls(actor) {
   ];
 }
 
+export function showsDeathSaves(actor) {
+  return actor?.statuses.has("unconscious") && !!actor.system.attributes?.death;
+}
+
 export function actionGroups(actor) {
   const attacks = [];
   const spells = new Map();
@@ -107,6 +111,9 @@ export function actionGroups(actor) {
     group("items", "fa-flask", [section(items)]),
     group("rolls", "fa-dice-d20", rolls(actor)),
     group("conditions", "fa-person-falling", [section(conditions)]),
-    group("rests", "fa-campground", [section(rests)])
+    group("rests", "fa-campground", [section(rests)]),
+    group("deathSaves", "fa-skull", [
+      section(showsDeathSaves(actor) ? [{ action: "deathSave", name: game.i18n.localize(key("rollDeathSave")) }] : [])
+    ])
   ].filter((g) => g.sections.length);
 }

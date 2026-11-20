@@ -1,5 +1,5 @@
 import { MODULE_ID } from "../constants.mjs";
-import { actionGroups } from "./groups.mjs";
+import { actionGroups, showsDeathSaves } from "./groups.mjs";
 
 const ENABLED = "actionHudEnabled";
 const ALWAYS_SHOW_CHARACTER = "actionHudAlwaysShowCharacter";
@@ -59,6 +59,10 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
         const level = id !== "exhaustion" && actor?.system.conditions?.[id];
         actor?.toggleStatusEffect(id, level ? { levels: -level } : {});
       },
+      deathSave(event, target) {
+        const actor = this.currentActor(target);
+        if (showsDeathSaves(actor)) actor.rollDeathSave({ event }, dialogOptions(event));
+      },
       shortRest(event, target) {
         this.currentActor(target)?.shortRest({ dialog: !event.shiftKey });
       },
@@ -83,7 +87,9 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
     if (this.actorUuid !== actor.uuid) this.group = null;
     this.actorUuid = actor.uuid;
     const groups = actionGroups(actor);
-    return { actor, groups, open: groups.find((g) => g.id === this.group) };
+    const open = groups.find((g) => g.id === this.group);
+    this.group = open?.id;
+    return { actor, groups, open };
   }
 
   _onFirstRender(context, options) {

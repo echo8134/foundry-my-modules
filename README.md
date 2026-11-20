@@ -132,7 +132,7 @@ Players have **Always show my character’s action HUD** enabled by default. Whe
 
 Click a group to open it and click it again to fold it away. **Attacks**, **Spells**, **Features**, and **Items** use the item through dnd5e. The attack list shows equipped weapons and other usable items with an attack activity. The spell list starts with cantrips and groups spells by level. Spells with the at-will, ritual, innate, or pact casting method appear even when unprepared. Slot counts, uses, and quantities update as you play. Right-click an item to open its sheet.
 
-**Rolls** shows modifiers for ability checks, saving throws, and skills. **Conditions** toggles dnd5e effects. Click Exhaustion to add one level or right-click it to remove one. **Rests** starts a short or long rest. Shift-click to skip the configuration dialog where dnd5e supports it.
+**Rolls** shows modifiers for ability checks, saving throws, and skills. **Conditions** toggles dnd5e effects. Click Exhaustion to add one level or right-click it to remove one. **Rests** starts a short or long rest. When your character is unconscious, open the skull tab **Death Saves** to roll with the same rules as the character sheet. Shift-click to skip the configuration dialog where dnd5e supports it.
 
 </details>
 

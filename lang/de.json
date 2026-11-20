@@ -13,6 +13,8 @@
   "MY_MODULES.ActionHud.rolls": "Würfe",
   "MY_MODULES.ActionHud.conditions": "Zustände",
   "MY_MODULES.ActionHud.rests": "Rasten",
+  "MY_MODULES.ActionHud.deathSaves": "Todesrettungswürfe",
+  "MY_MODULES.ActionHud.rollDeathSave": "Todesrettungswurf ablegen",
   "MY_MODULES.ActionHud.slots": "Zauberplätze {value}/{max}",
   "MY_MODULES.ActionHud.pactSlots": "Paktplätze {value}/{max}",
   "MY_MODULES.ActionHud.checks": "Attributsproben",

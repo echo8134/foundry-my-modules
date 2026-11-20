@@ -13,6 +13,8 @@
   "MY_MODULES.ActionHud.rolls": "Rolls",
   "MY_MODULES.ActionHud.conditions": "Conditions",
   "MY_MODULES.ActionHud.rests": "Rests",
+  "MY_MODULES.ActionHud.deathSaves": "Death Saves",
+  "MY_MODULES.ActionHud.rollDeathSave": "Roll a death saving throw",
   "MY_MODULES.ActionHud.slots": "Slots {value}/{max}",
   "MY_MODULES.ActionHud.pactSlots": "Pact slots {value}/{max}",
   "MY_MODULES.ActionHud.checks": "Ability checks",
