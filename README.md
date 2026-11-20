@@ -17,10 +17,10 @@ Foundry offers each new release through the module's Update button.
 <details>
 <summary><h3>Hide cursors</h3></summary>
 
-Hover a row of the player list, bottom left, and a check mark appears; it fades out when the mouse leaves.
+Hover a player’s row in the player list at the bottom left to see its cursor toggle. GMs also see toggles on GM rows.
 
 - On your own row it hides your cursor from everyone, for example the GM's while preparing a reveal.
-- On another row it hides that person's cursor from you only. Shift-click applies it to everyone.
+- On another row it hides that person's cursor from you only. Shift-click applies the same choice to all other users whose cursors you can toggle.
 - Pings still show. The choice is stored per user, so it follows you to every device.
 
 </details>
@@ -128,11 +128,13 @@ if (first) await quests.openQuest(first.uuid);
 
 Select a token you own to see its combat actions above the hotbar. The GM can use any token. If you select several, the bar follows the first. Drag the actor’s name to move the bar. Double-click the name to return the bar to the hotbar. **Alt+H** toggles the client setting **Show action HUD**.
 
-Players can turn on **Always show my character’s action HUD** in their client settings. When the first selected token is yours, the HUD shows its actions. Otherwise, it shows your assigned character if you own it, even on a scene without that character’s token. This option is off by default.
+Players have **Always show my character’s action HUD** enabled by default. When the first selected token is yours, the HUD shows its actions. Otherwise, it shows your assigned character if you own it, even on a scene without that character’s token. Players can turn this off in their client settings.
+
+Enable **Combine action HUD and hotbar** in your client settings to dock the tabs and macro slots in one frame. Click macros, use their number keys, and change macro pages as usual. Turning the setting off restores your separate HUD at its previous position.
 
 Click a group to open it and click it again to fold it away. **Attacks**, **Spells**, **Features**, and **Items** use the item through dnd5e. The attack list shows equipped weapons and other usable items with an attack activity. The spell list starts with cantrips and groups spells by level. Spells with the at-will, ritual, innate, or pact casting method appear even when unprepared. Slot counts, uses, and quantities update as you play. Right-click an item to open its sheet.
 
-**Rolls** shows modifiers for ability checks, saving throws, and skills. **Conditions** toggles dnd5e effects. Click Exhaustion to add one level or right-click it to remove one. **Rests** starts a short or long rest. Shift-click to skip the configuration dialog where dnd5e supports it.
+**Rolls** shows modifiers for ability checks, saving throws, and skills. **Conditions** toggles dnd5e effects. Click Exhaustion to add one level or right-click it to remove one. **Rests** starts a short or long rest. When your character is unconscious, open the skull tab **Death Saves** to roll with the same rules as the character sheet. Shift-click to skip the configuration dialog where dnd5e supports it.
 
 </details>
 
@@ -143,7 +145,7 @@ In the module’s world settings, select the GM who receives **Private death sav
 
 When you roll a death save for your character, only you and the selected GM see the result in chat. The same rule applies when you skip the dialog. Other players see that someone rolled privately.
 
-D&D 5e tracks successes, failures, and recovery as usual. Anyone with access to the full character sheet can still read its death save counters.
+D&D 5e tracks successes, failures, and recovery as usual. On a player character’s sheet, the assigned player and the selected GM can see the death save counters. If nobody is assigned to the character, its player owners can see them. Foundry still sends the actor data to clients with sheet access.
 
 </details>
 

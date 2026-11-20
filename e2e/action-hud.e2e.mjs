@@ -1,6 +1,7 @@
 import { assert, check, join, joinGamemaster, MODULE_ID, PLAYER_NAME, run, waitFor } from "./harness.mjs";
 
 const HUD = "#my-action-hud";
+const COMBINE_HOTBAR = "actionHudCombineHotbar";
 const group = (name) => `${HUD} button[data-group="${name}"]`;
 const entry = (action, id) => `${HUD} [data-action="${action}"][data-id="${id}"]`;
 
@@ -170,6 +171,90 @@ await run(async () => {
       await gm.evaluate(() => canvas.tokens.releaseAll());
     });
 
+    await check("a player can dock their HUD and still use macro clicks, number keys and page controls", async () => {
+      const marker = `HUD macro ${Date.now()}`;
+      const peerName = `HUD player ${Date.now()}`;
+      const macroId = await gm.evaluate(
+        async (actorId, marker, name) => {
+          const peer = await User.create({ name, role: CONST.USER_ROLES.PLAYER });
+          hudTestDocuments.push(peer);
+          await game.actors.get(actorId).update({ [`ownership.${peer.id}`]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER });
+          const macro = await Macro.create({
+            name: marker,
+            type: "chat",
+            command: marker,
+            ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER }
+          });
+          hudTestDocuments.push(macro);
+          return macro.id;
+        },
+        ids.actor,
+        marker,
+        peerName
+      );
+      const peer = await join(peerName);
+      const originalSlot = await player.evaluate(() => game.user.hotbar[1] ?? null);
+      const docked = `#hotbar > ${HUD}`;
+      try {
+        await peer.evaluate(async (id) => {
+          await game.user.sheet.close({ animate: false });
+          await game.scenes.get(id).view();
+        }, ids.scene);
+        await waitFor(peer, (id) => canvas.ready && canvas.tokens.get(id)?.actor.isOwner, ids.hero);
+        await peer.evaluate((id) => canvas.tokens.get(id).control(), ids.hero);
+        await peer.waitForSelector(group("attacks"), { visible: true });
+        assert(!(await peer.$(docked)), "the second player's HUD was docked by default");
+
+        await player.bringToFront();
+        await waitFor(player, (id) => game.macros.has(id), macroId);
+        await player.evaluate(
+          async (m, key, id) => {
+            await game.user.assignHotbarMacro(game.macros.get(id), 1);
+            await game.settings.set(m, key, true);
+          },
+          MODULE_ID,
+          COMBINE_HOTBAR,
+          macroId
+        );
+        await player.waitForSelector(docked, { visible: true });
+        const joined = await player.evaluate(() => {
+          const bar = document.querySelector("#my-action-hud .hud-bar").getBoundingClientRect();
+          const slots = document.querySelectorAll("#action-bar .slot");
+          const first = slots[0].getBoundingClientRect();
+          return slots.length === 10 && bar.bottom <= first.top && first.top - bar.bottom < 12;
+        });
+        assert(joined, "the HUD and ten macro slots did not form adjacent rows");
+        await click(player, group("rolls"));
+        await player.waitForSelector(entry("skill", "arc"), { visible: true });
+        await click(player, '#hotbar .slot.full[data-slot="1"]');
+        await player.keyboard.press("1");
+        await waitFor(gm, (text) => game.messages.filter((msg) => msg.content.includes(text)).length === 2, marker);
+
+        await click(player, "#hotbar .page-next");
+        await player.waitForSelector('#action-bar [data-slot="11"]', { visible: true });
+        await player.waitForSelector(`${docked} .hud-panel`, { visible: true });
+        assert(!(await peer.$(docked)), "the second player's layout changed with the first player's setting");
+        await player.evaluate((id, key) => game.settings.set(id, key, false), MODULE_ID, COMBINE_HOTBAR);
+        await player.waitForSelector(`body > ${HUD} .hud-grip`, { visible: true });
+      } finally {
+        await peer.browserContext().close();
+        await player.evaluate(
+          async (m, key, previous) => {
+            await game.settings.set(m, key, false);
+            await game.user.assignHotbarMacro(game.macros.get(previous) ?? null, 1);
+            await ui.hotbar.changePage(1);
+          },
+          MODULE_ID,
+          COMBINE_HOTBAR,
+          originalSlot
+        );
+        await gm.evaluate(async (text) => {
+          const messages = game.messages.filter((entry) => entry.content.includes(text));
+          await ChatMessage.deleteDocuments(messages.map((entry) => entry.id));
+        }, marker);
+      }
+    });
+
     await check("only dragging pins the HUD and double-clicking restores hotbar following", async () => {
       const grip = `${HUD} .hud-grip`;
       const saved = () => player.evaluate((id) => game.settings.get(id, "actionHudPositions")[game.user.id], MODULE_ID);
@@ -190,6 +275,15 @@ await run(async () => {
       await player.mouse.up();
       const pinned = await saved();
       assert(Math.abs(pinned?.y - (initialTop - 80)) < 1, "drag did not save the new position");
+      await player.evaluate((id, key) => game.settings.set(id, key, true), MODULE_ID, COMBINE_HOTBAR);
+      await player.waitForSelector(`#hotbar > ${HUD}`, { visible: true });
+      await player.evaluate((id, key) => game.settings.set(id, key, false), MODULE_ID, COMBINE_HOTBAR);
+      await waitFor(
+        player,
+        (s, y) => Math.abs(document.querySelector(s).getBoundingClientRect().top - y) < 1,
+        HUD,
+        pinned.y
+      );
       await click(player, grip, { count: 2 });
       assert(!(await saved()), "double-click left a saved position");
       const viewport = player.viewport();
@@ -316,7 +410,7 @@ await run(async () => {
       await waitFor(player, (s) => document.querySelector(s)?.textContent.includes("×2"), entry("item", potion));
     });
 
-    await check("a player can use their assigned character's HUD without a token on the scene", async () => {
+    await check("the assigned character follows a fresh player client across tokenless scenes", async () => {
       const previousCharacter = await gm.evaluate(
         (name) => game.users.getName(name).character?.id ?? null,
         PLAYER_NAME
@@ -335,9 +429,25 @@ await run(async () => {
           (id) => game.user.character?.id === id && !canvas.scene.tokens.some((t) => t.actorId === id),
           ids.actor
         );
+        const actorBar = `${HUD} [data-actor="Actor.${ids.actor}"]`;
+        await player.waitForSelector(actorBar, { visible: true, timeout: 10000 });
+        const emptySceneId = await gm.evaluate(async () => {
+          const scene = await Scene.create({
+            name: "Empty HUD test scene",
+            ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER }
+          });
+          hudTestDocuments.push(scene);
+          return scene.id;
+        });
+        for (const sceneId of [emptySceneId, ids.scene]) {
+          await waitFor(player, (id) => game.scenes.has(id), sceneId);
+          await player.evaluate((id) => game.scenes.get(id).view(), sceneId);
+          await waitFor(player, (id) => canvas.ready && canvas.scene.id === id, sceneId);
+          await player.waitForSelector(actorBar, { visible: true });
+        }
+        await player.evaluate((id) => game.settings.set(id, "actionHudAlwaysShowCharacter", false), MODULE_ID);
         await player.waitForSelector(HUD, { hidden: true });
         await player.evaluate((id) => game.settings.set(id, "actionHudAlwaysShowCharacter", true), MODULE_ID);
-        const actorBar = `${HUD} [data-actor="Actor.${ids.actor}"]`;
         await player.waitForSelector(actorBar, { visible: true });
         await click(player, group("conditions"));
         await click(player, entry("condition", "prone"));

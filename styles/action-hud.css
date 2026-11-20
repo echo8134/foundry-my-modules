@@ -1,5 +1,8 @@
 #my-action-hud {
   position: fixed;
+  left: var(--hud-left);
+  top: var(--hud-top);
+  max-width: var(--hud-max-width);
   z-index: var(--z-index-app);
   width: max-content;
   height: auto;
@@ -15,12 +18,8 @@
     serif;
 }
 
-#my-action-hud .hud-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 2px;
-  padding: 4px;
+#my-action-hud .hud-bar,
+#hotbar:has(> #my-action-hud) {
   border: 1px solid #887450;
   border-radius: 4px;
   background:
@@ -29,19 +28,30 @@
   box-shadow: 0 2px 6px #19100db3;
 }
 
-#my-action-hud .hud-grip {
+#my-action-hud .hud-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+}
+
+#my-action-hud .hud-name {
   display: flex;
   align-items: center;
   gap: 0.45rem;
   max-width: 12rem;
   padding: 0.35rem 0.55rem 0.35rem 0.25rem;
   color: #f2dcaa;
+}
+
+#my-action-hud .hud-grip {
   cursor: grab;
   touch-action: none;
   user-select: none;
 }
 
-#my-action-hud .hud-grip span {
+#my-action-hud .hud-name span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -181,4 +191,69 @@
     Georgia,
     serif;
   color: #59432f;
+}
+
+#hotbar:has(> #my-action-hud) {
+  --hotbar-size: clamp(36px, 3.4vw, 54px);
+  --slot-color: #231c17;
+  --key-bg-color-empty: #32251b;
+  --key-bg-color-full: #32251b;
+  --key-text-color: #fff2cf;
+  --page-control-color: #dcc495;
+  display: grid;
+  grid-template-columns: auto auto auto;
+  align-items: center;
+  gap: 5px 8px;
+  height: auto;
+  padding: 4px 7px 7px;
+  opacity: 1;
+}
+
+#hotbar > #my-action-hud {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  position: relative;
+  inset: auto;
+  width: auto;
+  max-width: none;
+  contain: inline-size;
+  pointer-events: auto;
+}
+
+#hotbar > #my-action-hud .hud-bar {
+  justify-content: center;
+  border: 0;
+  border-bottom: 1px solid #887450;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+#hotbar:has(> #my-action-hud) #action-bar {
+  display: grid;
+  grid-template-columns: repeat(10, var(--hotbar-size));
+  gap: 4px;
+  width: auto;
+  height: auto;
+}
+
+#hotbar:is(.compact, .min):has(> #my-action-hud) #action-bar {
+  grid-template-columns: repeat(5, var(--hotbar-size));
+}
+
+#hotbar:has(> #my-action-hud) .slot {
+  border: 1px solid #79664b;
+  border-radius: 3px;
+}
+
+#hotbar:has(> #my-action-hud) .slot:hover {
+  border-color: #f4d89e;
+}
+
+#hotbar:has(> #my-action-hud) .slot .slot-icon {
+  border-radius: 2px;
+}
+
+#hotbar:has(> #my-action-hud) .slot .key {
+  border-radius: 2px 0 5px;
 }

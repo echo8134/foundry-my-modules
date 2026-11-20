@@ -13,6 +13,26 @@ function isFullGM(user) {
   return user?.role === CONST.USER_ROLES.GAMEMASTER;
 }
 
+function canViewDeathTray(actor) {
+  const recipient = selectedRecipientId();
+  if (recipient === OFF || (isFullGM(game.user) && game.user.id === recipient)) return true;
+
+  const character = actor.token?.baseActor ?? actor;
+  const assigned = game.users.filter((user) => !user.isGM && user.character === character);
+  if (assigned.length) return assigned.some((user) => user.isSelf);
+  return !actor.hasPlayerOwner || (!game.user.isGM && actor.isOwner);
+}
+
+function updateDeathTray(sheet) {
+  sheet.element.classList.toggle("my-private-death-tray", !canViewDeathTray(sheet.actor));
+}
+
+function refreshDeathTrays() {
+  for (const sheet of foundry.applications.instances.values()) {
+    if (sheet instanceof game.dnd5e.applications.actor.CharacterActorSheet) updateDeathTray(sheet);
+  }
+}
+
 function recipientChoices() {
   const choices = { [OFF]: `${STRINGS}.Off` };
   for (const user of game.users.filter(isFullGM)) choices[user.id] = user.name;
@@ -123,8 +143,17 @@ export function setupDeathSaves() {
       type: String,
       default: OFF,
       choices: recipientChoices,
-      onChange: ensureJournal
+      onChange: () => {
+        refreshDeathTrays();
+        return ensureJournal();
+      }
     });
+    Hooks.on("renderCharacterActorSheet", updateDeathTray);
+    Hooks.on("updateUser", (_user, changes) => {
+      if ("character" in changes || "role" in changes) refreshDeathTrays();
+    });
+    Hooks.on("createUser", refreshDeathTrays);
+    Hooks.on("deleteUser", refreshDeathTrays);
     Hooks.on("dnd5e.preRollDeathSave", configureDeathSave);
     Hooks.on("dnd5e.postDeathSaveRollConfiguration", (rolls, ...args) => {
       if (rolls.length) return configureDeathSave(...args);

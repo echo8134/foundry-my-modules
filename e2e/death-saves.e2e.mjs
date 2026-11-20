@@ -28,7 +28,34 @@ async function setRecipient(gm, clients, recipient) {
   );
 }
 
-async function rollFromSheet(player, button, mode, locked) {
+async function assertSheetAudience(clients, actorId, viewers) {
+  await Promise.all(
+    clients.map((page) =>
+      waitFor(
+        page,
+        (id, visible) => {
+          const actor = game.actors.get(id);
+          const sheet = actor.sheet.element;
+          if (!sheet?.querySelector(".meter.hit-dice")) return false;
+          const tray = sheet.querySelector(".death-tray");
+          if (!visible) return !tray?.checkVisibility();
+          return (
+            tray?.checkVisibility() &&
+            ["success", "failure"].every(
+              (key) =>
+                tray.querySelectorAll(`[data-prop="system.attributes.death.${key}"] .pip.filled`).length ===
+                actor.system.attributes.death[key]
+            )
+          );
+        },
+        actorId,
+        viewers.includes(page)
+      )
+    )
+  );
+}
+
+async function rollWithDialog(player, button, mode, locked) {
   await player.locator(button).setTimeout(10000).click();
   await player.waitForSelector(ROLL_MODE, { visible: true });
   const actual = await player.$eval(ROLL_MODE, (select) => ({
@@ -188,7 +215,10 @@ await run(async () => {
           name: names.actor,
           type: "character",
           system: { attributes: { hp: { value: 0, max: 10 } } },
-          ownership: { [game.users.getName(playerName).id]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER }
+          ownership: {
+            [game.users.getName(playerName).id]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
+            [game.users.getName(names.observer).id]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER
+          }
         });
         return actor.id;
       },
@@ -265,9 +295,45 @@ await run(async () => {
       }, rules._id);
     });
 
-    const button = await player.evaluate(async (id) => {
+    await check("only the owner and selected GM see the counters on a player character's sheet", async () => {
+      await Promise.all(
+        clients.map((page) =>
+          page.evaluate(async (id) => {
+            await game.actors.get(id).sheet.render({ force: true });
+          }, actorId)
+        )
+      );
+      await assertSheetAudience(clients, actorId, [gm, player]);
+      const alternate = await otherGM.evaluate(() => game.user.id);
+      await setRecipient(gm, clients, alternate);
+      await assertSheetAudience(clients, actorId, [otherGM, player]);
+      await setRecipient(gm, clients, recipient);
+      await assertSheetAudience(clients, actorId, [gm, player]);
+    });
+
+    await check("assigning a shared character hides its counters from the other owner", async () => {
+      await gm.evaluate(
+        async (id, user) => {
+          await game.actors.get(id).update({ [`ownership.${user}`]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER });
+          await game.users.get(user).update({ character: id });
+        },
+        actorId,
+        observerId
+      );
+      await assertSheetAudience(clients, actorId, [gm, observer]);
+      await gm.evaluate(
+        async (id, user) => {
+          await game.users.get(user).update({ character: null });
+          await game.actors.get(id).update({ [`ownership.${user}`]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER });
+        },
+        actorId,
+        observerId
+      );
+      await assertSheetAudience(clients, actorId, [gm, player]);
+    });
+
+    const button = await player.evaluate((id) => {
       const sheet = game.actors.get(id).sheet;
-      await sheet.render({ force: true });
       if (!sheet.element.querySelector(".death-tray.open")) {
         sheet.element.querySelector('[data-action="toggleDeathTray"]').click();
       }
@@ -275,8 +341,9 @@ await run(async () => {
     }, actorId);
 
     await check("the native dialog restricts player death saves to the chosen GM and their author", async () => {
-      const id = await nextRoll(gm, actorId, () => rollFromSheet(player, button, "gm", true));
+      const id = await nextRoll(gm, actorId, () => rollWithDialog(player, button, "gm", true));
       await assertAudience(clients, id, recipient);
+      await assertSheetAudience(clients, actorId, [gm, player]);
       await player.evaluate(async (id) => {
         await game.messages.get(id).update({ whisper: [], blind: false });
       }, id);
@@ -309,6 +376,43 @@ await run(async () => {
       await assertAudience(clients, id);
     });
 
+    await check("the unconscious character can roll a private death save from the skull tab", async () => {
+      const previous = await player.evaluate(() => game.user.character?.id ?? null);
+      try {
+        await gm.evaluate((id, name) => game.users.getName(name).update({ character: id }), actorId, PLAYER_NAME);
+        await player.evaluate(async (id) => {
+          const actor = game.actors.get(id);
+          await actor.sheet.close({ animate: false });
+          await actor.update({ "system.attributes.hp.value": 1 });
+          await actor.toggleStatusEffect("unconscious", { active: false });
+        }, actorId);
+        const bar = `#my-action-hud [data-actor="Actor.${actorId}"]`;
+        const tab = `${bar} [data-group="deathSaves"]`;
+        await player.waitForSelector(bar, { visible: true });
+        assert(!(await player.$(tab)), "an awake character has a death saves tab");
+        await reset(player, actorId, 2);
+        await player.evaluate((id) => game.actors.get(id).toggleStatusEffect("unconscious", { active: true }), actorId);
+        await player.locator(tab).setTimeout(10000).click();
+        const id = await nextRoll(gm, actorId, () =>
+          rollWithDialog(player, `${bar} [data-action="deathSave"]`, "gm", true)
+        );
+        const outcome = await terminalOutcome(gm, actorId, id);
+        await assertAudience(clients, id, recipient, outcome);
+        await player.evaluate(
+          (id) => game.actors.get(id).toggleStatusEffect("unconscious", { active: false }),
+          actorId
+        );
+        await player.waitForSelector(tab, { hidden: true });
+        assert(
+          !(await player.$(`${bar} [data-action="deathSave"]`)),
+          "the awake character can still roll from the HUD"
+        );
+      } finally {
+        await gm.evaluate((name, id) => game.users.getName(name).update({ character: id }), PLAYER_NAME, previous);
+        await player.evaluate((id) => game.actors.get(id).sheet.render({ force: true }), actorId);
+      }
+    });
+
     await check("GM-initiated death saves keep the normal roll mode", async () => {
       await reset(gm, actorId);
       const id = await nextRoll(gm, actorId, () =>
@@ -321,8 +425,9 @@ await run(async () => {
 
     await check("turning off the rule restores the normal death save dialog", async () => {
       await setRecipient(gm, clients, "off");
+      await assertSheetAudience(clients, actorId, clients);
       await reset(player, actorId);
-      const id = await nextRoll(gm, actorId, () => rollFromSheet(player, button, "public", false));
+      const id = await nextRoll(gm, actorId, () => rollWithDialog(player, button, "public", false));
       await assertAudience(clients, id);
     });
 

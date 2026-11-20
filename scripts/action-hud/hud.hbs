@@ -1,8 +1,8 @@
 <div class="hud-body" data-actor="{{actor.uuid}}">
   {{#if actor}}
   <nav class="hud-bar" aria-label="{{localize 'MY_MODULES.ActionHud.title'}}">
-    <span class="hud-grip" title="{{localize 'MY_MODULES.ActionHud.move'}}">
-      <i class="fa-solid fa-grip-vertical" inert></i>
+    <span class="hud-name{{#unless docked}} hud-grip{{/unless}}" {{#unless docked}}title="{{localize 'MY_MODULES.ActionHud.move'}}"{{/unless}}>
+      {{#unless docked}}<i class="fa-solid fa-grip-vertical" inert></i>{{/unless}}
       <span>{{actor.name}}</span>
     </span>
     {{#each groups}}

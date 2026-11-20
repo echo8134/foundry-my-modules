@@ -1,8 +1,9 @@
 import { MODULE_ID } from "../constants.mjs";
-import { actionGroups } from "./groups.mjs";
+import { actionGroups, showsDeathSaves } from "./groups.mjs";
 
 const ENABLED = "actionHudEnabled";
 const ALWAYS_SHOW_CHARACTER = "actionHudAlwaysShowCharacter";
+const COMBINE_HOTBAR = "actionHudCombineHotbar";
 const POSITIONS = "actionHudPositions";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -59,6 +60,10 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
         const level = id !== "exhaustion" && actor?.system.conditions?.[id];
         actor?.toggleStatusEffect(id, level ? { levels: -level } : {});
       },
+      deathSave(event, target) {
+        const actor = this.currentActor(target);
+        if (showsDeathSaves(actor)) actor.rollDeathSave({ event }, dialogOptions(event));
+      },
       shortRest(event, target) {
         this.currentActor(target)?.shortRest({ dialog: !event.shiftKey });
       },
@@ -83,7 +88,9 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
     if (this.actorUuid !== actor.uuid) this.group = null;
     this.actorUuid = actor.uuid;
     const groups = actionGroups(actor);
-    return { actor, groups, open: groups.find((g) => g.id === this.group) };
+    const open = groups.find((g) => g.id === this.group);
+    this.group = open?.id;
+    return { actor, groups, open, docked: game.settings.get(MODULE_ID, COMBINE_HOTBAR) };
   }
 
   _onFirstRender(context, options) {
@@ -127,20 +134,31 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
 
   layout(position = this.saved) {
     const el = this.element;
-    if (!el?.isConnected) return;
+    if (!this.rendered) return;
+    const dock = game.settings.get(MODULE_ID, COMBINE_HOTBAR) && document.querySelector("aside#hotbar");
+    if (dock) {
+      if (el.parentElement !== dock) dock.prepend(el);
+      el.classList.remove("opens-down");
+      const top = el.getBoundingClientRect().top;
+      const scale = game.settings.get("core", "uiConfig").uiScale ?? 1;
+      el.style.setProperty("--hud-panel-height", `${Math.max(0, top / scale - 12)}px`);
+      return;
+    }
+    if (el.parentElement !== document.body) document.body.append(el);
+
     const gap = 8;
     const bounds = (id) => document.getElementById(id)?.getBoundingClientRect();
     const hotbar = bounds("hotbar");
     const left = (bounds("ui-left-column-1")?.right ?? 0) + gap;
     const right = (bounds("ui-right")?.left ?? innerWidth) - gap;
     const bottom = hotbar?.height ? hotbar.top - 16 : innerHeight - gap;
-    el.style.maxWidth = `${Math.max(0, right - left)}px`;
+    el.style.setProperty("--hud-max-width", `${Math.max(0, right - left)}px`);
     const { width, height } = el.getBoundingClientRect();
     const center = hotbar?.width ? hotbar.left + hotbar.width / 2 : (left + right) / 2;
     const x = Math.clamp(position?.x ?? center - width / 2, left, Math.max(left, right - width));
     const y = Math.clamp(position?.y ?? bottom - height, gap, Math.max(gap, bottom - height));
-    el.style.left = `${x}px`;
-    el.style.top = `${y}px`;
+    el.style.setProperty("--hud-left", `${x}px`);
+    el.style.setProperty("--hud-top", `${y}px`);
     const above = y - 2 * gap;
     const below = bottom - y - height - gap;
     el.classList.toggle("opens-down", above < below);
@@ -215,9 +233,20 @@ export function setupActionHud() {
       scope: "client",
       config: true,
       type: Boolean,
+      default: true,
+      onChange: refresh
+    });
+    game.settings.register(MODULE_ID, COMBINE_HOTBAR, {
+      name: "MY_MODULES.ActionHud.combineHotbar",
+      hint: "MY_MODULES.ActionHud.combineHotbarHint",
+      scope: "client",
+      config: true,
+      type: Boolean,
       default: false,
       onChange: refresh
     });
+    // Foundry replaces the hotbar's children when paging or assigning a macro.
+    Hooks.on("renderHotbar", () => hud.layout());
     game.settings.register(MODULE_ID, POSITIONS, { scope: "client", config: false, type: Object, default: {} });
     game.keybindings.register(MODULE_ID, "actionHud", {
       name: "MY_MODULES.ActionHud.toggle",
