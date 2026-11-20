@@ -1,6 +1,7 @@
 ## What changed and why
 
-<!-- Describe the change and the problem it solves. Add “Closes #123” if it resolves an issue. -->
+<!-- Describe the change and the problem it solves. Add “Closes #123” if it resolves an issue.
+For a new module feature, start the PR title with “feat:” or “feat(scope):” to publish a minor release. -->
 
 ## Verification
 
