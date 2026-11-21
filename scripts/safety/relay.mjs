@@ -246,8 +246,20 @@ function receive(data, senderId) {
   queueRequest(data, senderId);
 }
 
+function renderSafetyMessage(message, html) {
+  if (!message.isContentVisible) return;
+  const xCard = message.getFlag(MODULE_ID, "xCard") === true;
+  if (xCard) {
+    // Replace the entire sender: dnd5e adds the relay GM's name and avatar here.
+    html.querySelector(".message-sender").textContent = label("Card");
+  } else if (message.getFlag(MODULE_ID, "openDoor") !== true) return;
+  html.querySelector(".message-content").textContent = label(xCard ? "Prompt" : "Break");
+}
+
 export function setupRelay(onToolsChanged, onBoundariesChanged) {
   Hooks.once("init", () => {
+    const chatHook = game.system.id === "dnd5e" ? "dnd5e.renderChatMessage" : "renderChatMessageHTML";
+    Hooks.on(chatHook, renderSafetyMessage);
     for (const tool of SAFETY_TOOLS) {
       game.settings.register(MODULE_ID, tool, {
         name: `MY_MODULES.Safety.${tool}.Setting`,
@@ -272,9 +284,6 @@ export function setupRelay(onToolsChanged, onBoundariesChanged) {
       default: [],
       onChange: onBoundariesChanged
     });
-  });
-  Hooks.on("renderChatMessageHTML", (message, html) => {
-    if (message.author?.isGM && message.getFlag(MODULE_ID, "xCard")) html.classList.add("my-safety-chat");
   });
   Hooks.once("ready", () => game.socket.on(channel, receive));
 }

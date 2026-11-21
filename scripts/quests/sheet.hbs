@@ -8,7 +8,7 @@
           <button type="button" data-action="showToPlayers" class="icon fa-solid fa-eye"
                   aria-label="{{localize 'MY_MODULES.Quests.ShowToPlayers'}}" data-tooltip="MY_MODULES.Quests.ShowToPlayers"></button>
           <select class="quest-stamp" name="status" aria-label="{{localize 'MY_MODULES.Quests.StatusLabel'}}">
-            {{#each statuses}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{localize label}}</option>{{/each}}
+            {{#each statuses}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
           </select>
         {{else}}
           <span class="quest-stamp">{{localize statusLabel}}</span>
@@ -18,7 +18,7 @@
       {{#if gm}}
         <input type="text" class="quest-title" name="name" value="{{quest.name}}" required
                aria-label="{{localize 'MY_MODULES.Quests.QuestName'}}">
-        <label class="quest-byline">{{localize "MY_MODULES.Quests.Giver"}} <input type="text" name="giver" value="{{quest.giver.name}}"></label>
+        <label class="quest-byline">Quest giver <input type="text" name="giver" value="{{quest.giver.name}}"></label>
       {{else}}
         <h1 class="quest-title">{{quest.name}}</h1>
         {{#if quest.giver.name}}<p class="quest-byline">{{localize "MY_MODULES.Quests.Giver"}} · {{quest.giver.name}}</p>{{/if}}
@@ -35,7 +35,7 @@
   {{#*inline "pageControls"}}
     {{#if restricted}}<i class="fa-solid fa-user-lock" title="{{localize 'MY_MODULES.Quests.RestrictedPage'}}"></i>{{/if}}
     <button type="button" data-action="editPage" class="icon fa-solid fa-pen"
-            aria-label="{{localize 'JOURNAL.EditPage'}}" data-tooltip="JOURNAL.EditPage"></button>
+            aria-label="{{localize 'MY_MODULES.Quests.EditPage'}}" data-tooltip="MY_MODULES.Quests.EditPage"></button>
   {{/inline}}
   {{#with description}}
     {{#if (or html @root.gm)}}
@@ -94,7 +94,7 @@
               <input type="text" name="rewardText" id="{{@root.quest.id}}-reward-{{id}}" value="{{text}}"
                      aria-label="{{localize 'MY_MODULES.Quests.RewardText'}}">
             {{else}}
-              <span class="reward-label">{{#if text}}{{text}}{{else if uuid}}{{localize "DOCUMENT.Item"}}{{/if}}</span>
+              <span class="reward-label">{{#if text}}{{text}}{{else if uuid}}{{localize "MY_MODULES.Quests.Item"}}{{/if}}</span>
             {{/if}}
             {{#if @root.gm}}
               <button type="button" data-action="toggleRewardHidden" aria-pressed="{{#if hidden}}true{{else}}false{{/if}}"
@@ -102,7 +102,7 @@
                       aria-label="{{localize 'MY_MODULES.Quests.Hidden'}}" data-tooltip="MY_MODULES.Quests.Hidden"></button>
               <button type="button" data-action="toggleRewardLock" aria-pressed="{{#if locked}}true{{else}}false{{/if}}"
                       class="icon fa-solid {{#if locked}}fa-lock{{else}}fa-lock-open{{/if}}"
-                      aria-label="{{localize 'MY_MODULES.Quests.Locked'}}" data-tooltip="MY_MODULES.Quests.Locked"></button>
+                      aria-label="Locked" data-tooltip="Locked"></button>
               <button type="button" data-action="deleteReward" class="icon fa-solid fa-trash"
                       aria-label="{{localize 'MY_MODULES.Quests.DeleteReward'}}" data-tooltip="MY_MODULES.Quests.DeleteReward"></button>
             {{else if uuid}}
@@ -144,7 +144,7 @@
   </section>
   {{#if gm}}
     <div class="quest-assignment">
-      <label><input type="checkbox" name="primary" {{checked quest.primary}}> {{localize "MY_MODULES.Quests.Primary"}}</label>
+      <label><input type="checkbox" name="primary" {{checked quest.primary}}> Primary quest</label>
       <label>{{localize "MY_MODULES.Quests.Parent"}}
         <select name="parent">
           <option value="">{{localize "MY_MODULES.Quests.NoParent"}}</option>

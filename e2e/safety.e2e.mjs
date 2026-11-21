@@ -46,8 +46,8 @@ await run(async () => {
       MODULE_ID,
       settings
     );
-    const player = await join(PLAYER_NAME);
-    const observer = await join(observerName);
+    const player = await join(PLAYER_NAME, "", "de");
+    const observer = await join(observerName, "", "en");
     const gmDevice = await gm.browser().createBrowserContext();
     await gmDevice.setCookie(...(await gm.browserContext().cookies()));
     const secondGM = await gmDevice.newPage();
@@ -79,12 +79,6 @@ await run(async () => {
       }
     });
     await check("the four actions share a row and both detail sections reopen collapsed", async () => {
-      const originalLanguage = await player.evaluate(async () => {
-        const previous = game.i18n.lang;
-        await game.i18n.setLanguage("de");
-        await foundry.applications.instances.get("my-safety-tools").render({ force: true });
-        return previous;
-      });
       const correctRow = await player.evaluate(() => {
         const labels = ["Pause", "Vorspulen", "Zurückspulen", "Ich brauche eine Pause"];
         const buttons = [...document.querySelectorAll("#my-safety-tools .safety-signals button")];
@@ -110,7 +104,6 @@ await run(async () => {
       await player.waitForSelector(`${card}[open] #safety-note`, { hidden: true });
       await player.waitForSelector(`${limits}[open] #safety-add-line`, { visible: true });
       await player.evaluate(() => foundry.applications.instances.get("my-safety-tools").close({ animate: false }));
-      await player.evaluate((lang) => game.i18n.setLanguage(lang), originalLanguage);
       await openWindow(player);
       await player.waitForSelector(`${card}[open] #safety-note`, { hidden: true });
       await player.waitForSelector(`${limits}[open] #safety-add-line`, { hidden: true });
@@ -166,6 +159,11 @@ await run(async () => {
       const noteSelector = `${overlay} #my-safety-private-note`;
       await Promise.all(gmTabs.map((tab) => tab.waitForSelector(noteSelector, { visible: true })));
       for (const p of [player, observer]) {
+        const prompt = await p.$eval("#my-safety-prompt", (el) => el.textContent);
+        assert(
+          prompt === (p === player ? "Etwas stört mich, bitte weiter" : "Something bothers me. Please move on."),
+          "overlay used the wrong reader language"
+        );
         assert(!(await p.$eval(overlay, (el) => el.textContent)).includes(privateNote), "player saw the GM note");
         assert(
           !(await p.evaluate(
@@ -213,16 +211,15 @@ await run(async () => {
       for (const p of clients) {
         await waitFor(
           p,
-          (ids) =>
-            game.messages.some((m) => !ids.includes(m.id) && m.alias === game.i18n.localize("MY_MODULES.Safety.Card")),
-          previous
+          (ids, moduleId) => game.messages.some((m) => !ids.includes(m.id) && m.getFlag(moduleId, "xCard")),
+          previous,
+          MODULE_ID
         );
         const cards = await p.evaluate(
-          (ids) =>
-            game.messages
-              .filter((m) => !ids.includes(m.id) && m.alias === game.i18n.localize("MY_MODULES.Safety.Card"))
-              .map((m) => m.toObject()),
-          previous
+          (ids, moduleId) =>
+            game.messages.filter((m) => !ids.includes(m.id) && m.getFlag(moduleId, "xCard")).map((m) => m.toObject()),
+          previous,
+          MODULE_ID
         );
         assert(
           cards.length === 1 && cards[0]._id === requestId,
@@ -268,9 +265,12 @@ await run(async () => {
       );
     });
     await check("fast-forward and rewind each reach the muted sheet reader and both GM tabs once", async () => {
-      for (const id of ["fastForward", "rewind"]) {
+      for (const [id, sender] of [
+        ["fastForward", gm],
+        ["rewind", player]
+      ]) {
         const selector = signalButton(id);
-        const symbol = await player.$eval(
+        const symbol = await sender.$eval(
           selector,
           (button, id) => {
             const label = game.i18n.localize(`MY_MODULES.Safety.signals.${id}.Label`);
@@ -280,8 +280,8 @@ await run(async () => {
           id
         );
         assert(symbol, `missing symbol on the ${id} button`);
-        await player.focus(selector);
-        await player.keyboard.press("Enter");
+        await sender.focus(selector);
+        await sender.keyboard.press("Enter");
         await Promise.all(
           clients.map(async (page) => {
             const row = announcement(id);
@@ -382,7 +382,7 @@ await run(async () => {
         row,
         revised
       );
-      await gm.click(`${row} [data-action="removeEntry"]`);
+      await gm.locator(`${row} [data-action="removeEntry"]`).click();
       await Promise.all(clients.map((p) => p.waitForSelector(row, { hidden: true })));
     });
     await check("open door posts a public break message in the player's name", async () => {
@@ -396,14 +396,32 @@ await run(async () => {
       );
       const msg = await observer.evaluate((ids) => {
         const m = game.messages.find((m) => !ids.includes(m.id));
-        return { alias: m.alias, public: !m.whisper.length && !m.blind, content: m.content, id: m.id };
+        return { alias: m.alias, public: !m.whisper.length && !m.blind, id: m.id };
       }, previous);
       createdMessages.push(msg.id);
-      assert(
-        msg.alias === PLAYER_NAME &&
-          msg.public &&
-          msg.content.includes(await observer.evaluate(() => game.i18n.localize("MY_MODULES.Safety.Break"))),
-        "wrong name, audience, or break text"
+      assert(msg.alias === PLAYER_NAME && msg.public, "wrong name or audience");
+      for (const reader of [player, observer]) {
+        await waitFor(
+          reader,
+          (id) =>
+            document.querySelector(`[data-message-id="${id}"] .message-content`)?.textContent ===
+            game.i18n.localize("MY_MODULES.Safety.Break"),
+          msg.id
+        );
+      }
+    });
+    await check("a player-written copy of the break message keeps its language", async () => {
+      const { id, text } = await player.evaluate(async () => {
+        const text = game.i18n.localize("MY_MODULES.Safety.Break");
+        const message = await ChatMessage.create({ style: CONST.CHAT_MESSAGE_STYLES.OOC, content: text });
+        return { id: message.id, text };
+      });
+      createdMessages.push(id);
+      await waitFor(
+        observer,
+        (id, text) => document.querySelector(`[data-message-id="${id}"] .message-content`)?.textContent.trim() === text,
+        id,
+        text
       );
     });
     await check("the GM can disable each tool independently and hide the last control", async () => {

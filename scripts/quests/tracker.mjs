@@ -1,3 +1,4 @@
+import english from "../../lang/en.json" with { type: "json" };
 import { MODULE_ID } from "../constants.mjs";
 import { listQuests } from "./data.mjs";
 
@@ -81,7 +82,7 @@ export function setupQuestTracker() {
   Hooks.once("init", () => {
     game.settings.register(MODULE_ID, SETTINGS, { scope: "client", config: false, type: Object, default: {} });
     game.keybindings.register(MODULE_ID, "questTracker", {
-      name: "MY_MODULES.Quests.Tracker.Toggle",
+      name: english["MY_MODULES.Quests.Tracker.Toggle"],
       editable: [{ key: "KeyQ", modifiers: ["Control", "Alt"] }],
       onDown: () => {
         toggleQuestTracker();

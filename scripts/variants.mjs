@@ -1,3 +1,4 @@
+import english from "../lang/en.json" with { type: "json" };
 import { MODULE_ID } from "./constants.mjs";
 import { setupVariantTokenControls } from "./variant-token-controls.mjs";
 import {
@@ -17,6 +18,7 @@ const SWITCHED = {
   Wall: { move: 0, sight: 0, light: 0, sound: 0 }
 };
 const TYPES = [...Object.keys(SWITCHED), "Token"];
+const DEFAULT_NAME = english["MY_MODULES.Variants.Default"];
 const SWITCH_QUERY = `${MODULE_ID}.setVariant`;
 const isActiveGM = () => game.users.activeGM?.isSelf === true;
 const variantsOf = (doc) => variantNames(doc.getFlag(MODULE_ID, "variant"));
@@ -26,8 +28,16 @@ function levelIdsOf(scene, doc) {
   return doc.levels.size ? doc.levels : scene.levels.keys();
 }
 
-export const baseName = (scene, flags = scene.flags[MODULE_ID]) =>
-  flags?.defaultName ?? game.i18n.localize("MY_MODULES.Variants.Default");
+export function baseName(scene, flags = scene.flags[MODULE_ID]) {
+  if (flags?.defaultName != null) return flags.defaultName;
+  // Older German scenes could tag base-state documents before a defaultName was saved.
+  if (game.i18n.lang === "de") {
+    for (const doc of variantDocuments(scene)) {
+      if (variantsOf(doc).includes("Grundzustand")) return "Grundzustand";
+    }
+  }
+  return DEFAULT_NAME;
+}
 
 function* variantDocuments(scene) {
   for (const type of TYPES) yield* scene.getEmbeddedCollection(type);
@@ -179,7 +189,10 @@ async function reconcile(scene, request) {
   } else if (!foundry.utils.equals(active, previous ?? {}) || (request?.selection && previous == null)) {
     flags.active = _replace(active);
   }
-  if (scene.getFlag(MODULE_ID, "defaultName") == null && scene.tokens.some((t) => variantsOf(t).length)) {
+  if (
+    scene.getFlag(MODULE_ID, "defaultName") == null &&
+    variantDocuments(scene).some((doc) => variantsOf(doc).length)
+  ) {
     flags.defaultName = base;
   }
   if (!foundry.utils.isEmpty(flags)) {
@@ -295,6 +308,11 @@ export function setupVariants(onChange) {
     };
   });
   Hooks.on("preCreateScene", (scene) => {
+    if (scene.getFlag(MODULE_ID, "defaultName") == null) {
+      const { compendiumSource, duplicateSource, exportSource } = scene._stats;
+      const base = compendiumSource || duplicateSource || exportSource ? baseName(scene) : DEFAULT_NAME;
+      scene.updateSource({ [`flags.${MODULE_ID}.defaultName`]: base });
+    }
     // Embedded documents are initialized again from the parent source before it is sent.
     const tokens = [];
     for (const token of scene.tokens) {

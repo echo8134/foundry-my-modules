@@ -56,7 +56,7 @@ await run(async () => {
   try {
     await check("clicking dice builds an editable roll and updates its counters", async () => {
       await player.waitForSelector(tray, { visible: true });
-      for (const faces of [6, 6, 6, 8]) await player.click(die(faces));
+      for (const faces of [6, 6, 6, 8]) await player.locator(die(faces)).click();
       await waitForDraft("/r 3d6+1d8");
       assert(await player.$eval(`${die(6)} b`, (b) => !b.hidden && b.textContent === "3"), "wrong d6 count");
       assert(await player.$eval(`${die(8)} b`, (b) => !b.hidden && b.textContent === "1"), "wrong d8 count");

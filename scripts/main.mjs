@@ -2,12 +2,12 @@ import { setupActionHud } from "./action-hud/hud.mjs";
 import { setupCalendarTiles } from "./calendar-tile.mjs";
 import { MODULE_ID } from "./constants.mjs";
 import { setupCursors } from "./cursors.mjs";
-import { setupDeathSaves } from "./death-saves.mjs";
+import { localizeRulesJournal, setupDeathSaves } from "./death-saves.mjs";
 import { setupDiceTray } from "./dice-tray.mjs";
 import { setupHotbar } from "./hotbar.mjs";
 import { setupLevels } from "./levels.mjs";
 import { rollName, setupNames } from "./names.mjs";
-import { setupQuestData } from "./quests/data.mjs";
+import { localizeQuestJournal, setupQuestData } from "./quests/data.mjs";
 import { quests, setupQuestLog } from "./quests/log.mjs";
 import { setupQuestTracker } from "./quests/tracker.mjs";
 import { setupSafetyTools } from "./safety/window.mjs";
@@ -31,5 +31,14 @@ setupSoundboard();
 setupTiles();
 
 Hooks.once("init", () => {
+  // Native directories, sheets and links all read the prepared journal on the viewing client.
+  const journal = CONFIG.JournalEntry.documentClass.prototype;
+  const prepare = journal.prepareDerivedData;
+  journal.prepareDerivedData = function (...args) {
+    const result = prepare.apply(this, args);
+    localizeQuestJournal(this);
+    localizeRulesJournal(this);
+    return result;
+  };
   game.modules.get(MODULE_ID).api = { getVariants, setVariant, rollName, quests };
 });

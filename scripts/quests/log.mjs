@@ -1,3 +1,4 @@
+import english from "../../lang/en.json" with { type: "json" };
 import { MODULE_ID } from "../constants.mjs";
 import {
   createQuest,
@@ -96,7 +97,7 @@ class QuestLog extends HandlebarsApplicationMixin(ApplicationV2) {
 
   _statusOptions() {
     return QUEST_STATUSES.map((status) => ({
-      label: statusLabel(status),
+      label: english[statusLabel(status)],
       visible: (row) => row.dataset.status !== status,
       onClick: (_event, row) => updateQuest(rowEntry(row), { status })
     }));
@@ -161,7 +162,7 @@ export function setupQuestLog() {
       }
     });
     game.keybindings.register(MODULE_ID, "questLog", {
-      name: title,
+      name: english[title],
       editable: [{ key: "KeyQ", modifiers: ["Control"] }],
       onDown: () => {
         quests.open();

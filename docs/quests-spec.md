@@ -30,7 +30,7 @@ A quest is an ordinary `JournalEntry`, so the bridge's generic `create_documents
 }
 ```
 
-- **Text:** the journal's pages. A text page "Beschreibung" (players read it) and a text page "SL-Notizen" whose own ownership is the GM's alone. More pages are allowed and shown in order.
+- **Text:** the journal's pages. New quests have a public description page and a private GM notes page. The `flags.foundry-my-modules.questPage` values `description` and `gmNotes` identify them across client languages and after renaming. More pages are allowed and shown in order.
 - **Visibility:** the module keeps the journal's ownership in step with the data: `hidden` gives players no access; any other status gives every player in `personal` (or all players when empty) OBSERVER. It writes ownership only when it differs (idempotent). Foundry sends world documents to every client, so a hidden objective is only hidden from the interface, as in FQL; say so in the README.
 - **Ids:** objective and reward ids are stable slugs. The vault sync keys them by id: the vault owns the texts and the list, Foundry owns `done` and `hidden` once a quest exists. The module never renames an id.
 - All writes go through one small data layer (`scripts/quests/data.mjs` or similar) so the windows never touch flags directly.

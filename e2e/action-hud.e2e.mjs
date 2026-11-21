@@ -232,7 +232,7 @@ await run(async () => {
         marker,
         peerName
       );
-      const peer = await join(peerName);
+      const peer = await join(peerName, "", "de");
       const originalSlot = await player.evaluate(() => game.user.hotbar[1] ?? null);
       const docked = `#hotbar > ${HUD}`;
       try {
@@ -243,12 +243,19 @@ await run(async () => {
         await waitFor(peer, (id) => canvas.ready && canvas.tokens.get(id)?.actor.isOwner, ids.hero);
         await peer.evaluate((id) => canvas.tokens.get(id).control(), ids.hero);
         await peer.waitForSelector(group("attacks"), { visible: true });
+        assert((await peer.$eval(group("attacks"), (el) => el.textContent.trim())) === "Angriffe", "German HUD tab");
         assert(await peer.$(docked), "a new player starts detached");
         assert(!(await peer.$(group("conditions"))) && !(await peer.$(group("rests"))), "unexpected default tabs");
         await peer.evaluate(() => game.settings.sheet.render({ force: true }));
         await click(peer, `#settings-config nav [data-tab="${MODULE_ID}"]`);
         await click(peer, `#settings-config [data-action="openSubmenu"][data-key="${MODULE_ID}.actionHudCategories"]`);
         const form = "#my-action-hud-categories";
+        await peer.waitForSelector(`${form} label[for="my-action-category-attacks"]`, { visible: true });
+        assert(
+          (await peer.$eval(`${form} label[for="my-action-category-attacks"]`, (el) => el.textContent.trim())) ===
+            "Attacks",
+          "English category setting"
+        );
         await peer.waitForSelector(`${form} [name="attacks"]`, { visible: true });
         const checks = await peer.$$eval(`${form} input[type="checkbox"]`, (inputs) =>
           Object.fromEntries(inputs.map((input) => [input.name, input.checked]))

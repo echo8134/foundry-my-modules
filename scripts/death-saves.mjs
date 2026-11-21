@@ -1,8 +1,11 @@
+import german from "../lang/de.json" with { type: "json" };
+import english from "../lang/en.json" with { type: "json" };
 import { MODULE_ID } from "./constants.mjs";
 
 const SETTING = "privateDeathSaves";
 const OFF = "off";
 const JOURNAL_ID = "MyDeathSaveRules";
+const PAGE_ID = "MyDeathSavePage1";
 const FLAG = `flags.${MODULE_ID}.${SETTING}`;
 const STRINGS = "MY_MODULES.DeathSaves";
 let creatingJournal = false;
@@ -49,6 +52,42 @@ function canCreateJournal() {
   return game.user.isActiveGM && isFullGM(game.users.get(selectedRecipientId()));
 }
 
+function isRulesJournal(entry) {
+  return entry?.id === JOURNAL_ID && entry.getFlag(MODULE_ID, SETTING);
+}
+
+function ruleText(source, ...keys) {
+  for (const suffix of keys) {
+    const key = `${STRINGS}.${suffix}`;
+    if (source === english[key] || source === german[key]) return game.i18n.localize(key);
+  }
+  return source;
+}
+
+export function localizeRulesJournal(entry) {
+  if (!isRulesJournal(entry)) return;
+  if (!entry.getFlag(MODULE_ID, "customRuleName")) entry.name = ruleText(entry._source.name, "JournalName");
+  const page = entry.pages.get(PAGE_ID);
+  if (!page) return;
+  if (!page.getFlag(MODULE_ID, "customRuleName")) page.name = ruleText(page._source.name, "PageName");
+  if (page.type === "text" && !page.getFlag(MODULE_ID, "customRuleContent")) {
+    page.text.content = ruleText(page._source.text.content, "Journal", "JournalOriginal");
+  }
+}
+
+// Native sheet forms also submit untouched, client-localized fields. Keep their stored values
+// and mark explicit edits so a GM can even choose wording that matches a shipped translation.
+function preserveRuleEdits(doc, changes) {
+  if ("name" in changes) {
+    if (changes.name === doc.name) changes.name = doc._source.name;
+    else foundry.utils.setProperty(changes, `flags.${MODULE_ID}.customRuleName`, true);
+  }
+  if (changes.text && "content" in changes.text) {
+    if (changes.text.content === doc.text.content) changes.text.content = doc._source.text.content;
+    else foundry.utils.setProperty(changes, `flags.${MODULE_ID}.customRuleContent`, true);
+  }
+}
+
 async function createJournal() {
   if (!canCreateJournal() || game.journal.some((entry) => entry.getFlag(MODULE_ID, SETTING))) return;
 
@@ -64,15 +103,15 @@ async function createJournal() {
   await JournalEntry.create(
     {
       _id: JOURNAL_ID,
-      name: game.i18n.localize(`${STRINGS}.JournalName`),
+      name: english[`${STRINGS}.JournalName`],
       flags: { [MODULE_ID]: { [SETTING]: true } },
       ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER },
       pages: [
         {
-          _id: "MyDeathSavePage1",
-          name: game.i18n.localize(`${STRINGS}.PageName`),
+          _id: PAGE_ID,
+          name: english[`${STRINGS}.PageName`],
           type: "text",
-          text: { content: game.i18n.localize(`${STRINGS}.Journal`) }
+          text: { content: english[`${STRINGS}.Journal`] }
         }
       ]
     },
@@ -127,14 +166,20 @@ function hideRevealOption(_app, options) {
 
 function privateRollNotice(message) {
   if (!message.getFlag(MODULE_ID, SETTING) || message.isContentVisible) return null;
-  return game.i18n.format("CHAT.PrivateRollContent", {
-    user: message.author?.name ?? game.i18n.localize("CHAT.UnknownUser")
+  return game.i18n.format(`${STRINGS}.PrivateRoll`, {
+    user: message.author?.name ?? game.i18n.localize(`${STRINGS}.UnknownUser`)
   });
 }
 
 export function setupDeathSaves() {
   Hooks.once("init", () => {
     if (game.system.id !== "dnd5e") return;
+    Hooks.on("preUpdateJournalEntry", (entry, changes) => {
+      if (isRulesJournal(entry)) preserveRuleEdits(entry, changes);
+    });
+    Hooks.on("preUpdateJournalEntryPage", (page, changes) => {
+      if (page.id === PAGE_ID && isRulesJournal(page.parent)) preserveRuleEdits(page, changes);
+    });
     game.settings.register(MODULE_ID, SETTING, {
       name: `${STRINGS}.Name`,
       hint: `${STRINGS}.Hint`,

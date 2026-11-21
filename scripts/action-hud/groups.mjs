@@ -25,7 +25,7 @@ function itemEntry(item, activities) {
   for (const source of [item, ...activities]) {
     const uses = source === item ? item.system.uses : source.uses;
     if (uses?.max > 0) {
-      const label = source === item ? game.i18n.localize("DND5E.Uses") : source.name;
+      const label = source === item ? game.i18n.localize(key("uses")) : source.name;
       details.push(`${label} ${uses.value}/${uses.max}`);
     }
   }
