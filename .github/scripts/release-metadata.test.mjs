@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { devNull, tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -10,12 +10,15 @@ const script = fileURLToPath(new URL("./release.sh", import.meta.url));
 const repo = "example/table";
 const url = `https://github.com/${repo}`;
 const issue = (number, nameWithOwner = repo) => ({ number, repository: { nameWithOwner } });
+const manifest = JSON.stringify(
+  { feature: false, id: "table", version: "0.9.1", styles: ["table.css"], title: "Table" },
+  null,
+  2
+);
 
 function history(t) {
   const cwd = mkdtempSync(join(tmpdir(), "table-release-metadata-"));
   t.after(() => rmSync(cwd, { recursive: true, force: true }));
-  mkdirSync(join(cwd, ".github/scripts"), { recursive: true });
-  copyFileSync(new URL("./release-notes.mjs", import.meta.url), join(cwd, ".github/scripts/release-notes.mjs"));
   const env = {
     PATH: `${cwd}:${process.env.PATH}`,
     GIT_CONFIG_GLOBAL: devNull,
@@ -27,7 +30,9 @@ function history(t) {
   git("init", "-q", "-b", "main");
   git("config", "user.email", "release@example.invalid");
   git("config", "user.name", "Release Test");
-  git("commit", "-q", "--allow-empty", "-m", "Last release");
+  writeFileSync(join(cwd, "module.json"), manifest);
+  git("add", "module.json");
+  git("commit", "-q", "-m", "Last release");
   git("tag", env.PREVIOUS_RELEASE_TAG);
 
   const responses = {};
@@ -45,12 +50,12 @@ else for (const page of pages) console.log(JSON.stringify(page));
     { mode: 0o755 }
   );
 
-  function pull(number, file, issuePages, { merge = false, note = `Shipped change ${number}.` } = {}) {
+  function pull(number, file, issuePages, { merge = false, note = `Shipped change ${number}.`, contents } = {}) {
     const branch = `pr-${number}`;
     if (merge) git("switch", "-q", "-c", branch);
     writeFileSync(
       join(cwd, file),
-      file === "module.json" ? JSON.stringify({ version: "0.9.1", number }) : `${number}\n`
+      contents ?? (file === "module.json" ? JSON.stringify({ version: "0.9.1", number }) : `${number}\n`)
     );
     git("add", file);
     git("commit", "-q", "-m", `Change ${number}`);
@@ -80,6 +85,15 @@ else for (const page of pages) console.log(JSON.stringify(page));
         }
       }
     }));
+    return merged;
+  }
+
+  function revert(commit, note) {
+    git("revert", "--no-edit", commit);
+    if (note) git("commit", "--amend", "-qm", git("log", "-1", "--format=%B"), "-m", `## Release notes\n- ${note}`);
+    const head = git("rev-parse", "HEAD");
+    responses[`repos/${repo}/commits/${head}/pulls`] = [[]];
+    return head;
   }
 
   function labels(number, ...pages) {
@@ -87,22 +101,22 @@ else for (const page of pages) console.log(JSON.stringify(page));
       names.map((name) => ({ name }))
     );
   }
-  function prepare() {
-    return spawnSync("bash", [script, "plan", env.PREVIOUS_RELEASE_TAG, "HEAD", "notes.md"], {
+  function prepare(previous = env.PREVIOUS_RELEASE_TAG) {
+    return spawnSync("bash", [script, "plan", previous, "HEAD", "notes.md"], {
       cwd,
       encoding: "utf8",
       env: { ...env, GH_RESPONSES: JSON.stringify(responses) }
     });
   }
-  function readRelease() {
-    const result = prepare();
+  function readRelease(previous) {
+    const result = prepare(previous);
     assert.equal(result.status, 0, result.stderr);
     const notes = readFileSync(join(cwd, "notes.md"), "utf8");
     const marker = /^<!-- table-tools-release-issues-v1: (\[.*\]) -->$/.exec(notes.trimEnd().split("\n").at(-1));
     assert.ok(marker, "the last line records which issues to notify after publication");
     return { tag: result.stdout.trim(), notes, issues: JSON.parse(marker[1]).sort((a, b) => a - b) };
   }
-  return { pull, labels, prepare, readRelease };
+  return { git, pull, revert, labels, prepare, readRelease };
 }
 
 test("a labeled documentation PR and a closing issue in another repository leave a runtime fix at patch", (t) => {
@@ -148,4 +162,38 @@ test("a runtime PR without closing issues keeps its release note and produces an
   assert.equal(tag, "v0.9.2");
   assert.deepEqual(issues, []);
   assert.ok(notes.includes("Shipped change 31."));
+});
+
+test("a reverted feature is excluded from the release until a revert restores it", (t) => {
+  const { pull, revert, labels, readRelease } = history(t);
+  const feature = pull(40, "module.json", [[issue(8)]], { contents: manifest.replace("false", "true") });
+  labels(8, ["release:minor"]);
+  const rollback = revert(feature);
+  pull(41, "module.json", [[issue(9)]], { contents: manifest.replace('"Table"', '"Fixed title"') });
+  labels(9, ["bug"]);
+
+  const patch = readRelease();
+  assert.equal(patch.tag, "v0.9.2");
+  assert.deepEqual(patch.issues, [9]);
+  assert.doesNotMatch(patch.notes, /Shipped change 40|\/issues\/8\b/);
+  assert.ok(patch.notes.includes("Shipped change 41."));
+
+  revert(rollback);
+  const restored = readRelease();
+  assert.equal(restored.tag, "v0.10.0");
+  assert.deepEqual(restored.issues, [8, 9]);
+  assert.ok(restored.notes.includes("Shipped change 40."));
+});
+
+test("reverting a previously released feature ships a patch with the rollback note", (t) => {
+  const { git, pull, revert, labels, readRelease } = history(t);
+  const feature = pull(42, "module.json", [[issue(10)]], { contents: manifest.replace("false", "true") });
+  labels(10, ["release:minor"]);
+  git("tag", "v0.10.0", feature);
+  revert(feature, "Disabled the experimental setting.");
+
+  const rollback = readRelease("v0.10.0");
+  assert.equal(rollback.tag, "v0.10.1");
+  assert.deepEqual(rollback.issues, []);
+  assert.ok(rollback.notes.includes("Disabled the experimental setting."));
 });

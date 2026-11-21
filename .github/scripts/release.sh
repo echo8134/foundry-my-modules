@@ -15,7 +15,9 @@ check_tag() {
 }
 
 plan() {
-  local previous=$1 sha=$2 notes=${3:-} issue_bump=patch requested changed minor_features major minor patch automatic
+  local previous=$1 sha=$2 notes=${3:-} bump=patch requested changed major minor patch automatic
+  local notes_script
+  notes_script="$(dirname -- "${BASH_SOURCE[0]}")/release-notes.mjs"
   local module_paths=(module.json "${runtime_paths[@]}")
   requested=$(git show "$sha:module.json" | jq -er '.version | strings')
   check_tag "v$requested"
@@ -27,22 +29,19 @@ plan() {
   fi
 
   if [[ -n $notes ]]; then
-    issue_bump=$(GITHUB_SHA="$sha" PREVIOUS_RELEASE_TAG="$previous" \
-      node .github/scripts/release-notes.mjs --prepare "$notes" "${module_paths[@]}")
-    [[ $issue_bump == minor || $issue_bump == patch ]] || fail "Unexpected release size: $issue_bump"
+    bump=$(GITHUB_SHA="$sha" PREVIOUS_RELEASE_TAG="$previous" \
+      node "$notes_script" --prepare "$notes" "${module_paths[@]}")
+  elif [[ -n $previous ]]; then
+    bump=$(node "$notes_script" --title-bump "refs/tags/$previous..$sha" "${module_paths[@]}")
   fi
+  [[ $bump == minor || $bump == patch ]] || fail "Unexpected release size: $bump"
   if [[ -z $previous ]]; then
     echo "v$requested"
     return
   fi
 
-  minor_features=$(git log --show-pulls -z --format='%s%n%b' "refs/tags/$previous..$sha" -- "${module_paths[@]}" |
-    awk -v RS='\0' -F '\n' '
-      { title = $1 ~ /^Merge pull request #[0-9]+ from / ? $2 : $1 }
-      title ~ /^feat(\([^)]+\))?!?: \[minor\] .+/ { print title }
-    ')
   IFS=. read -r major minor patch <<< "${previous#v}"
-  if [[ $issue_bump == minor || -n $minor_features ]]; then
+  if [[ $bump == minor ]]; then
     automatic="v$major.$((minor + 1)).0"
   else
     automatic="v$major.$minor.$((patch + 1))"

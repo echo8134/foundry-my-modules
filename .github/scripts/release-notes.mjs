@@ -27,6 +27,55 @@ function run(command, ...args) {
   return execFileSync(command, args, { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] }).trimEnd();
 }
 
+function* commitMessages(...args) {
+  const fields = run("git", "log", "-z", "--format=%H%x00%s%x00%b", ...args).split("\0");
+  for (let i = 0; i + 2 < fields.length; i += 3) {
+    yield { sha: fields[i], subject: fields[i + 1], body: fields[i + 2] };
+  }
+}
+
+function patchId(from, to) {
+  return run(
+    "bash",
+    "-o",
+    "pipefail",
+    "-c",
+    'git diff --no-ext-diff --no-textconv --no-renames --full-index -U0 "$1" "$2" -- | git patch-id --verbatim',
+    "patch-id",
+    from,
+    to
+  );
+}
+
+function releaseCommits(range) {
+  const commits = new Set(run("git", "rev-list", "--reverse", "--topo-order", range).split("\n").filter(Boolean));
+  for (const { sha, subject, body } of commitMessages("--topo-order", "--grep=^This reverts commit ", range)) {
+    if (!commits.has(sha) || !/^(Revert|Reapply) "/.test(subject)) continue;
+    const record =
+      /^This reverts commit ([a-f0-9]{40,64})(?:\.|, reversing\nchanges made to ([a-f0-9]{40,64})\.)$/m.exec(body);
+    if (!record || !commits.has(record[1])) continue;
+    const [, target, mainline] = record;
+    const parents = run("git", "show", "-s", "--format=%P", target).split(" ");
+    const parent = mainline ?? parents[0];
+    if (!parent || !parents.includes(parent)) continue;
+    const inverse = patchId(target, parent);
+    if (!inverse || patchId(`${sha}^1`, sha) !== inverse) continue;
+
+    // Dropping the side history also removes feature titles from a reverted merge.
+    for (const introduced of run("git", "rev-list", `${parent}..${target}`).split("\n")) commits.delete(introduced);
+    commits.delete(sha);
+  }
+  return commits;
+}
+
+function hasMinorTitle(range, modulePaths, commits) {
+  for (const { sha, subject, body } of commitMessages("--show-pulls", range, "--", ...modulePaths)) {
+    const title = /^Merge pull request #[0-9]+ from /.test(subject) ? body.split("\n", 1)[0] : subject;
+    if (commits.has(sha) && /^feat(\([^)]+\))?!?: \[minor\] .+/.test(title)) return true;
+  }
+  return false;
+}
+
 function closingIssues(repository, pullNumber) {
   const [owner, name] = repository.split("/");
   const query = `query($owner: String!, $name: String!, $number: Int!, $endCursor: String) {
@@ -78,7 +127,7 @@ function releaseNotes(modulePaths) {
   } = process.env;
   const url = `${server}/${repository}`;
   const range = previous ? `${previous}..${sha}` : sha;
-  const commits = new Set(run("git", "rev-list", "--reverse", "--topo-order", range).split("\n").filter(Boolean));
+  const commits = releaseCommits(range);
   const moduleCommits = new Set(
     modulePaths.length ? run("git", "rev-list", "--first-parent", range, "--", ...modulePaths).split("\n") : []
   );
@@ -115,7 +164,11 @@ function releaseNotes(modulePaths) {
   if (modulePaths.length) sections.push(`<!-- table-tools-release-issues-v1: ${JSON.stringify(issues)} -->`);
   return {
     notes: sections.join("\n\n"),
-    bump: issues.some((number) => hasMinorLabel(repository, number)) ? "minor" : "patch"
+    bump:
+      issues.some((number) => hasMinorLabel(repository, number)) ||
+      (modulePaths.length && hasMinorTitle(range, modulePaths, commits))
+        ? "minor"
+        : "patch"
   };
 }
 
@@ -128,6 +181,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       );
       process.exitCode = 1;
     }
+  } else if (process.argv[2] === "--title-bump") {
+    const [range, ...modulePaths] = process.argv.slice(3);
+    console.log(hasMinorTitle(range, modulePaths, releaseCommits(range)) ? "minor" : "patch");
   } else if (process.argv[2] === "--prepare") {
     const [output, ...modulePaths] = process.argv.slice(3);
     if (!output || !modulePaths.length) throw new Error("--prepare needs a notes file and module paths");
