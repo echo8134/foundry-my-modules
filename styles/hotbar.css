@@ -1,0 +1,5 @@
+.my-hide-macro-hotbar #hotbar {
+  visibility: hidden;
+  max-height: 0;
+  overflow: hidden;
+}

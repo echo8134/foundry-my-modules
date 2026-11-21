@@ -145,5 +145,12 @@
   "MY_MODULES.Quests.Personal": "Players",
   "MY_MODULES.Quests.PersonalHint": "Leave everyone unchecked to share with all players. Hidden quests are visible only to the GM.",
   "MY_MODULES.Quests.RestrictedPage": "Page access is restricted",
-  "MY_MODULES.Quests.AddPage": "Add page"
+  "MY_MODULES.Quests.AddPage": "Add page",
+  "MY_MODULES.Soundboard.Title": "Soundboard",
+  "MY_MODULES.Soundboard.Enabled": "Show GM soundboard",
+  "MY_MODULES.Soundboard.Playlist": "Soundboard playlist name",
+  "MY_MODULES.Soundboard.Empty": "Add sounds to a playlist named “{playlist}” to see them here.",
+  "MY_MODULES.Hotbar.Hide": "Hide macro hotbar",
+  "MY_MODULES.Hotbar.Hint": "Hide your macro hotbar in this browser.",
+  "MY_MODULES.Hotbar.Toggle": "Toggle macro hotbar"
 }
