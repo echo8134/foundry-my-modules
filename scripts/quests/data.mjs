@@ -1,3 +1,4 @@
+import english from "../../lang/en.json" with { type: "json" };
 import { MODULE_ID } from "../constants.mjs";
 
 export const QUEST_STATUSES = ["active", "available", "completed", "failed", "hidden"];
@@ -10,6 +11,7 @@ const questItems = (value) => asArray(value).filter((item) => foundry.utils.isPl
 function emptyQuest() {
   return {
     status: "hidden",
+    untitled: true,
     giver: { name: "", img: "", uuid: null },
     objectives: [],
     rewards: [],
@@ -56,15 +58,37 @@ export function canViewQuest(entry, user = game.user) {
   return user.isGM || (statusOf(flag) !== "hidden" && (!personal.length || personal.includes(user.id)));
 }
 
+const questPageNames = new Map([
+  ["description", { key: "Description", legacy: "Beschreibung" }],
+  ["gmNotes", { key: "GMNotes", legacy: "SL-Notizen" }]
+]);
+
+export function localizeQuestJournal(entry) {
+  const flag = flagOf(entry);
+  if (!flag) return;
+  if (flag.untitled) entry.name = localize("NewQuest");
+  for (const page of entry.pages) {
+    const seed = questPageNames.get(page.getFlag(MODULE_ID, "questPage"));
+    if (!seed || page.getFlag(MODULE_ID, "customName")) continue;
+    if (page._source.name === english[`MY_MODULES.Quests.${seed.key}`] || page._source.name === seed.legacy) {
+      page.name = localize(seed.key);
+    }
+  }
+}
+
 export function questView(entry) {
   const flag = flagOf(entry);
   if (!canViewQuest(entry)) return null;
   const gm = game.user.isGM;
   const parent = typeof flag.parent === "string" && game.journal.get(flag.parent.split(".")[1]);
   const visible = (items) => questItems(items).filter((item) => gm || !item.hidden);
-  const objectives = visible(flag.objectives).map((objective) => ({
+  const objectiveView = (objective) => ({
     ...objective,
-    children: visible(objective.children)
+    text: objective.text === null ? localize("NewObjective") : objective.text
+  });
+  const objectives = visible(flag.objectives).map((objective) => ({
+    ...objectiveView(objective),
+    children: visible(objective.children).map(objectiveView)
   }));
   return foundry.utils.deepClone({
     id: entry.id,
@@ -76,7 +100,9 @@ export function questView(entry) {
     ...(gm ? { personal: asArray(flag.personal) } : {}),
     giver: { name: "", img: "", uuid: null, ...flag.giver },
     objectives,
-    rewards: visible(flag.rewards),
+    rewards: visible(flag.rewards).map((reward) =>
+      !reward.uuid && reward.text === null ? { ...reward, text: localize("NewReward") } : reward
+    ),
     sort: Number.isFinite(flag.sort) ? flag.sort : 0
   });
 }
@@ -134,13 +160,18 @@ export async function createQuest() {
   requireGM();
   const folder = await ensureQuestFolder();
   return JournalEntry.create({
-    name: localize("NewQuest"),
+    name: english["MY_MODULES.Quests.NewQuest"],
     folder: folder?.id ?? null,
     flags: { [MODULE_ID]: { quest: emptyQuest() } },
     pages: [
-      { name: "Beschreibung", type: "text", sort: 0, flags: { [MODULE_ID]: { questPage: "description" } } },
       {
-        name: "SL-Notizen",
+        name: english["MY_MODULES.Quests.Description"],
+        type: "text",
+        sort: 0,
+        flags: { [MODULE_ID]: { questPage: "description" } }
+      },
+      {
+        name: english["MY_MODULES.Quests.GMNotes"],
         type: "text",
         sort: CONST.SORT_INTEGER_DENSITY,
         flags: { [MODULE_ID]: { questPage: "gmNotes" } },
@@ -164,7 +195,10 @@ export function deleteQuest(entry) {
 export function updateQuest(entry, { name, status, giver, personal, parent, primary }) {
   requireQuest(entry);
   const update = {};
-  if (name?.trim()) update.name = name.trim();
+  if (name?.trim()) {
+    update.name = name.trim();
+    if (entry.getFlag(MODULE_ID, "quest").untitled) update[`${FLAG}.untitled`] = false;
+  }
   if (QUEST_STATUSES.includes(status)) update[`${FLAG}.status`] = status;
   if (giver) update[`${FLAG}.giver`] = giver;
   if (Array.isArray(personal)) update[`${FLAG}.personal`] = [...new Set(personal)];
@@ -223,11 +257,11 @@ function changeObjectives(entry, change) {
   });
 }
 
-export function addObjective(entry, text, parentId = null) {
+export function addObjective(entry, text = null, parentId = null) {
   return changeObjectives(entry, (roots) => {
     const list = siblings(roots, parentId);
     if (!list) return false;
-    const slug = text.slugify({ strict: true }) || "objective";
+    const slug = text?.slugify({ strict: true }) || "objective";
     let id = slug;
     for (let n = 2; locateObjective(roots, id); n++) id = `${slug}-${n}`;
     const objective = { id, text, done: false, hidden: false };
@@ -282,9 +316,9 @@ function changeRewards(entry, change) {
   });
 }
 
-export function addReward(entry, text, uuid = null) {
+export function addReward(entry, text = null, uuid = null) {
   return changeRewards(entry, (rewards) => {
-    const slug = text.slugify({ strict: true }) || "reward";
+    const slug = text?.slugify({ strict: true }) || "reward";
     let id = slug;
     for (let n = 2; rewards.some((reward) => reward.id === id); n++) id = `${slug}-${n}`;
     rewards.push({ id, text, uuid, hidden: false, locked: true });
@@ -337,7 +371,12 @@ function preserveState(existing, incoming, keys) {
 }
 
 function preUpdate(entry, changes, options) {
-  if (!game.user.isGM || entry.inCompendium || !("flags" in changes || "ownership" in changes)) return;
+  if (!game.user.isGM || entry.inCompendium) return;
+  if ("name" in changes && flagOf(entry)?.untitled) {
+    if (changes.name === entry.name) changes.name = entry._source.name;
+    else foundry.utils.setProperty(changes, `${FLAG}.untitled`, false);
+  }
+  if (!("flags" in changes || "ownership" in changes)) return;
   const incoming = changes.flags?.[MODULE_ID]?.quest;
   const existing = flagOf(entry);
   const objectives = foundry.data.operators.DataFieldOperator.get(incoming?.objectives);
@@ -389,6 +428,12 @@ export function setupQuestData() {
   });
   Hooks.on("preCreateJournalEntry", preCreate);
   Hooks.on("preUpdateJournalEntry", preUpdate);
+  Hooks.on("preUpdateJournalEntryPage", (page, changes) => {
+    if (!("name" in changes) || !questPageNames.has(page.getFlag(MODULE_ID, "questPage")) || !flagOf(page.parent))
+      return;
+    if (changes.name === page.name) changes.name = page._source.name;
+    else foundry.utils.setProperty(changes, `flags.${MODULE_ID}.customName`, true);
+  });
   Hooks.on("createJournalEntry", (entry) => {
     if (flagOf(entry)?.primary) reconcilePrimary(entry);
     return reconcile(entry);

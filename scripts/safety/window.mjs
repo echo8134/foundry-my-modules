@@ -29,7 +29,11 @@ class SafetyWindow extends HandlebarsApplicationMixin(ApplicationV2) {
       openDoor() {
         if (!enabled("openDoor")) return;
         return ChatMessage.create(
-          { style: CONST.CHAT_MESSAGE_STYLES.OOC, content: game.i18n.localize("MY_MODULES.Safety.Break") },
+          {
+            style: CONST.CHAT_MESSAGE_STYLES.OOC,
+            content: game.i18n.localize("MY_MODULES.Safety.Break"),
+            flags: { [MODULE_ID]: { openDoor: true } }
+          },
           { messageMode: "public" }
         );
       }

@@ -40,7 +40,7 @@ const browser = await puppeteer.launch({
   args: ["--no-sandbox", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
 });
 
-export async function join(name, password = "") {
+export async function join(name, password = "", language) {
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.on("pageerror", (error) => {
@@ -48,6 +48,7 @@ export async function join(name, password = "") {
   });
   await page.setViewport({ width: 1400, height: 900 });
   await page.goto(`${FOUNDRY_URL}/join`, { waitUntil: "domcontentloaded" });
+  if (language) await page.evaluate((lang) => localStorage.setItem("core.language", JSON.stringify(lang)), language);
   await page.waitForSelector('select[name="userId"] option[value]:not([value=""])', { timeout: 30000 });
   const joined = await page.evaluate(
     async (name, password) => {
@@ -78,8 +79,8 @@ export async function join(name, password = "") {
 }
 
 // Logs in the Gamemaster with the module enabled and the test player created, reloading once if it had to enable it.
-export async function joinGamemaster() {
-  let gm = await join(GM_NAME, GM_PASSWORD);
+export async function joinGamemaster(language) {
+  let gm = await join(GM_NAME, GM_PASSWORD, language);
   await check("the module is enabled and the test player exists", async () => {
     const reload = await gm.evaluate(
       async (moduleId, playerName) => {
@@ -94,7 +95,7 @@ export async function joinGamemaster() {
     );
     if (reload) {
       await gm.browserContext().close();
-      gm = await join(GM_NAME, GM_PASSWORD);
+      gm = await join(GM_NAME, GM_PASSWORD, language);
     }
     assert(await gm.evaluate((id) => game.modules.get(id)?.active, MODULE_ID), "module is not active after enabling");
   });

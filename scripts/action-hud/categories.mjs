@@ -1,3 +1,4 @@
+import english from "../../lang/en.json" with { type: "json" };
 import { MODULE_ID } from "../constants.mjs";
 import { CATEGORY_ICONS } from "./groups.mjs";
 
@@ -30,10 +31,10 @@ export class HudCategories extends HandlebarsApplicationMixin(ApplicationV2) {
     return {
       categories: Object.keys(CATEGORY_ICONS).map((id) => ({
         id,
-        label: `MY_MODULES.ActionHud.${id}`,
+        label: english[`MY_MODULES.ActionHud.${id}`],
         visible: !hidden.includes(id)
       })),
-      buttons: [{ type: "submit", icon: "fa-solid fa-floppy-disk", label: "SETTINGS.Save" }]
+      buttons: [{ type: "submit", icon: "fa-solid fa-floppy-disk", label: "Save Changes" }]
     };
   }
 }

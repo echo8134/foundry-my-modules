@@ -249,8 +249,3 @@
     Georgia,
     serif;
 }
-
-/* D&D 5e adds the author’s avatar and name below the neutral speaker alias. */
-.my-safety-chat .message-sender :is(.avatar, .subtitle) {
-  display: none;
-}

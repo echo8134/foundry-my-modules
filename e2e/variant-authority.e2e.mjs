@@ -91,13 +91,13 @@ async function observe(player, id) {
 }
 
 await run(async () => {
-  const gm = await joinGamemaster();
+  const gm = await joinGamemaster("en");
   const otherName = `Variant GM ${Date.now()}`;
   const otherId = await gm.evaluate(
     async (name) => (await User.create({ name, role: CONST.USER_ROLES.GAMEMASTER })).id,
     otherName
   );
-  const other = await join(otherName);
+  const other = await join(otherName, "", "en");
   const player = await join(PLAYER_NAME);
   const [primary, secondary] = (await gm.evaluate(() => game.users.activeGM.isSelf)) ? [gm, other] : [other, gm];
   await waitFor(secondary, () => !game.users.activeGM.isSelf);
@@ -251,7 +251,8 @@ await run(async () => {
       await expectHidden(player, sceneId, "Late guest", false);
     });
 
-    await check("a creator using the other language cannot publish their translation as the active base", async () => {
+    await check("the English base and a German variant name stay distinct across clients", async () => {
+      await primary.evaluate(() => game.i18n.setLanguage("de"));
       foreignId = await primary.evaluate(
         async () =>
           (
@@ -264,37 +265,30 @@ await run(async () => {
       await waitFor(secondary, (id) => game.scenes.has(id), foreignId);
       await waitFor(player, (id) => game.scenes.has(id), foreignId);
       await observe(player, foreignId);
-      const { lang, base } = await primary.evaluate(() => ({
-        lang: game.i18n.lang,
-        base: game.i18n.localize("MY_MODULES.Variants.Default")
-      }));
-      const translated = await secondary.evaluate(
-        async (id, m, lang) => {
-          await game.i18n.setLanguage(lang === "de" ? "en" : "de");
-          const variant = game.i18n.localize("MY_MODULES.Variants.Default");
+      const variantName = await secondary.evaluate(
+        async (id, m) => {
+          const variant = "Grundzustand";
           const s = game.scenes.get(id);
-          if (s.getFlag(m, "defaultName")) throw new Error("Fixture already has a shared base");
           await s.createEmbeddedDocuments("Token", [{ name: "Translated guest", flags: { [m]: { variant } } }]);
           return variant;
         },
         foreignId,
-        MODULE_ID,
-        lang
+        MODULE_ID
       );
-      assert(translated !== base, `Both clients translated the base as ${base}`);
       await expectHidden(player, foreignId, "Translated guest", true);
       const creation = await player.evaluate(() =>
         tokenEvents.find((e) => e.event === "createToken" && e.name === "Translated guest")
       );
       assert(creation?.source && creation.hidden, JSON.stringify(creation));
-      await waitFor(
-        primary,
-        (id, m, base) => game.scenes.get(id).getFlag(m, "defaultName") === base,
-        foreignId,
-        MODULE_ID,
-        base
-      );
-      await select(secondary, foreignId, translated);
+      for (const client of [primary, secondary]) {
+        const [level] = await client.evaluate(
+          (id, m) => game.modules.get(m).api.getVariants(game.scenes.get(id)),
+          foreignId,
+          MODULE_ID
+        );
+        assert(level.active === "Default" && level.variants.includes(variantName), JSON.stringify(level));
+      }
+      await select(secondary, foreignId, variantName);
       await expectHidden(player, foreignId, "Translated guest", false);
       const authorityRevealed = await player.evaluate(() =>
         tokenEvents.some(

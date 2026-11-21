@@ -116,7 +116,9 @@ async function assertAudience(clients, messageId, recipient, outcome = null) {
         await page.evaluate((id) => ui.chat.updateMessage(game.messages.get(id)), messageId);
         const privateNotice = await page.$eval(selector, (row) => {
           const message = game.messages.get(row.dataset.messageId);
-          const notice = game.i18n.format("CHAT.PrivateRollContent", { user: message.author.name });
+          const user = message.author.name;
+          const notice =
+            game.i18n.lang === "de" ? `${user} hat verdeckt gewürfelt.` : `${user} privately rolled some dice`;
           return row.querySelector(".message-content")?.textContent.trim() === notice && message.export() === notice;
         });
         assert(privateNotice, "a bystander saw more than the private-roll notice in chat or its export");
@@ -182,7 +184,7 @@ const reset = (player, actorId, marks = 0) =>
   );
 
 await run(async () => {
-  const gm = await joinGamemaster();
+  const gm = await joinGamemaster("de");
   const setting = await gm.evaluate(
     (m, key) => {
       const registration = game.settings.settings.get(`${m}.${key}`);
@@ -225,8 +227,8 @@ await run(async () => {
       PLAYER_NAME,
       names
     );
-    const player = await join(PLAYER_NAME);
-    const observer = await join(names.observer);
+    const player = await join(PLAYER_NAME, "", "en");
+    const observer = await join(names.observer, "", "de");
     const otherGM = await join(names.otherGM);
     const clients = [gm, player, observer, otherGM];
     const recipient = await gm.evaluate(() => game.user.id);
@@ -252,10 +254,10 @@ await run(async () => {
       });
       await gm.locator(`#settings-config button[data-tab="${MODULE_ID}"]`).click();
       const select = `#settings-config select[name="${MODULE_ID}.${SETTING}"]`;
-      const choices = await gm.$eval(select, (el) => Array.from(el.options, (option) => option.value));
+      const choices = await gm.$eval(select, (el) => Object.fromEntries([...el.options].map((o) => [o.value, o.text])));
       assert(
-        choices.includes("off") && choices.includes(recipient) && !choices.includes(observerId),
-        "expected Off and named GM choices"
+        choices.off === "Off" && choices[recipient] && !(observerId in choices),
+        "expected English Off and named GM choices on the German client"
       );
       await gm.select(select, recipient);
       await gm.locator('#settings-config button[type="submit"]').click();
@@ -270,29 +272,32 @@ await run(async () => {
       const entries = await rulesJournals(gm);
       assert(entries.length === 1, `expected one rules journal, got ${entries.length}`);
       [rules] = entries;
-      await waitFor(observer, (id) => game.journal.get(id)?.testUserPermission(game.user, "OBSERVER"), rules._id);
-      const [title, pageTitle] = await gm.evaluate(() =>
-        game.i18n.lang === "de"
-          ? ["Homebrew Regeln", "Verdeckte Todesrettungswürfe"]
-          : ["House rules", "Private death saves"]
-      );
-      assert(
-        rules.name === title && rules.pages.some((page) => page.name === pageTitle),
-        "missing localized house rule"
-      );
-      await observer.evaluate(() => ui.sidebar.changeTab("journal", "primary"));
-      await observer
-        .locator(`#journal [data-entry-id="${rules._id}"] [data-action="activateEntry"]`)
-        .setTimeout(10000)
-        .click();
-      const content = ".journal-entry-content .journal-page-content";
-      await observer.waitForSelector(content, { visible: true, timeout: 10000 });
-      const rule = await observer.$eval(content, (element) => element.textContent.trim());
-      assert(rule && !/\bpublic(?:ly)?\b|öffentlich/i.test(rule), "the journal offers a public death save");
-      await observer.evaluate(async (id) => {
-        await game.journal.get(id).sheet.close();
-        ui.sidebar.changeTab("chat", "primary");
-      }, rules._id);
+    });
+
+    await check("German and English players read the same house rule in their own language", async () => {
+      for (const [client, title, heading, intro] of [
+        [player, "House rules", "Private death saves", "Make death saving throws"],
+        [observer, "Homebrew Regeln", "Verdeckte Todesrettungswürfe", "Todesrettungswürfe würfelst du"]
+      ]) {
+        await waitFor(client, (id) => game.journal.get(id)?.testUserPermission(game.user, "OBSERVER"), rules._id);
+        await client.evaluate(() => ui.sidebar.changeTab("journal", "primary"));
+        const link = `#journal [data-entry-id="${rules._id}"] [data-action="activateEntry"]`;
+        await client.waitForSelector(link, { visible: true });
+        assert((await client.$eval(link, (el) => el.textContent.trim())) === title, "wrong journal directory title");
+        await client.locator(link).click();
+        const content = ".journal-entry-content .journal-page-content";
+        await client.waitForSelector(content, { visible: true });
+        const rule = await client.$eval(content, (el) => ({
+          text: el.textContent.trim(),
+          heading: el.parentElement.querySelector(".journal-page-header")?.textContent.trim()
+        }));
+        assert(rule.heading === heading && rule.text.startsWith(intro), `unexpected house rule: ${rule.heading}`);
+        assert(!/\bpublic(?:ly)?\b|öffentlich/i.test(rule.text), "the journal offers a public death save");
+        await client.evaluate(async (id) => {
+          await game.journal.get(id).sheet.close();
+          ui.sidebar.changeTab("chat", "primary");
+        }, rules._id);
+      }
     });
 
     await check("only the owner and selected GM see the counters on a player character's sheet", async () => {
@@ -446,6 +451,34 @@ await run(async () => {
         );
       }
     });
+    if (!before.length) {
+      await check("players see the GM's own house rule wording in both languages", async () => {
+        const text = "<p>Würfelt erst auf mein Zeichen.</p>";
+        await gm.evaluate(
+          async (id, content) => {
+            const entry = game.journal.get(id);
+            await entry.update({ name: "Unsere Hausregeln" });
+            await entry.pages.get("MyDeathSavePage1").update({ name: "Am Spieltisch", "text.content": content });
+          },
+          rules._id,
+          text
+        );
+        for (const client of [player, observer]) {
+          await waitFor(
+            client,
+            (id, content) => {
+              const entry = game.journal.get(id);
+              const page = entry.pages.get("MyDeathSavePage1");
+              return (
+                entry.name === "Unsere Hausregeln" && page.name === "Am Spieltisch" && page.text.content === content
+              );
+            },
+            rules._id,
+            text
+          );
+        }
+      });
+    }
   } finally {
     await Promise.allSettled(
       [...originalModes].map(([page, mode]) =>

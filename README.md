@@ -2,6 +2,8 @@
 
 Small Foundry VTT fixes for one table, in one module. Requires Foundry VTT 14.
 
+Players see Table Tools in their Foundry client language (English or German), including safety messages sent by someone using the other language. Module settings and GM-only tools use English.
+
 ## Install
 
 Install the module from its manifest URL:

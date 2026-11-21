@@ -1,3 +1,4 @@
+import english from "../../lang/en.json" with { type: "json" };
 import { MODULE_ID } from "../constants.mjs";
 import { HIDDEN_CATEGORIES, HudCategories } from "./categories.mjs";
 import { actionGroups, showsDeathSaves } from "./groups.mjs";
@@ -262,7 +263,7 @@ export function setupActionHud() {
       onChange: refresh
     });
     game.settings.registerMenu(MODULE_ID, "actionHudCategories", {
-      name: "MY_MODULES.ActionHud.title",
+      name: english["MY_MODULES.ActionHud.title"],
       label: "MY_MODULES.ActionHud.categories",
       icon: "fa-solid fa-list-check",
       type: HudCategories,

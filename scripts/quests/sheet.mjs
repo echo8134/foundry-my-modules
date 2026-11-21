@@ -1,3 +1,4 @@
+import english from "../../lang/en.json" with { type: "json" };
 import { MODULE_ID } from "../constants.mjs";
 import {
   addObjective,
@@ -139,7 +140,7 @@ export class QuestSheet extends HandlebarsApplicationMixin(ApplicationV2) {
         })),
       statuses: QUEST_STATUSES.map((value) => ({
         value,
-        label: statusLabel(value),
+        label: english[statusLabel(value)],
         selected: quest.status === value
       })),
       statusLabel: statusLabel(quest.status),
@@ -249,7 +250,7 @@ export class QuestSheet extends HandlebarsApplicationMixin(ApplicationV2) {
         return;
       }
       case "addObjective":
-        return addObjective(this.entry, game.i18n.localize("MY_MODULES.Quests.NewObjective"));
+        return addObjective(this.entry);
       case "deleteObjective":
         return deleteObjective(this.entry, id);
       case "toggleDone":
@@ -261,7 +262,7 @@ export class QuestSheet extends HandlebarsApplicationMixin(ApplicationV2) {
       case "outdent":
         return moveObjective(this.entry, id, null, button.dataset.before || null);
       case "addReward":
-        return addReward(this.entry, game.i18n.localize("MY_MODULES.Quests.NewReward"));
+        return addReward(this.entry);
       case "deleteReward":
         return deleteReward(this.entry, rewardId);
       case "toggleRewardHidden":

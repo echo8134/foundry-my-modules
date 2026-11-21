@@ -55,9 +55,9 @@ function createTray(view, chatInput) {
   tray.setAttribute("role", "group");
   tray.setAttribute("aria-label", label("Title"));
   tray.innerHTML = `
-    ${FACES.map((faces) => `<button type="button" data-faces="${faces}"><img alt="" src="${foundry.utils.getRoute(`icons/svg/d${faces}-grey.svg`)}"><span>d${faces}</span><b hidden></b></button>`).join("")}
+    ${FACES.map((faces) => `<button type="button" data-faces="${faces}"><img alt="" src="${foundry.utils.getRoute(`icons/svg/d${faces}-grey.svg`)}"><span></span><b hidden></b></button>`).join("")}
     <input class="my-dice-modifier" type="number" step="1" value="0">
-    <div class="my-dice-modes"><button type="button" data-mode="kh" aria-pressed="false">ADV</button><button type="button" data-mode="kl" aria-pressed="false">DIS</button></div>
+    <div class="my-dice-modes"><button type="button" data-mode="kh" aria-pressed="false"></button><button type="button" data-mode="kl" aria-pressed="false"></button></div>
     <button type="button" class="my-dice-roll"><i class="fa-solid fa-dice" aria-hidden="true"></i></button>
     <div class="my-dice-quantity" popover><input type="number" min="1" max="999" step="1" required><button type="button"><i class="fa-solid fa-check" aria-hidden="true"></i></button></div>`;
   const buttons = Array.from(tray.querySelectorAll("[data-faces]"));
@@ -79,7 +79,9 @@ function createTray(view, chatInput) {
   describe(confirm, label("Add"));
   describe(quantity, label("Quantity"));
   for (const mode of modes) {
-    describe(mode, label(mode.dataset.mode === "kh" ? "Advantage" : "Disadvantage"));
+    const name = mode.dataset.mode === "kh" ? "Advantage" : "Disadvantage";
+    mode.textContent = label(`${name}Short`);
+    describe(mode, label(name));
     mode.addEventListener("click", () => {
       const selected = mode.getAttribute("aria-pressed") === "false";
       for (const other of modes) other.setAttribute("aria-pressed", String(selected && other === mode));
@@ -119,7 +121,9 @@ function createTray(view, chatInput) {
 
   for (const button of buttons) {
     const faces = Number(button.dataset.faces);
-    describe(button, game.i18n.format("MY_MODULES.DiceTray.Die", { die: `d${faces}` }));
+    const die = game.i18n.format("MY_MODULES.DiceTray.DieName", { faces });
+    button.querySelector("span").textContent = die;
+    describe(button, game.i18n.format("MY_MODULES.DiceTray.Die", { die }));
     button.addEventListener("click", async (event) => {
       if (event.ctrlKey || event.metaKey) {
         try {

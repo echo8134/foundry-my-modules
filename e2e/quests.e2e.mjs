@@ -389,8 +389,6 @@ await run(async () => {
       row = `${LOG} [data-quest-id="${questId}"]`;
       await gm.waitForSelector(`${sheet} [name=status]`);
       assert((await gm.$eval(`${sheet} [name=status]`, (field) => field.value)) === "hidden", "new status");
-      await change(gm, `${sheet} [name=name]`, NAME);
-      await waitFor(gm, (id, name) => game.journal.get(id).name === name, questId, NAME);
 
       await player.bringToFront();
       await player.keyboard.down("Control");
@@ -414,6 +412,93 @@ await run(async () => {
       assert(!(await player.$(`${LOG} [data-status=hidden]`)), "the player has a hidden tab");
     });
 
+    await check("quest defaults follow the player’s language until the GM writes their own text", async () => {
+      const previousGM = await gm.evaluate(() => game.i18n.lang);
+      const previousPlayer = await player.evaluate(() => game.i18n.lang);
+      try {
+        await gm.evaluate(async (id) => {
+          await game.i18n.setLanguage("de");
+          await game.modules.get("foundry-my-modules").api.quests.openQuest(game.journal.get(id).uuid);
+        }, questId);
+        assert(
+          (await gm.$eval(`${sheet} [data-action=addObjective]`, (el) => el.textContent.trim())) === "Add objective",
+          "German GM's editing controls"
+        );
+        await change(gm, `${sheet} [name=status]`, "available");
+        await waitFor(
+          player,
+          (id, m) => game.journal.get(id)?.getFlag(m, "quest")?.status === "available",
+          questId,
+          MODULE_ID
+        );
+        await click(gm, `${sheet} [data-action=addObjective]`);
+        await gm.waitForSelector(`${sheet} [name=objectiveText]`);
+        await click(gm, `${sheet} [data-action=addReward]`);
+        await waitFor(
+          player,
+          (m, id) => {
+            const quest = game.journal.get(id)?.getFlag(m, "quest");
+            return quest?.status === "available" && quest.objectives.length && quest.rewards.length;
+          },
+          MODULE_ID,
+          questId
+        );
+        for (const [language, expected] of [
+          ["en", ["New quest", "New objective", "New reward"]],
+          ["de", ["Neue Quest", "Neues Ziel", "Neue Belohnung"]]
+        ]) {
+          const native = await player.evaluate(
+            async (id, language, m) => {
+              await game.i18n.setLanguage(language);
+              const entry = game.journal.get(id);
+              entry.reset();
+              await game.modules.get(m).api.quests.openQuest(entry.uuid);
+              return [entry.name, entry.pages.find((page) => page.getFlag(m, "questPage") === "description").name];
+            },
+            questId,
+            language,
+            MODULE_ID
+          );
+          assert(
+            native[0] === expected[0] && native[1] === (language === "de" ? "Beschreibung" : "Description"),
+            native.join("/")
+          );
+          const labels = await player.$eval(sheet, (el) =>
+            [".quest-title", ".objective-text", ".reward-label"].map((s) => el.querySelector(s).textContent.trim())
+          );
+          assert(JSON.stringify(labels) === JSON.stringify(expected), `${language}: ${JSON.stringify(labels)}`);
+        }
+        await change(gm, `${sheet} [name=name]`, "New quest");
+        await waitFor(gm, (id, m) => !game.journal.get(id).getFlag(m, "quest").untitled, questId, MODULE_ID);
+        await change(gm, `${sheet} [name=objectiveText]`, "New objective");
+        await waitFor(
+          gm,
+          (id, m) => game.journal.get(id).getFlag(m, "quest").objectives[0].text === "New objective",
+          questId,
+          MODULE_ID
+        );
+        await change(gm, `${sheet} [name=rewardText]`, "New reward");
+        await waitFor(
+          player,
+          (s) =>
+            ["New quest", "New objective", "New reward"].every((value) =>
+              document.querySelector(s)?.textContent.includes(value)
+            ),
+          sheet
+        );
+      } finally {
+        await gm.evaluate((lang) => game.i18n.setLanguage(lang), previousGM);
+        await player.evaluate((lang) => game.i18n.setLanguage(lang), previousPlayer);
+      }
+      await click(player, `${sheet} [data-action=close]`);
+      await click(gm, `${sheet} [data-action=deleteObjective]`);
+      await gm.waitForSelector(`${sheet} [data-objective-id]`, { hidden: true });
+      await click(gm, `${sheet} [data-action=deleteReward]`);
+      await gm.waitForSelector(`${sheet} [data-reward-id]`, { hidden: true });
+      await change(gm, `${sheet} [name=name]`, NAME);
+      await waitFor(gm, (id, name) => game.journal.get(id).name === name, questId, NAME);
+    });
+
     await check("new quest pages have stable script identifiers and names", async () => {
       const pages = await gm.evaluate(
         (m, id) => game.journal.get(id).pages.map((page) => [page.getFlag(m, "questPage"), page.name]),
@@ -422,7 +507,7 @@ await run(async () => {
       );
       const names = Object.fromEntries(pages);
       assert(
-        pages.length === 2 && names.description === "Beschreibung" && names.gmNotes === "SL-Notizen",
+        pages.length === 2 && names.description === "Description" && names.gmNotes === "GM notes",
         `unexpected quest pages: ${JSON.stringify(pages)}`
       );
     });
@@ -785,8 +870,7 @@ await run(async () => {
       await gm.click(row, { button: "right" });
       await gm.waitForSelector("#context-menu .context-item", { visible: true });
       await gm.$$eval("#context-menu .context-item", (items) => {
-        const label = game.i18n.localize("MY_MODULES.Quests.Status.available");
-        items.find((item) => item.textContent.trim() === label).click();
+        items.find((item) => item.textContent.trim() === "Available").click();
       });
       await pressButton(player, `${LOG} [data-action=tab][data-status=available]`);
       await waitFor(player, (r) => document.querySelector(r)?.closest(".tab.active[data-tab=available]"), row);
