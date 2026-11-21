@@ -1,7 +1,7 @@
 ## What changed and why
 
 <!-- Describe the change and the problem it solves. Add “Closes #123” if it resolves an issue.
-For a new module feature, start the PR title with “feat:” or “feat(scope):” to publish a minor release. -->
+Fixes and small features get a patch release. For a larger feature, use a title like “feat: [minor] add a quest board” or “feat(quests): [minor] add a quest board”. -->
 
 ## Verification
 
