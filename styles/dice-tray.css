@@ -1,63 +1,87 @@
+:root {
+  --my-dice-tray-height: 2rem;
+}
+
+#chat-message:has(> .my-dice-tray) {
+  row-gap: 0;
+}
+#chat-message:not(#chat-popout *) > .menu-container:has(~ .my-dice-tray) {
+  margin-block-end: 0.5rem;
+}
+.chat-sidebar #chat-message:has(> .my-dice-tray) {
+  flex-basis: calc(var(--chat-input-height) + 50px + var(--my-dice-tray-height));
+}
+#chat-notifications:has(> #chat-message > .my-dice-tray) {
+  grid-template-rows: 1fr calc(
+      var(--chat-input-height) +
+      var(--chat-menu-height, 0px) +
+      10px +
+      var(--my-dice-tray-height)
+    );
+}
+#chat-notifications:has(.my-dice-tray:focus-within) {
+  --chat-menu-height: 0px;
+}
+#chat-notifications #chat-message:has(> .my-dice-tray:focus-within) > .menu-container {
+  display: none;
+}
+
 .my-dice-tray {
-  position: relative;
+  order: 1;
+  flex: 0 0 var(--my-dice-tray-height);
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr)) 2.6rem 2.1rem minmax(0, 1.1fr);
-  align-items: center;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) 2.25rem 3.25rem minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: 2px;
-  padding: 6px 2px 2px;
-  flex: none;
+  padding: 2px;
+  border: 2px solid var(--border-color, var(--color-cool-4));
+  border-top: 0;
+  background: var(--background-color, var(--color-cool-5));
   pointer-events: auto;
 }
-.my-dice-tray button,
-.my-dice-tray input {
+.my-dice-tray .ui-control,
+.my-dice-tray .my-dice-modifier {
   width: 100%;
+  height: 100%;
   min-width: 0;
+  min-height: 0;
   padding: 0;
   margin: 0;
+  line-height: 1;
   text-align: center;
+}
+.my-dice-tray .ui-control:focus-visible {
+  outline: 2px solid var(--control-active-border-color);
+  outline-offset: -2px;
 }
 .my-dice-tray [data-faces] {
   position: relative;
   display: grid;
-  place-items: center;
-  height: 30px;
+  place-content: center;
+  justify-items: center;
+  gap: 0;
+  font-size: var(--font-size-11);
 }
-.my-dice-tray [data-faces] img,
-.my-dice-tray [data-faces] span {
-  grid-area: 1 / 1;
-}
-.my-dice-tray [data-faces] img {
-  width: 100%;
-  height: 26px;
-  border: 0;
-}
-.my-dice-tray [data-faces] span {
-  color: black;
-  text-shadow: 0 0 2px white;
-  font: bold 11px / 1 sans-serif;
+.my-dice-tray [data-faces] i {
+  font-size: var(--font-size-12);
 }
 .my-dice-tray [data-faces] b {
   position: absolute;
-  right: -1px;
-  top: -6px;
-  padding: 1px 3px;
-  border-radius: 4px;
-  color: white;
-  background: #583025;
-  font: bold 10px / 1 sans-serif;
+  inset: 0 0 auto auto;
+  padding: 0 2px;
+  border-radius: 2px;
+  background: var(--color-warm-3);
+  color: var(--color-light-1);
+  font-size: var(--font-size-10);
 }
 .my-dice-tray .my-dice-modes {
   display: grid;
-  gap: 1px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-self: center;
+  height: 1.5rem;
 }
-.my-dice-modes button {
-  height: 15px;
-  line-height: 1;
-  font-size: 10px;
-}
-.my-dice-modes [aria-pressed="true"] {
-  color: white;
-  background: #623627;
+.my-dice-modes .ui-control {
+  font-size: var(--font-size-10);
 }
 .my-dice-tray .my-dice-quantity:popover-open {
   position: fixed;
@@ -65,12 +89,87 @@
   margin: 0;
   padding: 4px;
   display: flex;
+  align-items: center;
   gap: 3px;
   width: 6rem;
 }
-.my-dice-quantity button {
-  flex: 0 0 1.6rem;
+.my-dice-quantity input {
+  min-width: 0;
 }
-#chat-notifications:has(> .my-dice-tray) {
-  grid-template-rows: 1fr calc(var(--chat-input-height) + var(--chat-menu-height, 0px) + 10px) auto;
+.my-dice-quantity .ui-control {
+  flex: 0 0 1.6rem;
+  height: 1.6rem;
+}
+
+@property --my-chat-detached {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+@property --my-chat-body-height {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 60px;
+}
+
+/* Native margins establish the final layout. Translate the columns while it changes. */
+#ui-right {
+  --my-sidebar-offset: var(--sidebar-width);
+  --my-sidebar-duration: 250ms;
+  --my-chat-body-height: var(--chat-input-height);
+  /* Between the centers of the two chat hosts: sidebar, tab strip and column gap. */
+  --my-chat-host-distance: calc(var(--sidebar-width) + 48px + 16px);
+  transition:
+    --my-chat-detached var(--my-sidebar-duration) ease,
+    --my-chat-body-height var(--my-sidebar-duration) ease;
+}
+#ui-right:has(#sidebar-content.expanded) {
+  --my-sidebar-offset: 0px;
+}
+#ui-right > :is(#sidebar, #ui-right-column-1) {
+  position: relative;
+  right: var(--my-sidebar-offset);
+  translate: var(--my-sidebar-offset);
+  transition: translate var(--my-sidebar-duration) ease;
+}
+#ui-right #sidebar-content {
+  transition: none;
+}
+/* Keep Foundry's scroll gutter on the same side while the panel slides out. */
+#ui-right #sidebar-content:not(.expanded) {
+  margin-left: calc(0px - var(--sidebar-scroll-gutter));
+  margin-right: calc(0px - var(--sidebar-width));
+  clip-path: inset(0 0 0 var(--sidebar-scroll-gutter));
+}
+#ui-right:has(#chat-notifications > #chat-message) {
+  --my-chat-detached: 1;
+}
+#ui-right:has(#chat-notifications > #chat-message):not(:has(#chat-notifications .editor-container:focus-within)) {
+  --my-chat-body-height: 60px;
+}
+
+/* Both hosts use the same progress when Foundry reparents the editor, including on reversal. */
+#sidebar-content.active-chat .chat-form:has(> #chat-message) {
+  translate: calc(-1 * var(--my-chat-detached) * var(--my-chat-host-distance)) calc(-10px * var(--my-chat-detached));
+}
+#sidebar-content.active-chat .chat-form > #chat-message {
+  --chat-input-height: var(--my-chat-body-height);
+  margin-inline: calc(-4px * var(--my-chat-detached));
+}
+#ui-right #chat-notifications:has(> #chat-message) {
+  translate: calc((1 - var(--my-chat-detached)) * var(--my-chat-host-distance))
+    calc((1 - var(--my-chat-detached)) * 10px);
+}
+#ui-right #chat-notifications > #chat-message:has(> .my-dice-tray) {
+  margin-inline: calc((1 - var(--my-chat-detached)) * 4px);
+  min-height: calc(var(--my-chat-body-height) + var(--my-dice-tray-height));
+}
+#sidebar-content.expanded.active-chat:has(.chat-form > #chat-message),
+#sidebar-content.expanded.active-chat #chat:has(.chat-form > #chat-message) {
+  overflow: visible;
+}
+@media (prefers-reduced-motion: reduce) {
+  #ui-right {
+    --my-sidebar-duration: 0s;
+  }
 }
