@@ -2,7 +2,7 @@ import { MODULE_ID } from "../constants.mjs";
 
 const channel = `module.${MODULE_ID}`;
 const boundaries = "safetyBoundaries";
-export const SIGNALS = { pause: "fa-pause", play: "fa-play", fastForward: "fa-forward", rewind: "fa-backward" };
+export const SIGNALS = { fastForward: "fa-forward", rewind: "fa-backward" };
 export const SAFETY_TOOLS = ["signals", "xCard", "linesVeils", "openDoor"];
 export const enabled = (tool) => game.settings.get(MODULE_ID, tool);
 const label = (key) => game.i18n.localize(`MY_MODULES.Safety.${key}`);

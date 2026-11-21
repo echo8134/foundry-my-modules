@@ -202,6 +202,8 @@
   --page-control-color: #dcc495;
   display: grid;
   grid-template-columns: auto auto auto;
+  justify-items: center;
+  max-width: 100%;
   align-items: center;
   gap: 5px 8px;
   height: auto;
@@ -212,11 +214,11 @@
 #hotbar > #my-action-hud {
   grid-column: 1 / -1;
   grid-row: 1;
+  justify-self: stretch;
   position: relative;
   inset: auto;
   width: auto;
   max-width: none;
-  contain: inline-size;
   pointer-events: auto;
 }
 
@@ -237,7 +239,7 @@
   height: auto;
 }
 
-#hotbar:is(.compact, .min):has(> #my-action-hud) #action-bar {
+#hotbar:is(.compact, .min, .sm, .md.offset):has(> #my-action-hud) #action-bar {
   grid-template-columns: repeat(5, var(--hotbar-size));
 }
 

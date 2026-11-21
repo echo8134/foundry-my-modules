@@ -11,7 +11,7 @@ class SafetyWindow extends HandlebarsApplicationMixin(ApplicationV2) {
     actions: {
       signal: (_event, button) => request({ action: "signal", signal: button.dataset.signal }),
       sendCard(_event, button) {
-        const input = button.closest("section").querySelector("input");
+        const input = button.closest(".safety-body").querySelector("#safety-note");
         if (request({ action: "xCard", note: input.value.trim() })) input.value = "";
       },
       addEntry(_event, button) {
@@ -40,20 +40,12 @@ class SafetyWindow extends HandlebarsApplicationMixin(ApplicationV2) {
     tools: { template: `modules/${MODULE_ID}/scripts/safety/window.hbs` }
   };
 
-  tabGroups = { safety: "card" };
-
   async _prepareContext() {
-    const card = enabled("xCard");
-    const limits = enabled("linesVeils");
-    if (!card) this.tabGroups.safety = "limits";
-    else if (!limits) this.tabGroups.safety = "card";
     const entries = game.settings.get(MODULE_ID, "safetyBoundaries");
     return {
-      card,
-      limits,
+      card: enabled("xCard"),
+      limits: enabled("linesVeils"),
       signals: enabled("signals") && SIGNALS,
-      tabs: card && limits,
-      showCard: this.tabGroups.safety === "card",
       door: enabled("openDoor"),
       gm: game.user.isGM,
       notes: game.user.isGM ? sessionNotes : [],
@@ -83,7 +75,6 @@ class SafetyWindow extends HandlebarsApplicationMixin(ApplicationV2) {
 let safetyWindow;
 function open() {
   safetyWindow ??= new SafetyWindow();
-  safetyWindow.tabGroups.safety = enabled("xCard") ? "card" : "limits";
   return safetyWindow.render({ force: true });
 }
 const refreshWindow = () => safetyWindow?.render();

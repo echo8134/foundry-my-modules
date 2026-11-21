@@ -63,10 +63,10 @@ A token of a villager, a guard or a hunter gets its own name when the GM puts it
 
 Open the card icon below **Quests**. The GM can enable each of the following tools independently in the world settings. All four start enabled.
 
-- **Table signals** appear above the tabs. Choose **Pause** to ask the table to stop, **Play** when you are ready to continue, **Fast-forward** to skip a passage, or **Rewind** to revisit it. Everyone sees the symbol and message, even with a character sheet open. The group decides together when to continue.
-- **X-card** asks the table to move on. Write an optional note of up to 200 characters for the active GM, then click **Show the X-card**. Everyone sees a card and a public chat message. The public overlay closes after a few seconds or on click. If you include a note, the active GM can select its text and dismiss it with the button. Each GM tab keeps its ten latest notes in the safety window until the tab reloads.
-- **Lines & veils** keeps two lists between sessions. Add a line for a topic to leave out, or a veil for something that can happen off screen. Any user can add an entry. GMs can edit it with the check mark or remove it with the trash button.
-- **Open door** posts a break request to public chat under your own name.
+- Choose **Pause** to show everyone the X-card and post its public chat message. To add a private note, expand **X-card**, enter up to 200 characters, then click **Pause**. Only the active GM receives the note. Each of their tabs keeps its ten latest notes until it reloads.
+- Choose **Fast-forward** to skip a passage or **Rewind** to revisit it. Everyone sees the signal, even with the safety window closed and a character sheet open.
+- Choose **I need a break** to post a break request to public chat under your own name.
+- Expand **Lines & veils** to read or add a boundary. Use a line for a topic to leave out, or a veil for something that can happen off screen. GMs can edit or remove entries.
 
 Table signals and X-cards play a short tone at your interface volume. Turn off **Safety alert sound** in your client settings to mute it.
 
@@ -99,7 +99,7 @@ As GM, click **Create quest** to start a hidden quest in the journal folder name
 
 - Edit the name, giver, and objectives directly on the sheet. Drop an Actor onto the giver section to use its name and portrait, or choose a portrait with the image picker.
 - Use the checkbox to mark an objective done and the eye to hide it. Drag the grip to reorder objectives. Indent a goal beneath the preceding goal, or outdent it to return it to the top level.
-- Use the pencil beside a page to open Foundry's page editor. New quests have a description page and a GM notes page. Players see the pages they can observe and the public objectives and rewards. Open sheets update when the journal changes.
+- Players see the description directly below the quest header, followed by objectives and rewards. Without a portrait or giver, the status and primary quest star sit beside the title. Use the pencil to edit a page. New quests also have a GM notes page. Open sheets update when the journal changes.
 
 #### Rewards, personal quests, and the tracker
 
@@ -127,17 +127,28 @@ if (first) await quests.openQuest(first.uuid);
 </details>
 
 <details>
+<summary><h3>Chat dice tray</h3></summary>
+
+Click a die beneath the chat input to add it to the roll. The count above each die follows your draft. Shift-click to enter a quantity. Ctrl-click or Cmd-click rolls one die immediately and keeps your draft in the editor.
+
+Use the rightmost dice button to submit the draft with the tray's modifier. For a sum with one d20, **ADV** rolls two d20s and keeps the higher result. **DIS** keeps the lower result.
+
+</details>
+
+<details>
 <summary><h3>Action HUD for D&D 5e</h3></summary>
 
-Select a token you own to see its combat actions above the hotbar. The GM can use any token. If you select several, the bar follows the first. Drag the actor’s name to move the bar. Double-click the name to return the bar to the hotbar. **Alt+H** toggles the client setting **Show action HUD**.
+Select a token you own to see its combat actions above the macro slots. The GM can use any token. If you select several, the bar follows the first. **Alt+H** toggles **Show action HUD** for your client.
 
 Players have **Always show my character’s action HUD** enabled by default. When the first selected token is yours, the HUD shows its actions. Otherwise, it shows your assigned character if you own it, even on a scene without that character’s token. Players can turn this off in their client settings.
 
-Enable **Combine action HUD and hotbar** in your client settings to dock the tabs and macro slots in one frame. Click macros, use their number keys, and change macro pages as usual. Turning the setting off restores your separate HUD at its previous position.
+The tabs and macro slots share a frame by default. To move the HUD separately, turn on **Detach action HUD from hotbar** and drag the actor's name. Double-click the name to reset its position. Turning off the setting docks the tabs again. Updating the module preserves a saved layout choice.
+
+Open **Action HUD** in the module settings and choose **Visible action categories** to select your tabs. **Conditions** and **Rests** start hidden. Each player can choose their own categories.
 
 Click a group to open it and click it again to fold it away. **Attacks**, **Spells**, **Features**, and **Items** use the item through dnd5e. The attack list shows equipped weapons and other usable items with an attack activity. The spell list starts with cantrips and groups spells by level. Spells with the at-will, ritual, innate, or pact casting method appear even when unprepared. Slot counts, uses, and quantities update as you play. Right-click an item to open its sheet.
 
-**Rolls** shows modifiers for ability checks, saving throws, and skills. **Conditions** toggles dnd5e effects. Click Exhaustion to add one level or right-click it to remove one. **Rests** starts a short or long rest. When your character is unconscious, open the skull tab **Death Saves** to roll with the same rules as the character sheet. Shift-click to skip the configuration dialog where dnd5e supports it.
+**Checks/Saves** shows modifiers for ability checks, saving throws, and skills. **Conditions** toggles dnd5e effects. Click Exhaustion to add one level or right-click it to remove one. **Rests** starts a short or long rest. When your character is unconscious, open the skull tab **Death Saves** to roll with the same rules as the character sheet. Shift-click to skip the configuration dialog where dnd5e supports it.
 
 </details>
 
@@ -197,7 +208,7 @@ To choose a higher version, such as a major release, set it in both `module.json
 
 ## Credits
 
-The Pause, Resume, Fast-forward and Rewind signals adapt _Script Change_ by Beau Jágr Sheldon for Foundry VTT. [Script Change RPG Toolbox](https://briebeau.com/scriptchange) · [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+The Fast-forward and Rewind signals adapt _Script Change_ by Beau Jágr Sheldon for Foundry VTT. [Script Change RPG Toolbox](https://briebeau.com/scriptchange) · [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
 
 ## License
 

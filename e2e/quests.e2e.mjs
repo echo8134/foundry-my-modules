@@ -140,7 +140,7 @@ async function checkQuestLinks(gm, player, parentId) {
   );
   const childId = await gm.evaluate(async (m) => {
     const entry = await JournalEntry.create({
-      name: "Liefere das Kraut",
+      name: "Liefere das Kraut aus den Bergen an die Apothekerin auf dem Alten Markt",
       flags: { [m]: { quest: { status: "active" } } }
     });
     return entry.id;
@@ -169,7 +169,17 @@ async function checkQuestLinks(gm, player, parentId) {
       parentId
     );
     await shortcut(player, "Shift");
-    await player.waitForSelector(child, { visible: true });
+    await player.waitForSelector(`${child} .quest-marks .fa-star`, { visible: true });
+    const oneRow = await player.$eval(`${child} .quest-heading`, (heading) => {
+      const title = heading.querySelector(".quest-title").getBoundingClientRect();
+      const marks = heading.querySelector(".quest-marks").getBoundingClientRect();
+      return (
+        Math.abs(title.top - marks.top) < 2 &&
+        title.right <= marks.left &&
+        Math.abs(heading.getBoundingClientRect().right - marks.right) < 2
+      );
+    });
+    assert(oneRow, "the long title and its status and primary star should occupy separate columns in one row");
 
     await change(gm, `${parent} [name=status]`, "available");
     const tab = `${LOG} [data-group=status].tab.active`;
@@ -515,6 +525,28 @@ await run(async () => {
       assert(uuid === null, `renamed giver UUID: ${uuid}`);
     });
 
+    await check("the giver portrait appears beside the status, title and localized byline", async () => {
+      await gm.evaluate(
+        (m, id) => game.journal.get(id).update({ [`flags.${m}.quest.giver.img`]: "icons/svg/mystery-man.svg" }),
+        MODULE_ID,
+        questId
+      );
+      await player.waitForSelector(`${sheet} .giver-portrait`, { visible: true });
+      const grouped = await player.$eval(`${sheet} .quest-header`, (header) => {
+        const portrait = header.querySelector(".giver-portrait").getBoundingClientRect();
+        const status = header.querySelector(".quest-marks").getBoundingClientRect();
+        const title = header.querySelector(".quest-title").getBoundingClientRect();
+        const byline = header.querySelector(".quest-byline");
+        return (
+          portrait.right <= title.left &&
+          status.bottom <= title.top &&
+          title.bottom <= byline.getBoundingClientRect().top &&
+          byline.textContent.trim() === `${game.i18n.localize("MY_MODULES.Quests.Giver")} · Carolyn`
+        );
+      });
+      assert(grouped, "expected the portrait beside a stacked status, title and byline");
+    });
+
     await check("the GM nests, promotes and drags an objective without changing its ID", async () => {
       const second = `${sheet} [data-objective-id="${hiddenId}"]`;
       const first = `${sheet} [data-objective-id="${visibleId}"]`;
@@ -598,6 +630,7 @@ await run(async () => {
               "JournalEntryPage",
               pages.map((p, i) => ({
                 _id: p.id,
+                ...(i === 0 ? { name: "Prologue" } : {}),
                 "text.content": `<p>${i === 0 ? description : notes}</p>`
               }))
             );
@@ -623,13 +656,61 @@ await run(async () => {
           sheet,
           DESCRIPTION
         );
+        const intro = await player.$eval(`${sheet} .quest-header + .quest-intro`, (article) => ({
+          text: article.textContent.trim(),
+          heading: Boolean(article.querySelector("h2")),
+          objectivesNext: article.nextElementSibling.matches(".quest-objectives"),
+          rewardsNext: article.nextElementSibling.nextElementSibling.matches(".quest-rewards")
+        }));
+        assert(
+          intro.text === DESCRIPTION && !intro.heading && intro.objectivesNext && intro.rewardsNext,
+          `unexpected description placement: ${JSON.stringify(intro)}`
+        );
+        assert(await gm.$(`${sheet} .quest-intro [data-action=editPage]`), "the GM cannot edit the introduction");
         const text = await player.$eval(sheet, (el) => el.textContent);
+        assert(text.split(DESCRIPTION).length === 2, "the description should appear once");
         assert(
           !text.includes(NOTES) && !text.includes("Schattenring"),
           "private notes or reward reached the player sheet"
         );
       }
     );
+
+    await check("a German player sees Ziele, Belohnungen and Questgeber on the quest sheet", async () => {
+      const previous = await player.evaluate(() => game.i18n.lang);
+      try {
+        await player.evaluate(async (id) => {
+          await game.i18n.setLanguage("de");
+          await game.modules.get("foundry-my-modules").api.quests.openQuest(game.journal.get(id).uuid);
+        }, questId);
+        const labels = await player.$eval(sheet, (el) =>
+          [".quest-objectives h2", ".quest-rewards h2", ".quest-byline"].map((s) =>
+            el.querySelector(s).textContent.trim()
+          )
+        );
+        assert(labels.join(" / ") === "Ziele / Belohnungen / Questgeber · Carolyn", labels.join(" / "));
+      } finally {
+        await player.evaluate((lang) => game.i18n.setLanguage(lang), previous);
+      }
+    });
+
+    await check("an unflagged description from an older quest also introduces the sheet", async () => {
+      await gm.evaluate(
+        async (m, id) => {
+          const page = game.journal.get(id).pages.find((page) => page.getFlag(m, "questPage") === "description");
+          await page.unsetFlag(m, "questPage");
+          await page.update({ name: "Beschreibung", "text.content": "<p>Legacy introduction</p>" });
+        },
+        MODULE_ID,
+        questId
+      );
+      await waitFor(
+        player,
+        (s) =>
+          document.querySelector(`${s} .quest-header + .quest-intro`)?.textContent.trim() === "Legacy introduction",
+        sheet
+      );
+    });
 
     await check("text rewards stay on the sheet and retain their visibility across imports", async () => {
       await click(gm, `${sheet} [data-action=addReward]`);

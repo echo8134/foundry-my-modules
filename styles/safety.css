@@ -40,6 +40,7 @@
   color: #35261d;
   font: inherit;
   line-height: 1.15;
+  white-space: normal;
 }
 
 .safety-signals button:is(:hover, :focus-visible) {
@@ -53,39 +54,25 @@
   color: #71372d;
 }
 
-.safety-tabs {
-  display: flex;
-  gap: 0.5rem;
-  padding: 0.7rem 1rem;
-  background:
-    linear-gradient(#29201ab3, #29201ab3),
-    url("../assets/quests/board.webp") center / cover;
+.safety-signals small {
+  font-size: 0.8rem;
+  color: #59483b;
 }
 
-.safety-tabs button,
-.safety-body [data-action="sendCard"] {
+.safety-body > details {
+  padding: 0.6rem 1rem;
+  border-top: 1px solid #a28b6c;
+}
+
+.safety-body summary {
+  cursor: pointer;
   font:
-    1.06rem / 1 "Quest Fell SC",
+    1.1rem / 1.3 "Quest Fell SC",
     Georgia,
     serif;
 }
-
-.safety-tabs button {
-  background: #c9b799;
-  color: #32261d;
-}
-.safety-tabs button.active {
-  color: #38261d;
-  background: #f6e9cb;
-  box-shadow: inset 0 -3px #804338;
-}
-
-.safety-body .tab {
-  display: none;
-  padding: 1.1rem 1.3rem;
-}
-.safety-body .tab.active {
-  display: block;
+.safety-body details[open] > summary {
+  margin-bottom: 0.6rem;
 }
 
 .safety-prompt {
@@ -136,16 +123,6 @@
   font-size: 0.9rem;
   color: #59483b;
 }
-.safety-body [data-action="sendCard"] {
-  width: 100%;
-  color: #fff2d9;
-  background: #71372d;
-  border-color: #573026;
-}
-.safety-body [data-action="sendCard"]:hover {
-  background: #884336;
-}
-
 .safety-columns {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -183,21 +160,6 @@
   height: 1.6rem;
   padding: 0;
 }
-.safety-body footer {
-  border-top: 1px solid #a28b6c;
-  padding: 0.6rem 1.3rem;
-}
-.safety-body :where(footer) small {
-  display: block;
-  margin-top: 0.2rem;
-  color: #59483b;
-}
-.safety-body footer button {
-  height: auto;
-  min-height: 1.8rem;
-  white-space: normal;
-}
-
 #my-safety-announcements {
   position: fixed;
   inset: 3.5rem 0 auto;

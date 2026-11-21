@@ -2,17 +2,22 @@
   {{#if quest}}
   <header class="quest-header quest-giver">
     {{#if quest.giver.img}}<img class="giver-portrait" src="{{quest.giver.img}}" alt="">{{/if}}
-    <div class="quest-heading">
+    <div class="quest-heading{{#unless (or quest.giver.name quest.giver.img)}} compact-heading{{/unless}}">
+      <div class="quest-marks">
+        {{#if gm}}
+          <select class="quest-stamp" name="status" aria-label="{{localize 'MY_MODULES.Quests.StatusLabel'}}">
+            {{#each statuses}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{localize label}}</option>{{/each}}
+          </select>
+        {{else}}
+          <span class="quest-stamp">{{localize statusLabel}}</span>
+        {{/if}}
+        {{#if quest.primary}}<span role="img" aria-label="{{localize 'MY_MODULES.Quests.Primary'}}" title="{{localize 'MY_MODULES.Quests.Primary'}}"><i class="fa-solid fa-star" inert></i></span>{{/if}}
+      </div>
       {{#if gm}}
-        <select class="quest-stamp" name="status" aria-label="{{localize 'MY_MODULES.Quests.StatusLabel'}}">
-          {{#each statuses}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{localize label}}</option>{{/each}}
-        </select>
         <input type="text" class="quest-title" name="name" value="{{quest.name}}" required
                aria-label="{{localize 'MY_MODULES.Quests.QuestName'}}">
         <label class="quest-byline">{{localize "MY_MODULES.Quests.Giver"}} <input type="text" name="giver" value="{{quest.giver.name}}"></label>
       {{else}}
-        <span class="quest-stamp">{{localize statusLabel}}</span>
-        {{#if quest.primary}}<span><i class="fa-solid fa-star" inert></i> {{localize "MY_MODULES.Quests.Primary"}}</span>{{/if}}
         <h1 class="quest-title">{{quest.name}}</h1>
         {{#if quest.giver.name}}<p class="quest-byline">{{localize "MY_MODULES.Quests.Giver"}} · {{quest.giver.name}}</p>{{/if}}
       {{/if}}
@@ -24,6 +29,20 @@
       </div>
     {{/if}}
   </header>
+
+  {{#*inline "pageControls"}}
+    {{#if restricted}}<i class="fa-solid fa-user-lock" title="{{localize 'MY_MODULES.Quests.RestrictedPage'}}"></i>{{/if}}
+    <button type="button" data-action="editPage" class="icon fa-solid fa-pen"
+            aria-label="{{localize 'JOURNAL.EditPage'}}" data-tooltip="JOURNAL.EditPage"></button>
+  {{/inline}}
+  {{#with description}}
+    {{#if (or html @root.gm)}}
+      <article class="quest-intro" data-page-id="{{id}}">
+        {{#if @root.gm}}<div class="quest-intro-tools">{{> pageControls}}</div>{{/if}}
+        <div class="quest-page-content">{{{html}}}</div>
+      </article>
+    {{/if}}
+  {{/with}}
 
   <section class="quest-objectives">
     <h2>{{localize "MY_MODULES.Quests.Objectives"}}</h2>
@@ -114,11 +133,7 @@
       <article data-page-id="{{id}}">
         <header>
           <h2>{{name}}</h2>
-          {{#if @root.gm}}
-            {{#if restricted}}<i class="fa-solid fa-user-lock" title="{{localize 'MY_MODULES.Quests.RestrictedPage'}}"></i>{{/if}}
-            <button type="button" data-action="editPage" class="icon fa-solid fa-pen"
-                    aria-label="{{localize 'JOURNAL.EditPage'}}" data-tooltip="JOURNAL.EditPage"></button>
-          {{/if}}
+          {{#if @root.gm}}{{> pageControls}}{{/if}}
         </header>
         <div class="quest-page-content">{{{html}}}</div>
       </article>

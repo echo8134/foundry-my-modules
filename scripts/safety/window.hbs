@@ -1,25 +1,27 @@
 <div class="safety-body">
-  {{#if signals}}
+  {{#if (or card signals door)}}
   <div class="safety-signals" role="group" aria-label="{{localize 'MY_MODULES.Safety.signals.Title'}}">
+    {{#if card}}
+    <button type="button" data-action="sendCard" data-tooltip="MY_MODULES.Safety.Send">
+      <i class="fa-solid fa-pause" aria-hidden="true"></i>{{localize "MY_MODULES.Safety.signals.pause.Label"}}
+    </button>
+    {{/if}}
     {{#each signals}}
     <button type="button" data-action="signal" data-signal="{{@key}}" data-tooltip="MY_MODULES.Safety.signals.{{@key}}.Message">
       <i class="fa-solid {{this}}" aria-hidden="true"></i>{{localize (concat "MY_MODULES.Safety.signals." @key ".Label")}}
     </button>
     {{/each}}
+    {{#if door}}
+    <button type="button" data-action="openDoor">
+      <i class="fa-solid fa-door-open" aria-hidden="true"></i>{{localize "MY_MODULES.Safety.BreakLabel"}}
+      <small>{{localize "MY_MODULES.Safety.Named"}}</small>
+    </button>
+    {{/if}}
   </div>
   {{/if}}
-  {{#if tabs}}
-  <nav class="tabs safety-tabs" aria-label="{{localize 'MY_MODULES.Safety.Title'}}">
-    <button type="button" class="{{#if showCard}}active{{/if}}" data-action="tab" data-group="safety" data-tab="card" aria-pressed="{{showCard}}">
-      <i class="fa-solid fa-cards-blank" inert></i>{{localize "MY_MODULES.Safety.Card"}}
-    </button>
-    <button type="button" class="{{#unless showCard}}active{{/unless}}" data-action="tab" data-group="safety" data-tab="limits" aria-pressed="{{#if showCard}}false{{else}}true{{/if}}">
-      <i class="fa-solid fa-book-open" inert></i>{{localize "MY_MODULES.Safety.Limits"}}
-    </button>
-  </nav>
-  {{/if}}
   {{#if card}}
-  <section class="tab safety-card-form {{#if showCard}}active{{/if}}" data-group="safety" data-tab="card">
+  <details data-sync="card">
+    <summary>{{localize "MY_MODULES.Safety.Card"}}</summary>
     <div class="safety-prompt">
       <span class="safety-symbol" aria-hidden="true">X</span>
       <h2>{{localize "MY_MODULES.Safety.Prompt"}}</h2>
@@ -27,17 +29,17 @@
     <label for="safety-note">{{localize "MY_MODULES.Safety.Note"}}</label>
     <input id="safety-note" type="text" maxlength="200" autocomplete="off">
     <p class="safety-hint">{{localize "MY_MODULES.Safety.Privacy"}}</p>
-    <button type="button" data-action="sendCard">{{localize "MY_MODULES.Safety.Send"}}</button>
     {{#if notes}}
     <h3>{{localize "MY_MODULES.Safety.SessionNotes"}}</h3>
     <ul id="my-safety-session-notes">
       {{#each notes}}<li>{{this}}</li>{{/each}}
     </ul>
     {{/if}}
-  </section>
+  </details>
   {{/if}}
   {{#if limits}}
-  <section class="tab safety-limits {{#unless showCard}}active{{/unless}}" data-group="safety" data-tab="limits">
+  <details data-sync="limits">
+    <summary>{{localize "MY_MODULES.Safety.Limits"}}</summary>
     <div class="safety-columns">
       {{#each columns}}
       <section data-kind="{{kind}}">
@@ -61,11 +63,6 @@
       {{/each}}
     </div>
     <p class="safety-hint">{{localize "MY_MODULES.Safety.Privacy"}}</p>
-  </section>
-  {{/if}}
-  {{#if door}}
-  <footer><button type="button" data-action="openDoor">
-    <i class="fa-solid fa-door-open" inert></i>{{localize "MY_MODULES.Safety.Break"}}
-  </button><small>{{localize "MY_MODULES.Safety.Named"}}</small></footer>
+  </details>
   {{/if}}
 </div>

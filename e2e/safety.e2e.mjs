@@ -3,7 +3,8 @@ import { assert, check, join, joinGamemaster, MODULE_ID, PLAYER_NAME, run, waitF
 const control = 'button[data-control="safety"]';
 const windowId = "#my-safety-tools";
 const overlay = "#my-safety-overlay";
-const limitsTab = `${windowId} [data-action="tab"][data-tab="limits"]`;
+const limits = `${windowId} details[data-sync="limits"]`;
+const card = `${windowId} details[data-sync="card"]`;
 const action = (name) => `${windowId} [data-action="${name}"]`;
 const signalButton = (id) => `${action("signal")}[data-signal="${id}"]`;
 const announcement = (id) => `.my-safety-announcement[data-signal="${id}"]`;
@@ -77,6 +78,43 @@ await run(async () => {
         );
       }
     });
+    await check("the four actions share a row and both detail sections reopen collapsed", async () => {
+      const originalLanguage = await player.evaluate(async () => {
+        const previous = game.i18n.lang;
+        await game.i18n.setLanguage("de");
+        await foundry.applications.instances.get("my-safety-tools").render({ force: true });
+        return previous;
+      });
+      const correctRow = await player.evaluate(() => {
+        const labels = ["Pause", "Vorspulen", "Zurückspulen", "Ich brauche eine Pause"];
+        const buttons = [...document.querySelectorAll("#my-safety-tools .safety-signals button")];
+        return (
+          buttons.length === labels.length &&
+          buttons.every(
+            (button, i) =>
+              button.checkVisibility() &&
+              button.getBoundingClientRect().top === buttons[0].getBoundingClientRect().top &&
+              button.textContent.includes(labels[i])
+          ) &&
+          buttons.at(-1).querySelector("small")?.textContent === "Mit deinem Namen im Chat posten"
+        );
+      });
+      assert(correctRow, "wrong action row or missing named break hint");
+      await player.waitForSelector(`${card}[open] #safety-note`, { hidden: true });
+      await player.waitForSelector(`${limits}[open] #safety-add-line`, { hidden: true });
+      await player.click(`${card} > summary`);
+      await player.click(`${limits} > summary`);
+      await player.waitForSelector(`${card}[open] #safety-note`, { visible: true });
+      await player.waitForSelector(`${limits}[open] #safety-add-line`, { visible: true });
+      await player.click(`${card} > summary`);
+      await player.waitForSelector(`${card}[open] #safety-note`, { hidden: true });
+      await player.waitForSelector(`${limits}[open] #safety-add-line`, { visible: true });
+      await player.evaluate(() => foundry.applications.instances.get("my-safety-tools").close({ animate: false }));
+      await player.evaluate((lang) => game.i18n.setLanguage(lang), originalLanguage);
+      await openWindow(player);
+      await player.waitForSelector(`${card}[open] #safety-note`, { hidden: true });
+      await player.waitForSelector(`${limits}[open] #safety-add-line`, { hidden: true });
+    });
     for (const page of clients) {
       await page.evaluate(() => {
         const play = game.audio.play.bind(game.audio);
@@ -89,6 +127,20 @@ await run(async () => {
     }
     await observer.evaluate((m) => game.settings.set(m, "safetySignalSound", false), MODULE_ID);
     await check("two GM tabs relay one public X-card and keep its note until the GM dismisses it", async () => {
+      characterId = await gm.evaluate(async (user) => {
+        const actor = await Actor.create({
+          type: "character",
+          name: "Safety signal reader",
+          ownership: { [user]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER }
+        });
+        return actor.id;
+      }, observerId);
+      await waitFor(observer, (id) => game.actors.has(id), characterId);
+      await observer.evaluate(async (id) => {
+        await foundry.applications.instances.get("my-safety-tools").close({ animate: false });
+        await game.actors.get(id).sheet.render({ force: true });
+      }, characterId);
+      await observer.waitForSelector(windowId, { hidden: true });
       for (const client of [...gmTabs, observer]) {
         await client.evaluate((id) => {
           window.safetyTraffic = [];
@@ -96,6 +148,7 @@ await run(async () => {
         }, MODULE_ID);
       }
       const previous = await gm.evaluate(() => game.messages.map((m) => m.id));
+      await player.click(`${card} > summary`);
       assert((await player.$eval("#safety-note", (input) => input.maxLength)) === 200, "missing note limit");
       await player.$eval(
         "#safety-note",
@@ -104,6 +157,7 @@ await run(async () => {
         },
         privateNote
       );
+      await player.click(`${card} > summary`);
       await player.$eval(action("sendCard"), (button) => {
         button.click();
         button.click();
@@ -113,7 +167,13 @@ await run(async () => {
       await Promise.all(gmTabs.map((tab) => tab.waitForSelector(noteSelector, { visible: true })));
       for (const p of [player, observer]) {
         assert(!(await p.$eval(overlay, (el) => el.textContent)).includes(privateNote), "player saw the GM note");
-        assert(!(await p.$eval(windowId, (el) => el.textContent)).includes(privateNote), "note in player window");
+        assert(
+          !(await p.evaluate(
+            (note) => document.querySelector("#my-safety-tools")?.textContent.includes(note),
+            privateNote
+          )),
+          "note in player window"
+        );
       }
       await player.click(overlay);
       await player.waitForSelector(overlay, { hidden: true });
@@ -207,22 +267,8 @@ await run(async () => {
         "private request reached observer"
       );
     });
-    await check("four keyboard signals reach each client once, including a muted player reading a sheet", async () => {
-      characterId = await gm.evaluate(async (user) => {
-        const actor = await Actor.create({
-          type: "character",
-          name: "Safety signal reader",
-          ownership: { [user]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER }
-        });
-        return actor.id;
-      }, observerId);
-      await waitFor(observer, (id) => game.actors.has(id), characterId);
-      await observer.evaluate(async (id) => {
-        await foundry.applications.instances.get("my-safety-tools").close({ animate: false });
-        await game.actors.get(id).sheet.render({ force: true });
-      }, characterId);
-      await observer.waitForSelector(windowId, { hidden: true });
-      for (const id of ["pause", "play", "fastForward", "rewind"]) {
+    await check("fast-forward and rewind each reach the muted sheet reader and both GM tabs once", async () => {
+      for (const id of ["fastForward", "rewind"]) {
         const selector = signalButton(id);
         const symbol = await player.$eval(
           selector,
@@ -259,13 +305,13 @@ await run(async () => {
       }
       for (const page of clients) {
         const sounds = await page.evaluate(() => window.safetyChimes);
-        assert(sounds === (page === observer ? 0 : 5), `unexpected chime count after four signals: ${sounds}`);
+        assert(sounds === (page === observer ? 0 : 3), `unexpected chime count after three signals: ${sounds}`);
       }
       await observer.evaluate((id) => game.actors.get(id).sheet.close({ animate: false }), characterId);
       await openWindow(observer);
     });
     await check("two GM tabs store concurrent line and veil requests once each, including a retried add", async () => {
-      await Promise.all(clients.map((p) => p.click(limitsTab)));
+      await Promise.all(clients.map((p) => p.click(`${limits} > summary`)));
       await Promise.all([add(player, "line", line), add(observer, "veil", veil)]);
       await waitFor(gm, () => window.safetyTraffic.filter(([data]) => data.action === "add").length === 2);
       const request = await gm.evaluate(
@@ -362,7 +408,7 @@ await run(async () => {
     });
     await check("the GM can disable each tool independently and hide the last control", async () => {
       for (const [key, selector] of [
-        ["linesVeils", ".safety-limits"],
+        ["linesVeils", limits],
         ["xCard", action("sendCard")],
         ["openDoor", action("openDoor")]
       ]) {
@@ -370,7 +416,7 @@ await run(async () => {
         await observer.waitForSelector(selector, { hidden: true });
         if (key !== "openDoor") await observer.waitForSelector(action("openDoor"), { visible: true });
       }
-      await observer.waitForSelector(signalButton("pause"), { visible: true });
+      await observer.waitForSelector(signalButton("fastForward"), { visible: true });
       const before = await player.evaluate(() => window.safetyChimes);
       await gm.click(signalButton("rewind"));
       await waitFor(player, (n) => window.safetyChimes === n + 1, before);
@@ -387,7 +433,7 @@ await run(async () => {
       try {
         await Promise.all(gmTabs.map((tab) => tab.goto("about:blank")));
         await player.waitForFunction(() => !game.users.activeGM, { timeout: 30000 });
-        await player.click(signalButton("pause"));
+        await player.click(signalButton("fastForward"));
         await waitFor(player, () =>
           [...document.querySelectorAll("#notifications .notification")].some(
             (el) => el.checkVisibility() && el.textContent.includes(game.i18n.localize("MY_MODULES.Safety.NeedGM"))

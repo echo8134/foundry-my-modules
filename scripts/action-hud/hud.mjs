@@ -1,9 +1,10 @@
 import { MODULE_ID } from "../constants.mjs";
+import { HIDDEN_CATEGORIES, HudCategories } from "./categories.mjs";
 import { actionGroups, showsDeathSaves } from "./groups.mjs";
 
 const ENABLED = "actionHudEnabled";
 const ALWAYS_SHOW_CHARACTER = "actionHudAlwaysShowCharacter";
-const COMBINE_HOTBAR = "actionHudCombineHotbar";
+const DETACH_HOTBAR = "actionHudDetachHotbar";
 const POSITIONS = "actionHudPositions";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -87,10 +88,11 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
     if (!actor) return {};
     if (this.actorUuid !== actor.uuid) this.group = null;
     this.actorUuid = actor.uuid;
-    const groups = actionGroups(actor);
+    const hidden = game.settings.get(MODULE_ID, HIDDEN_CATEGORIES);
+    const groups = actionGroups(actor).filter((group) => !hidden.includes(group.id));
     const open = groups.find((g) => g.id === this.group);
     this.group = open?.id;
-    return { actor, groups, open, docked: game.settings.get(MODULE_ID, COMBINE_HOTBAR) };
+    return { actor, groups, open, docked: !game.settings.get(MODULE_ID, DETACH_HOTBAR) };
   }
 
   _onFirstRender(context, options) {
@@ -135,7 +137,7 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
   layout(position = this.saved) {
     const el = this.element;
     if (!this.rendered) return;
-    const dock = game.settings.get(MODULE_ID, COMBINE_HOTBAR) && document.querySelector("aside#hotbar");
+    const dock = !game.settings.get(MODULE_ID, DETACH_HOTBAR) && document.querySelector("aside#hotbar");
     if (dock) {
       if (el.parentElement !== dock) dock.prepend(el);
       el.classList.remove("opens-down");
@@ -236,14 +238,33 @@ export function setupActionHud() {
       default: true,
       onChange: refresh
     });
-    game.settings.register(MODULE_ID, COMBINE_HOTBAR, {
-      name: "MY_MODULES.ActionHud.combineHotbar",
-      hint: "MY_MODULES.ActionHud.combineHotbarHint",
+    game.settings.register(MODULE_ID, DETACH_HOTBAR, {
+      name: "MY_MODULES.ActionHud.detachHotbar",
+      hint: "MY_MODULES.ActionHud.detachHotbarHint",
       scope: "client",
       config: true,
       type: Boolean,
       default: false,
       onChange: refresh
+    });
+    const storage = game.settings.storage.get("client");
+    const legacy = storage.getItem(`${MODULE_ID}.actionHudCombineHotbar`);
+    if (storage.getItem(`${MODULE_ID}.${DETACH_HOTBAR}`) === null && (legacy === "true" || legacy === "false")) {
+      storage.setItem(`${MODULE_ID}.${DETACH_HOTBAR}`, JSON.stringify(legacy === "false"));
+    }
+    game.settings.register(MODULE_ID, HIDDEN_CATEGORIES, {
+      scope: "user",
+      config: false,
+      type: Array,
+      default: ["conditions", "rests"],
+      onChange: refresh
+    });
+    game.settings.registerMenu(MODULE_ID, "actionHudCategories", {
+      name: "MY_MODULES.ActionHud.title",
+      label: "MY_MODULES.ActionHud.categories",
+      icon: "fa-solid fa-list-check",
+      type: HudCategories,
+      restricted: false
     });
     // Foundry replaces the hotbar's children when paging or assigning a macro.
     Hooks.on("renderHotbar", () => hud.layout());

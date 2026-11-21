@@ -1,9 +1,20 @@
+export const CATEGORY_ICONS = {
+  attacks: "fa-crosshairs",
+  spells: "fa-wand-sparkles",
+  features: "fa-star",
+  items: "fa-flask",
+  rolls: "fa-dice-d20",
+  conditions: "fa-person-falling",
+  rests: "fa-campground",
+  deathSaves: "fa-skull"
+};
+
 const key = (name) => `MY_MODULES.ActionHud.${name}`;
 const byName = (a, b) => a.name.localeCompare(b.name, game.i18n.lang);
 const section = (entries, label) => ({ entries, label });
-const group = (id, icon, sections) => ({
+const group = (id, sections) => ({
   id,
-  icon,
+  icon: CATEGORY_ICONS[id],
   label: key(id),
   sections: sections.filter((s) => s.entries.length || s.slots)
 });
@@ -105,14 +116,14 @@ export function actionGroups(actor) {
         name: game.i18n.localize(key(action))
       }));
   return [
-    group("attacks", "fa-crosshairs", [section(attacks)]),
-    group("spells", "fa-wand-sparkles", spellSections(spells, actor.system.spells)),
-    group("features", "fa-star", [section(features)]),
-    group("items", "fa-flask", [section(items)]),
-    group("rolls", "fa-dice-d20", rolls(actor)),
-    group("conditions", "fa-person-falling", [section(conditions)]),
-    group("rests", "fa-campground", [section(rests)]),
-    group("deathSaves", "fa-skull", [
+    group("attacks", [section(attacks)]),
+    group("spells", spellSections(spells, actor.system.spells)),
+    group("features", [section(features)]),
+    group("items", [section(items)]),
+    group("rolls", rolls(actor)),
+    group("conditions", [section(conditions)]),
+    group("rests", [section(rests)]),
+    group("deathSaves", [
       section(showsDeathSaves(actor) ? [{ action: "deathSave", name: game.i18n.localize(key("rollDeathSave")) }] : [])
     ])
   ].filter((g) => g.sections.length);

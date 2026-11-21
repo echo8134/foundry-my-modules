@@ -231,6 +231,7 @@ await run(async () => {
     });
 
     await check("only the painted edge of a rotated ring plays its sound", async () => {
+      await player.evaluate(() => canvas.pan({ x: 600, y: 650, scale: 1 }));
       await clickAt(player, { x: 600, y: 650 });
       await clickAt(player, { x: 686, y: 650 });
       await expectNoMoreSounds(player, 2);

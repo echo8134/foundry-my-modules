@@ -1,7 +1,8 @@
 import { assert, check, join, joinGamemaster, MODULE_ID, PLAYER_NAME, run, waitFor } from "./harness.mjs";
 
 const HUD = "#my-action-hud";
-const COMBINE_HOTBAR = "actionHudCombineHotbar";
+const DETACH_HOTBAR = "actionHudDetachHotbar";
+const HIDDEN = "actionHudHiddenCategories";
 const group = (name) => `${HUD} button[data-group="${name}"]`;
 const entry = (action, id) => `${HUD} [data-action="${action}"][data-id="${id}"]`;
 
@@ -104,6 +105,7 @@ async function buildEncounter(gm) {
 await run(async () => {
   const gm = await joinGamemaster();
   const player = await join(PLAYER_NAME);
+  const previousCategories = await player.evaluate((m, key) => game.settings.get(m, key), MODULE_ID, HIDDEN);
   await gm.evaluate(() => {
     globalThis.hudTestDocuments = [];
   });
@@ -149,7 +151,7 @@ await run(async () => {
       await player.waitForSelector(HUD, { hidden: true });
       assert(await player.evaluate((id) => canvas.tokens.controlled[0]?.id === id, ids.guard), "sentry lost control");
       await gm.evaluate((id) => canvas.tokens.get(id).control(), ids.guard);
-      await gm.waitForSelector(group("conditions"), { visible: true });
+      await gm.waitForSelector(group("spells"), { visible: true });
       assert(!(await gm.$(group("attacks"))), "empty attack group appeared");
       await gm.evaluate(() => canvas.tokens.releaseAll());
       await gm.waitForSelector(HUD, { hidden: true });
@@ -159,7 +161,7 @@ await run(async () => {
 
     await check("the sentry's at-will spell appears with prepared set to zero", async () => {
       await gm.evaluate((id) => canvas.tokens.get(id).control(), ids.guard);
-      await gm.waitForSelector(group("conditions"), { visible: true });
+      await gm.waitForSelector(group("spells"), { visible: true });
       const prepared = await gm.evaluate(
         (id) => canvas.tokens.controlled[0].actor.items.get(id).system.prepared,
         ids.atWillSpell
@@ -171,7 +173,7 @@ await run(async () => {
       await gm.evaluate(() => canvas.tokens.releaseAll());
     });
 
-    await check("a player can dock their HUD and still use macro clicks, number keys and page controls", async () => {
+    await check("players can choose their tabs and layout and use native macros", async () => {
       const marker = `HUD macro ${Date.now()}`;
       const peerName = `HUD player ${Date.now()}`;
       const macroId = await gm.evaluate(
@@ -203,20 +205,75 @@ await run(async () => {
         await waitFor(peer, (id) => canvas.ready && canvas.tokens.get(id)?.actor.isOwner, ids.hero);
         await peer.evaluate((id) => canvas.tokens.get(id).control(), ids.hero);
         await peer.waitForSelector(group("attacks"), { visible: true });
-        assert(!(await peer.$(docked)), "the second player's HUD was docked by default");
+        assert(await peer.$(docked), "a new player starts detached");
+        assert(!(await peer.$(group("conditions"))) && !(await peer.$(group("rests"))), "unexpected default tabs");
+        await peer.evaluate(() => game.settings.sheet.render({ force: true }));
+        await click(peer, `#settings-config nav [data-tab="${MODULE_ID}"]`);
+        await click(peer, `#settings-config [data-action="openSubmenu"][data-key="${MODULE_ID}.actionHudCategories"]`);
+        const form = "#my-action-hud-categories";
+        await peer.waitForSelector(`${form} [name="attacks"]`, { visible: true });
+        const checks = await peer.$$eval(`${form} input[type="checkbox"]`, (inputs) =>
+          Object.fromEntries(inputs.map((input) => [input.name, input.checked]))
+        );
+        assert(
+          Object.keys(checks).length === 8 &&
+            ["attacks", "spells", "features", "items", "rolls", "deathSaves"].every((id) => checks[id]) &&
+            checks.conditions === false &&
+            checks.rests === false,
+          JSON.stringify(checks)
+        );
+        await click(peer, `${form} [name="rests"]`);
+        await click(peer, `${form} [name="rolls"]`);
+        await click(peer, `${form} button[type="submit"]`);
+        await peer.waitForSelector(group("rests"), { visible: true });
+        assert(!(await peer.$(group("rolls"))) && !(await peer.$(group("conditions"))), "unexpected saved tabs");
+
+        await peer.evaluate((id) => localStorage.setItem(`${id}.actionHudCombineHotbar`, "false"), MODULE_ID);
+        await peer.reload({ waitUntil: "domcontentloaded" });
+        await peer.waitForFunction(() => globalThis.game?.ready && globalThis.canvas?.ready, { timeout: 180000 });
+        await peer.evaluate(async (id) => {
+          await game.user.sheet.close({ animate: false });
+          await game.scenes.get(id).view();
+        }, ids.scene);
+        await waitFor(peer, (id) => canvas.ready && canvas.tokens.get(id)?.actor.isOwner, ids.hero);
+        await peer.evaluate((id) => canvas.tokens.get(id).control(), ids.hero);
+        await peer.waitForSelector(`body > ${HUD} .hud-grip`, { visible: true });
+        assert(await peer.$(group("rests")), "Rests did not persist");
+        assert(!(await peer.$(group("rolls"))) && !(await peer.$(group("conditions"))), "hidden tabs returned");
 
         await player.bringToFront();
         await waitFor(player, (id) => game.macros.has(id), macroId);
         await player.evaluate(
           async (m, key, id) => {
             await game.user.assignHotbarMacro(game.macros.get(id), 1);
-            await game.settings.set(m, key, true);
+            await game.settings.set(m, key, []);
           },
           MODULE_ID,
-          COMBINE_HOTBAR,
+          HIDDEN,
           macroId
         );
         await player.waitForSelector(docked, { visible: true });
+        await player.waitForSelector(group("rests"), { visible: true });
+        await player.waitForSelector(group("rolls"), { visible: true });
+        const viewport = player.viewport();
+        for (const [width, shouldWrap] of [
+          [1920, false],
+          [900, true],
+          [1920, false]
+        ]) {
+          await player.setViewport({ ...viewport, width });
+          await waitFor(
+            player,
+            (wrap) => {
+              const tabs = [...document.querySelectorAll("#my-action-hud .hud-bar > *")];
+              if (tabs.length !== 8) return false;
+              const first = tabs[0].getBoundingClientRect();
+              return tabs.some((tab) => tab.getBoundingClientRect().top >= first.bottom) === wrap;
+            },
+            shouldWrap
+          );
+        }
+        await player.setViewport(viewport);
         const joined = await player.evaluate(() => {
           const bar = document.querySelector("#my-action-hud .hud-bar").getBoundingClientRect();
           const slots = document.querySelectorAll("#action-bar .slot");
@@ -225,7 +282,19 @@ await run(async () => {
         });
         assert(joined, "the HUD and ten macro slots did not form adjacent rows");
         await click(player, group("rolls"));
-        await player.waitForSelector(entry("skill", "arc"), { visible: true });
+        for (const [action, id] of [
+          ["check", "int"],
+          ["save", "wis"],
+          ["skill", "arc"]
+        ]) {
+          await player.waitForSelector(entry(action, id), { visible: true });
+        }
+        if ((await player.evaluate(() => game.i18n.lang)) === "en") {
+          assert(
+            (await player.$eval(group("rolls"), (tab) => tab.textContent.trim())) === "Checks/Saves",
+            "wrong roll label"
+          );
+        }
         await click(player, '#hotbar .slot.full[data-slot="1"]');
         await player.keyboard.press("1");
         await waitFor(gm, (text) => game.messages.filter((msg) => msg.content.includes(text)).length === 2, marker);
@@ -234,18 +303,18 @@ await run(async () => {
         await player.waitForSelector('#action-bar [data-slot="11"]', { visible: true });
         await player.waitForSelector(`${docked} .hud-panel`, { visible: true });
         assert(!(await peer.$(docked)), "the second player's layout changed with the first player's setting");
-        await player.evaluate((id, key) => game.settings.set(id, key, false), MODULE_ID, COMBINE_HOTBAR);
+        await player.evaluate((id, key) => game.settings.set(id, key, true), MODULE_ID, DETACH_HOTBAR);
         await player.waitForSelector(`body > ${HUD} .hud-grip`, { visible: true });
       } finally {
         await peer.browserContext().close();
         await player.evaluate(
           async (m, key, previous) => {
-            await game.settings.set(m, key, false);
+            await game.settings.set(m, key, true);
             await game.user.assignHotbarMacro(game.macros.get(previous) ?? null, 1);
             await ui.hotbar.changePage(1);
           },
           MODULE_ID,
-          COMBINE_HOTBAR,
+          DETACH_HOTBAR,
           originalSlot
         );
         await gm.evaluate(async (text) => {
@@ -275,9 +344,9 @@ await run(async () => {
       await player.mouse.up();
       const pinned = await saved();
       assert(Math.abs(pinned?.y - (initialTop - 80)) < 1, "drag did not save the new position");
-      await player.evaluate((id, key) => game.settings.set(id, key, true), MODULE_ID, COMBINE_HOTBAR);
+      await player.evaluate((id, key) => game.settings.set(id, key, false), MODULE_ID, DETACH_HOTBAR);
       await player.waitForSelector(`#hotbar > ${HUD}`, { visible: true });
-      await player.evaluate((id, key) => game.settings.set(id, key, false), MODULE_ID, COMBINE_HOTBAR);
+      await player.evaluate((id, key) => game.settings.set(id, key, true), MODULE_ID, DETACH_HOTBAR);
       await waitFor(
         player,
         (s, y) => Math.abs(document.querySelector(s).getBoundingClientRect().top - y) < 1,
@@ -499,6 +568,7 @@ await run(async () => {
       }
     });
   } finally {
+    await player.evaluate((m, key, value) => game.settings.set(m, key, value), MODULE_ID, HIDDEN, previousCategories);
     await gm.evaluate(async () => {
       await game.scenes.active?.view();
       for (const doc of hudTestDocuments.reverse()) await doc.delete();
