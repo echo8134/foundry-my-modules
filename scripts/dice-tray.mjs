@@ -1,5 +1,4 @@
 const FACES = [4, 6, 8, 10, 12, 20];
-const trays = new WeakMap();
 const label = (key) => game.i18n.localize(`MY_MODULES.DiceTray.${key}`);
 
 // Only combine free-standing, additive dice. A die inside a product or a keep/drop term has a different meaning.
@@ -55,11 +54,11 @@ function createTray(view, chatInput) {
   tray.setAttribute("role", "group");
   tray.setAttribute("aria-label", label("Title"));
   tray.innerHTML = `
-    ${FACES.map((faces) => `<button type="button" data-faces="${faces}"><img alt="" src="${foundry.utils.getRoute(`icons/svg/d${faces}-grey.svg`)}"><span></span><b hidden></b></button>`).join("")}
+    ${FACES.map((faces) => `<button type="button" class="ui-control" data-faces="${faces}"><i class="fa-solid fa-dice-d${faces}" aria-hidden="true"></i><span></span><b hidden></b></button>`).join("")}
     <input class="my-dice-modifier" type="number" step="1" value="0">
-    <div class="my-dice-modes"><button type="button" data-mode="kh" aria-pressed="false"></button><button type="button" data-mode="kl" aria-pressed="false"></button></div>
-    <button type="button" class="my-dice-roll"><i class="fa-solid fa-dice" aria-hidden="true"></i></button>
-    <div class="my-dice-quantity" popover><input type="number" min="1" max="999" step="1" required><button type="button"><i class="fa-solid fa-check" aria-hidden="true"></i></button></div>`;
+    <div class="my-dice-modes split-button"><button type="button" class="ui-control" data-mode="kh" aria-pressed="false"></button><button type="button" class="ui-control" data-mode="kl" aria-pressed="false"></button></div>
+    <button type="button" class="ui-control my-dice-roll"><i class="fa-solid fa-dice" aria-hidden="true"></i></button>
+    <div class="my-dice-quantity" popover><input type="number" min="1" max="999" step="1" required><button type="button" class="ui-control"><i class="fa-solid fa-check" aria-hidden="true"></i></button></div>`;
   const buttons = Array.from(tray.querySelectorAll("[data-faces]"));
   const modes = Array.from(tray.querySelectorAll("[data-mode]"));
   const modifier = tray.querySelector(".my-dice-modifier");
@@ -186,8 +185,7 @@ function createTray(view, chatInput) {
     }
     submit.disabled = busy || !draft?.formula;
   }
-  trays.set(input, tray);
-  input.after(tray);
+  input.append(tray);
   update();
   return {
     update(_view, previous) {
@@ -200,7 +198,6 @@ function createTray(view, chatInput) {
     },
     destroy() {
       tray.remove();
-      trays.delete(input);
     }
   };
 }
@@ -209,10 +206,5 @@ export function setupDiceTray() {
   Hooks.on("createProseMirrorEditor", (_id, plugins) => {
     const chatInput = plugins.chatInput?.spec.instance;
     if (chatInput) plugins.myDiceTray = new foundry.prosemirror.Plugin({ view: (view) => createTray(view, chatInput) });
-  });
-  Hooks.on("renderChatInput", (_app, elements) => {
-    const input = elements["#chat-message"];
-    const tray = trays.get(input);
-    if (tray && tray !== input.nextElementSibling) input.after(tray);
   });
 }
