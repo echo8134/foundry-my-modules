@@ -143,6 +143,13 @@ function refreshOpenSheets(deletedEntry) {
 }
 
 export function setupQuestLog() {
+  Hooks.once("ready", () => {
+    game.socket.on(`module.${MODULE_ID}`, (message, senderId) => {
+      if (message?.action !== "showQuest" || game.user.isGM || !game.users.get(senderId)?.isGM) return;
+      const entry = game.journal.get(message.questId);
+      if (entry) showSheet(entry);
+    });
+  });
   Hooks.once("init", () => {
     game.keybindings.register(MODULE_ID, "primaryQuest", {
       name: "MY_MODULES.Quests.OpenPrimary",

@@ -5,6 +5,8 @@
     <div class="quest-heading{{#unless (or quest.giver.name quest.giver.img)}} compact-heading{{/unless}}">
       <div class="quest-marks">
         {{#if gm}}
+          <button type="button" data-action="showToPlayers" class="icon fa-solid fa-eye"
+                  aria-label="{{localize 'MY_MODULES.Quests.ShowToPlayers'}}" data-tooltip="MY_MODULES.Quests.ShowToPlayers"></button>
           <select class="quest-stamp" name="status" aria-label="{{localize 'MY_MODULES.Quests.StatusLabel'}}">
             {{#each statuses}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{localize label}}</option>{{/each}}
           </select>

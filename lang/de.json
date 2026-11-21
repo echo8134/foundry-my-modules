@@ -91,9 +91,11 @@
   "MY_MODULES.Safety.xCard.Setting": "X-Karte aktivieren",
   "MY_MODULES.Safety.linesVeils.Setting": "Linien & Schleier aktivieren",
   "MY_MODULES.Safety.openDoor.Setting": "Offene Tür aktivieren",
+  "MY_MODULES.Tiles.calendarSheet": "Kalenderblatt",
   "MY_MODULES.Tiles.Section": "Meine Module",
   "MY_MODULES.Tiles.clickSound": "Ton beim Anklicken",
   "MY_MODULES.Tiles.quest": "Quest-UUID",
+  "MY_MODULES.Quests.ShowToPlayers": "Spielern zeigen",
   "MY_MODULES.Quests.Control": "Quests",
   "MY_MODULES.Quests.Log": "Questlog",
   "MY_MODULES.Quests.OpenPrimary": "Hauptquest öffnen",
@@ -144,5 +146,12 @@
   "MY_MODULES.Quests.Personal": "Spieler",
   "MY_MODULES.Quests.PersonalHint": "Ohne Auswahl sehen alle Spieler die Quest. Versteckte Quests sieht nur die Spielleitung.",
   "MY_MODULES.Quests.RestrictedPage": "Seitenzugriff eingeschränkt",
-  "MY_MODULES.Quests.AddPage": "Seite hinzufügen"
+  "MY_MODULES.Quests.AddPage": "Seite hinzufügen",
+  "MY_MODULES.Soundboard.Title": "Soundboard",
+  "MY_MODULES.Soundboard.Enabled": "Soundboard für die Spielleitung anzeigen",
+  "MY_MODULES.Soundboard.Playlist": "Name der Soundboard-Playlist",
+  "MY_MODULES.Soundboard.Empty": "Füge der Playlist „{playlist}“ Sounds hinzu, um sie hier abzuspielen.",
+  "MY_MODULES.Hotbar.Hide": "Makroleiste ausblenden",
+  "MY_MODULES.Hotbar.Hint": "Blendet deine Makroleiste in diesem Browser aus.",
+  "MY_MODULES.Hotbar.Toggle": "Makroleiste ein- oder ausblenden"
 }

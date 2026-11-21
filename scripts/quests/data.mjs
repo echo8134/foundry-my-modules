@@ -49,15 +49,16 @@ function questOwnership(quest) {
   return { default: NONE, ...Object.fromEntries(users.map((id) => [id, OBSERVER])) };
 }
 
-function canView(entry, flag) {
-  if (!flag || !entry.testUserPermission(game.user, "OBSERVER")) return false;
+export function canViewQuest(entry, user = game.user) {
+  const flag = flagOf(entry);
+  if (!flag || !entry.testUserPermission(user, "OBSERVER")) return false;
   const personal = asArray(flag.personal);
-  return game.user.isGM || (statusOf(flag) !== "hidden" && (!personal.length || personal.includes(game.user.id)));
+  return user.isGM || (statusOf(flag) !== "hidden" && (!personal.length || personal.includes(user.id)));
 }
 
 export function questView(entry) {
   const flag = flagOf(entry);
-  if (!canView(entry, flag)) return null;
+  if (!canViewQuest(entry)) return null;
   const gm = game.user.isGM;
   const parent = typeof flag.parent === "string" && game.journal.get(flag.parent.split(".")[1]);
   const visible = (items) => questItems(items).filter((item) => gm || !item.hidden);
@@ -71,8 +72,7 @@ export function questView(entry) {
     name: entry.name,
     status: statusOf(flag),
     primary: flag.primary === true,
-    parent:
-      parent && parent.uuid === flag.parent && parent !== entry && canView(parent, flagOf(parent)) ? parent.uuid : null,
+    parent: parent && parent.uuid === flag.parent && parent !== entry && canViewQuest(parent) ? parent.uuid : null,
     ...(gm ? { personal: asArray(flag.personal) } : {}),
     giver: { name: "", img: "", uuid: null, ...flag.giver },
     objectives,

@@ -21,7 +21,9 @@
     "styles/safety.css",
     "styles/action-hud.css",
     "styles/death-saves.css",
-    "styles/dice-tray.css"
+    "styles/dice-tray.css",
+    "styles/hotbar.css",
+    "styles/soundboard.css"
   ],
   "languages": [
     {

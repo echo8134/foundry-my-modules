@@ -82,6 +82,8 @@ To give a portrait a sound or link a note to a quest, open the tile's configurat
 - **Click sound** takes an audio file. A single left click plays it at the clicking user's interface volume. Clicking again restarts it from the beginning.
 - **Quest UUID** takes the world journal UUID, such as `JournalEntry.<id>`. A click opens the quest sheet for anyone who can view that quest.
 
+- **Calendar sheet** draws the current month over a blank parchment tile, with past days crossed out and today marked in red. The marks follow the world clock. A Harptos month displays its festival after the last tenday. Use the bundled `modules/foundry-my-modules/assets/quests/parchment.webp` as the tile texture.
+
 Test the tile on the token layer, where players use it. A hand cursor appears when the tile has an action you can use. On the Tiles layer, you can select, drag, or double-click the tile to configure it. Creation tools also work over the tile.
 
 Transparent pixels let clicks through, and overlapping tokens keep their normal controls. To put an invisible hotspot over artwork, set the tile's opacity to zero. Its entire rotated rectangle then responds to clicks.
@@ -104,6 +106,7 @@ As GM, click **Create quest** to start a hidden quest in the journal folder name
 #### Rewards, personal quests, and the tracker
 
 - Drop an Item from the sidebar or a compendium onto the quest sheet, or click **Add text reward** and edit the line. New rewards start locked. Use the eye to hide a reward or the lock to release it. Players can drag an unlocked Item onto their character sheet. For compendium Items, they need access to the source pack. Text rewards stay on the quest sheet.
+- Click the eye in the quest header to open the sheet for connected players who can view it. Each player sees their own objectives, rewards and pages.
 - At the bottom of the sheet, select the players who may see a personal quest. Clear every selection to share it with the whole party. The **Hidden** status keeps it GM-only.
 - Choose a **Parent quest** to list this quest and its status on the parentâ€™s sheet. Click a sub-quest there to open it. The board groups related quests together in each status tab.
 - Mark a **Primary quest** on its sheet. Choosing another transfers the star. **Ctrl+Shift+Q** opens the primary quest for anyone who can see it.
@@ -132,6 +135,17 @@ if (first) await quests.openQuest(first.uuid);
 Click a die beneath the chat input to add it to the roll. The count above each die follows your draft. Shift-click to enter a quantity. Ctrl-click or Cmd-click rolls one die immediately and keeps your draft in the editor.
 
 Use the rightmost dice button to submit the draft with the tray's modifier. For a sum with one d20, **ADV** rolls two d20s and keeps the higher result. **DIS** keeps the lower result.
+
+</details>
+
+<details>
+<summary><h3>GM soundboard and macro hotbar</h3></summary>
+
+Create a playlist named **Soundboard** and add your sound effects. Open the Playlists sidebar and click a parchment button below the playlists. Everyone hears that sound once at its configured volume through their interface audio channel. Click the same button again to stop it for everyone.
+
+Use the world setting **Soundboard playlist name** to choose another playlist. Turn off **Show GM soundboard** to hide the panel.
+
+Press **Alt+B** or click the keyboard icon in the Token controls to hide or restore your macro hotbar. The **Hide macro hotbar** client setting remembers your choice for this GM in this browser. The docked action HUD moves into the space you free. Players keep their own hotbars.
 
 </details>
 
@@ -165,14 +179,17 @@ D&D 5e tracks successes, failures, and recovery as usual. On a player characterâ
 
 ## Variant data
 
-A variant is a set of documents (Tile, AmbientLight, AmbientSound, Wall) with the flag `flags.foundry-my-modules.variant`.
+A variant is a set of documents (Tile, AmbientLight, AmbientSound, Wall, or Token) with the flag `flags.foundry-my-modules.variant`.
 
-- The flag is a variant name, or a list of names: the document is on while any of them is active. The base state's name means "on in the base state", so `["Day", "Feast", "Night", "Burning"]` is a wall that only the ruin removes. A document without the flag is always on.
-- A document belongs to the levels in its own `levels` field, or to every level when that is empty.
-- The variants of a level are the base state, then the variant names of its documents in the order the documents were created. The scene flag `defaultName` names the base state.
+- The flag is a variant name, or a list of names: the document is on while any of them is active. The base state's name means "on in the base state", so `["Day", "Feast", "Night", "Burning"]` is a wall that only the ruin removes. Variants leave documents without this flag alone.
+- A token belongs to the scene level in its `level` field. Other documents use their `levels` field and belong to every level when it is empty.
+- The variants of a level are the base state, then the variant names of its documents in the order the documents were created. The scene flag `defaultName` names the base state. If you omit it on a scene with variant tokens, the module saves the active GM's localized base name so players in other languages use the same name. On older scenes with no stored base name or selection, players see variant tokens once the GM first opens the scene or selects a variant.
 - The scene flag `active` maps a level id to its active variant. A level missing from it shows the base state.
 - Switching off saves the switched fields in the document flag `restore` and writes the off values: Tile `alpha` 0, light and sound `hidden`, Wall `move`, `sight`, `light` and `sound` 0. Switching on writes the saved values back and deletes the flag. Tiles switch by alpha, because the GM sees hidden tiles half transparent.
-- Create the documents switched on. The active GM brings the scene to the stored state when it loads and whenever the flags change, and writes only what differs.
+- Create tiles, lights, sounds, and walls switched on. The active GM applies the stored variant when the scene loads and whenever the flags change.
+- Give a token its usual visibility when you create it. The module stores that choice in `flags.foundry-my-modules.gmHidden`. A new tagged token arrives hidden. The active GM reveals it when its variant is active and the saved choice permits it. Older tokens use their saved `restore.hidden` value or, if absent, their original visibility.
+- Use the eye in the token HUD or the Hidden checkbox in token configuration to change that choice even while a variant is off. A normal paste preserves it. Pasting as hidden sets it. Removing the last variant tag restores the saved choice.
+- Any GM can switch a variant. The active GM hides outgoing tokens and their attached Regions, publishes the new selection, then reveals incoming tokens. For example, a guard tagged `"Fest"` appears when Fest starts. A guard hidden by the GM for an ambush stays hidden.
 
 The API for macros and other modules:
 

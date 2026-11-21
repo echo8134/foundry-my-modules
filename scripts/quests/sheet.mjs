@@ -2,6 +2,7 @@ import { MODULE_ID } from "../constants.mjs";
 import {
   addObjective,
   addReward,
+  canViewQuest,
   createQuestPage,
   deleteObjective,
   deleteReward,
@@ -236,6 +237,17 @@ export class QuestSheet extends HandlebarsApplicationMixin(ApplicationV2) {
     const id = row?.objectiveId;
     const rewardId = button.closest("[data-reward-id]")?.dataset.rewardId;
     switch (button.dataset.action) {
+      case "showToPlayers": {
+        const recipients = game.users.filter((user) => user.active && !user.isGM && canViewQuest(this.entry, user));
+        if (recipients.length) {
+          game.socket.emit(
+            `module.${MODULE_ID}`,
+            { action: "showQuest", questId: this.entry.id },
+            { recipients: recipients.map((user) => user.id) }
+          );
+        }
+        return;
+      }
       case "addObjective":
         return addObjective(this.entry, game.i18n.localize("MY_MODULES.Quests.NewObjective"));
       case "deleteObjective":

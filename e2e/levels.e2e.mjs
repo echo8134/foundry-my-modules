@@ -267,8 +267,8 @@ await run(async () => {
     assert(writes === 0, `${writes} tile writes`);
   });
 
+  const player = await join(PLAYER_NAME);
   await check("a player sees the full level list but no variant controls", async () => {
-    const player = await join(PLAYER_NAME);
     await setClientSetting(player, "fullLevelList", true);
     await waitFor(player, () => document.querySelector("#scene-navigation-levels .level-row"));
     const seen = await player.evaluate(() => ({
@@ -278,4 +278,202 @@ await run(async () => {
     assert(seen.rows === 9, `player sees ${seen.rows} levels`);
     assert(seen.controls === 0, `player sees ${seen.controls} variant controls`);
   });
+
+  await player.evaluate(
+    (id, moduleId) => {
+      const scene = game.scenes.get(id);
+      globalThis.variantTokenLeaks = [];
+      // Record every state delivered to the player, including those between two awaited writes on the GM.
+      for (const event of ["createToken", "updateToken", "updateScene"]) {
+        Hooks.on(event, (doc) => {
+          if (doc !== scene && doc.parent !== scene) return;
+          const active = scene.getFlag(moduleId, "active") ?? {};
+          for (const token of scene.tokens) {
+            const variant = token.getFlag(moduleId, "variant");
+            const on = active[token.level] ?? "Tag";
+            if (variant && ![variant].flat().includes(on) && !token._source.hidden) {
+              variantTokenLeaks.push(`${event}: ${token.name} visible during ${on}`);
+            }
+          }
+        });
+      }
+    },
+    sceneId,
+    MODULE_ID
+  );
+
+  const switchGround = (name) =>
+    gm.evaluate(
+      (id, levelId, m, variant) => game.modules.get(m).api.setVariant(game.scenes.get(id), levelId, variant),
+      sceneId,
+      ground,
+      MODULE_ID,
+      name
+    );
+  const expectTokens = async (...visible) => {
+    await waitFor(
+      player,
+      (id, names) => {
+        const tokens = game.scenes.get(id).tokens;
+        return tokens.size === 8 && tokens.every((t) => t.hidden === !names.includes(t.name));
+      },
+      sceneId,
+      visible
+    );
+    const leaks = await player.evaluate(() => variantTokenLeaks);
+    assert(leaks.length === 0, leaks.join("\n"));
+  };
+
+  await check("late tokens arrive in their active state on the player client", async () => {
+    await gm.evaluate(
+      async (id, moduleId, ground, tower) => {
+        const token = (name, level, variant, hidden = false) => ({
+          name,
+          level,
+          hidden,
+          x: 400,
+          y: 400,
+          elevation: level === ground ? 0 : 20,
+          flags: variant ? { [moduleId]: { variant } } : {}
+        });
+        await game.scenes
+          .get(id)
+          .createEmbeddedDocuments("Token", [
+            token("Day guard", ground, "Tag"),
+            token("Guest", ground, ["Fest", "Wache"]),
+            token("Ambush", ground, "Fest", true),
+            token("Scout", ground, "Fest", true),
+            token("Lookout", ground, "Fest"),
+            token("Bell ringer", tower, "Tag"),
+            token("Resident", ground),
+            token("Secret", ground, null, true)
+          ]);
+      },
+      sceneId,
+      MODULE_ID,
+      ground,
+      tower[0]
+    );
+    await expectTokens("Day guard", "Bell ringer", "Resident");
+  });
+
+  await check("ground-floor variants switch without exposing inactive tokens or a GM-hidden ambush", async () => {
+    await switchGround("Fest");
+    await expectTokens("Guest", "Lookout", "Bell ringer", "Resident");
+    await waitFor(player, (id) => game.scenes.get(id).tokens.getName("Guest").object?.isVisible, sceneId);
+    await switchGround("Tag");
+    await expectTokens("Day guard", "Bell ringer", "Resident");
+  });
+
+  await check("manual visibility edits while off take effect when the token's variant returns", async () => {
+    await waitFor(gm, () => canvas.ready && canvas.tokens.placeables.some((token) => token.name === "Lookout"));
+    await gm.evaluate(async (id) => {
+      const tokens = game.scenes.get(id).tokens;
+      await tokens.getName("Scout").update({ hidden: false });
+      const lookout = tokens.getName("Lookout").object;
+      lookout.control();
+      await canvas.hud.token.bind(lookout);
+    }, sceneId);
+    await gm.locator('#token-hud [data-action="visibility"]').click();
+    await waitFor(gm, () => document.querySelector('#token-hud [data-action="visibility"].active'));
+    await switchGround("Fest");
+    await expectTokens("Guest", "Scout", "Bell ringer", "Resident");
+  });
+
+  await check("a token can supply a variant by itself and removing its flag restores the GM's choice", async () => {
+    await switchGround("Wache");
+    await expectTokens("Guest", "Bell ringer", "Resident");
+    await gm.evaluate(
+      async (id, moduleId) => {
+        const tokens = game.scenes.get(id).tokens;
+        await tokens.getName("Scout").unsetFlag(moduleId, "variant");
+        await tokens.getName("Lookout").unsetFlag(moduleId, "variant");
+      },
+      sceneId,
+      MODULE_ID
+    );
+    await expectTokens("Guest", "Scout", "Bell ringer", "Resident");
+  });
+
+  await check("scene updates apply token edits and a level switch together", async () => {
+    await gm.evaluate(
+      async (id, m) => {
+        const scene = game.scenes.get(id);
+        await scene.update({
+          tokens: [
+            { _id: scene.tokens.getName("Ambush").id, hidden: false },
+            { _id: scene.tokens.getName("Scout").id, flags: { [m]: { variant: "Brand" } } }
+          ]
+        });
+      },
+      sceneId,
+      MODULE_ID
+    );
+    await expectTokens("Guest", "Bell ringer", "Resident");
+    await gm.evaluate(
+      async (id, m, level) => {
+        const scene = game.scenes.get(id);
+        await scene.update({
+          flags: { [m]: { active: { [level]: "Fest" } } },
+          tokens: [{ _id: scene.tokens.getName("Scout").id, flags: { [m]: { variant: "Fest" } } }]
+        });
+      },
+      sceneId,
+      MODULE_ID,
+      ground
+    );
+    await expectTokens("Guest", "Ambush", "Scout", "Bell ringer", "Resident");
+  });
+
+  await check(
+    "the first player view of an older scene hides its inactive tokens before GM synchronization",
+    async () => {
+      const legacy = await gm.evaluate(async (m) => {
+        const scene = await Scene.create(
+          {
+            name: "Variant tokens before synchronization",
+            tokenVision: false,
+            ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER },
+            tokens: [{ name: "Guest", flags: { [m]: { variant: "Fest" } } }, { name: "Resident" }]
+          },
+          { noHook: true }
+        );
+        return scene.id;
+      }, MODULE_ID);
+      try {
+        await waitFor(player, (id) => game.scenes.has(id), legacy);
+        await waitFor(player, () => canvas.ready && !canvas.loading);
+        const firstDraw = await player.evaluate(async (id) => {
+          const scene = game.scenes.get(id);
+          const drawn = [];
+          const hook = Hooks.on("drawToken", (token) => {
+            if (token.scene === scene)
+              drawn.push({ name: token.name, hidden: token.document.hidden, source: token.document._source.hidden });
+          });
+          try {
+            await scene.view();
+            return drawn;
+          } finally {
+            Hooks.off("drawToken", hook);
+          }
+        }, legacy);
+        assert(
+          firstDraw.length === 2 &&
+            firstDraw.every((token) => token.hidden === (token.name === "Guest") && !token.source),
+          JSON.stringify(firstDraw)
+        );
+        await gm.evaluate(
+          async (id, m) => {
+            const scene = game.scenes.get(id);
+            await game.modules.get(m).api.setVariant(scene, scene.levels.contents[0].id, "Fest");
+          },
+          legacy,
+          MODULE_ID
+        );
+        await waitFor(player, (id) => game.scenes.get(id).tokens.getName("Guest").object?.mesh?.visible, legacy);
+      } finally {
+        await gm.evaluate((id) => game.scenes.get(id).delete(), legacy);
+      }
+    }
+  );
 });

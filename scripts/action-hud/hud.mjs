@@ -137,7 +137,9 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
   layout(position = this.saved) {
     const el = this.element;
     if (!this.rendered) return;
-    const dock = !game.settings.get(MODULE_ID, DETACH_HOTBAR) && document.querySelector("aside#hotbar");
+    const hiddenHotbar = document.body.classList.contains("my-hide-macro-hotbar");
+    const dock =
+      !hiddenHotbar && !game.settings.get(MODULE_ID, DETACH_HOTBAR) && document.querySelector("aside#hotbar");
     if (dock) {
       if (el.parentElement !== dock) dock.prepend(el);
       el.classList.remove("opens-down");
@@ -153,7 +155,7 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
     const hotbar = bounds("hotbar");
     const left = (bounds("ui-left-column-1")?.right ?? 0) + gap;
     const right = (bounds("ui-right")?.left ?? innerWidth) - gap;
-    const bottom = hotbar?.height ? hotbar.top - 16 : innerHeight - gap;
+    const bottom = hotbar?.width ? hotbar.top - (hotbar.height ? 16 : 0) : innerHeight - gap;
     el.style.setProperty("--hud-max-width", `${Math.max(0, right - left)}px`);
     const { width, height } = el.getBoundingClientRect();
     const center = hotbar?.width ? hotbar.left + hotbar.width / 2 : (left + right) / 2;
@@ -268,6 +270,7 @@ export function setupActionHud() {
     });
     // Foundry replaces the hotbar's children when paging or assigning a macro.
     Hooks.on("renderHotbar", () => hud.layout());
+    Hooks.on(`${MODULE_ID}.hotbarVisibilityChanged`, () => hud.layout());
     game.settings.register(MODULE_ID, POSITIONS, { scope: "client", config: false, type: Object, default: {} });
     game.keybindings.register(MODULE_ID, "actionHud", {
       name: "MY_MODULES.ActionHud.toggle",
