@@ -177,14 +177,17 @@ D&D 5e tracks successes, failures, and recovery as usual. On a player characterâ
 
 ## Variant data
 
-A variant is a set of documents (Tile, AmbientLight, AmbientSound, Wall) with the flag `flags.foundry-my-modules.variant`.
+A variant is a set of documents (Tile, AmbientLight, AmbientSound, Wall, or Token) with the flag `flags.foundry-my-modules.variant`.
 
-- The flag is a variant name, or a list of names: the document is on while any of them is active. The base state's name means "on in the base state", so `["Day", "Feast", "Night", "Burning"]` is a wall that only the ruin removes. A document without the flag is always on.
-- A document belongs to the levels in its own `levels` field, or to every level when that is empty.
-- The variants of a level are the base state, then the variant names of its documents in the order the documents were created. The scene flag `defaultName` names the base state.
+- The flag is a variant name, or a list of names: the document is on while any of them is active. The base state's name means "on in the base state", so `["Day", "Feast", "Night", "Burning"]` is a wall that only the ruin removes. Variants leave documents without this flag alone.
+- A token belongs to the scene level in its `level` field. Other documents use their `levels` field and belong to every level when it is empty.
+- The variants of a level are the base state, then the variant names of its documents in the order the documents were created. The scene flag `defaultName` names the base state. If you omit it on a scene with variant tokens, the module saves the active GM's localized base name so players in other languages use the same name. On older scenes with no stored base name or selection, players see variant tokens once the GM first opens the scene or selects a variant.
 - The scene flag `active` maps a level id to its active variant. A level missing from it shows the base state.
 - Switching off saves the switched fields in the document flag `restore` and writes the off values: Tile `alpha` 0, light and sound `hidden`, Wall `move`, `sight`, `light` and `sound` 0. Switching on writes the saved values back and deletes the flag. Tiles switch by alpha, because the GM sees hidden tiles half transparent.
-- Create the documents switched on. The active GM brings the scene to the stored state when it loads and whenever the flags change, and writes only what differs.
+- Create tiles, lights, sounds, and walls switched on. The active GM applies the stored variant when the scene loads and whenever the flags change.
+- Give a token its usual visibility when you create it. The module stores that choice in `flags.foundry-my-modules.gmHidden`. A new tagged token arrives hidden. The active GM reveals it when its variant is active and the saved choice permits it. Older tokens use their saved `restore.hidden` value or, if absent, their original visibility.
+- Use the eye in the token HUD or the Hidden checkbox in token configuration to change that choice even while a variant is off. A normal paste preserves it. Pasting as hidden sets it. Removing the last variant tag restores the saved choice.
+- Any GM can switch a variant. The active GM hides outgoing tokens and their attached Regions, publishes the new selection, then reveals incoming tokens. For example, a guard tagged `"Fest"` appears when Fest starts. A guard hidden by the GM for an ambush stays hidden.
 
 The API for macros and other modules:
 
