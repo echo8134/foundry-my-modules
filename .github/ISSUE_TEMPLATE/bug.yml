@@ -32,4 +32,4 @@ body:
     attributes:
       label: Foundry, game system, and module versions
       description: Include the versions you know.
-      placeholder: "Foundry 14 build …, dnd5e …, My Modules …"
+      placeholder: "Foundry 14 build …, dnd5e …, echo8134's table tools …"
