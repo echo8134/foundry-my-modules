@@ -98,7 +98,17 @@ export class QuestSheet extends HandlebarsApplicationMixin(ApplicationV2) {
     if (!quest) return context;
     const quests = listQuests();
     const gm = game.user.isGM;
-    const pages = this.entry.pages.filter((page) => page.testUserPermission(game.user, "OBSERVER"));
+    const pages = this.entry.pages
+      .filter((page) => page.testUserPermission(game.user, "OBSERVER"))
+      .sort((a, b) => a.sort - b.sort);
+    const description =
+      pages.find((page) => page.getFlag(MODULE_ID, "questPage") === "description") ??
+      pages.find(
+        (page) =>
+          page.type === "text" &&
+          !page.getFlag(MODULE_ID, "questPage") &&
+          ["Beschreibung", "Description"].includes(page.name)
+      );
     return {
       ...context,
       quest,
@@ -134,7 +144,8 @@ export class QuestSheet extends HandlebarsApplicationMixin(ApplicationV2) {
       statusLabel: statusLabel(quest.status),
       objectives: objectiveRows(quest.objectives),
       rewards: await Promise.all(quest.rewards.map(rewardView)),
-      pages: await Promise.all(pages.sort((a, b) => a.sort - b.sort).map(pageView))
+      description: description && (await pageView(description)),
+      pages: await Promise.all(pages.filter((page) => page !== description).map(pageView))
     };
   }
 

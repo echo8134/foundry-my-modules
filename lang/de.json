@@ -106,7 +106,7 @@
   "MY_MODULES.Quests.GMNotes": "SL-Notizen",
   "MY_MODULES.Quests.QuestName": "Name des Auftrags",
   "MY_MODULES.Quests.StatusLabel": "Status",
-  "MY_MODULES.Quests.Giver": "Auftraggeber",
+  "MY_MODULES.Quests.Giver": "Questgeber",
   "MY_MODULES.Quests.Portrait": "Porträt",
   "MY_MODULES.Quests.DropActor": "Ziehe einen Akteur hierher, um seinen Namen und sein Porträt zu übernehmen.",
   "MY_MODULES.Quests.Objectives": "Ziele",
