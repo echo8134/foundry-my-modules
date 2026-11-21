@@ -219,7 +219,9 @@ For an internal change, write `- N/A` under the heading. If you push a change di
 
 Merging a change to the module manifest, scripts, styles, translations or bundled assets into `main` publishes an update automatically. Fixes and small features advance the patch version, for example from `v0.9.1` to `v0.9.2`. Documentation and test changes alone skip publication.
 
-For a larger feature, start the commit or PR title with `feat: [minor]` or a scoped prefix such as `feat(quests): [minor]`. For example, `feat(quests): [minor] add a quest board` advances `v0.9.1` to `v0.10.0`.
+Link each issue the PR resolves with `Closes #123` in the PR description. For a larger feature, add `release:minor` to its issue before merging. If any module change in the release closes an issue with that label, the version advances from, for example, `v0.9.1` to `v0.10.0`. Issues labeled only `bug` or `enhancement` use the default patch bump. Without an issue, you can still request a minor release with a commit or PR title such as `feat: [minor] add a quest board` or `feat(quests): [minor] add a quest board`.
+
+The release notes link the issues resolved by the module changes. After publication, the workflow comments on each of those issues with the release tag. If a run is interrupted, the next run checks the published release and adds any missing comments.
 
 To choose a higher version, such as a major release, set it in both `module.json` and `package.json` in the same PR. The workflow stamps the published manifest and its copy inside `module.zip` with the release version. Foundry checks the stable manifest URL and downloads the ZIP for that exact version.
 
