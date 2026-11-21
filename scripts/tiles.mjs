@@ -80,15 +80,16 @@ function addTileFields(app, element, context) {
   const legend = document.createElement("legend");
   legend.textContent = game.i18n.localize("MY_MODULES.Tiles.Section");
   section.append(legend);
-  const { FilePathField, StringField } = foundry.data.fields;
+  const { BooleanField, FilePathField, StringField } = foundry.data.fields;
   for (const [key, field] of [
     ["clickSound", new FilePathField({ categories: ["AUDIO"] })],
-    ["quest", new StringField({ placeholder: "JournalEntry.<id>" })]
+    ["quest", new StringField({ placeholder: "JournalEntry.<id>" })],
+    ["calendarSheet", new BooleanField()]
   ]) {
     section.append(
       field.toFormGroup(
         { label: `MY_MODULES.Tiles.${key}`, localize: true, rootId: app.id },
-        { name: flagPath(key), value: context.document.getFlag(MODULE_ID, key) ?? "" }
+        { name: flagPath(key), value: context.document.getFlag(MODULE_ID, key) ?? field.initial }
       )
     );
   }

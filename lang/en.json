@@ -91,6 +91,7 @@
   "MY_MODULES.Safety.xCard.Setting": "Enable the X-card",
   "MY_MODULES.Safety.linesVeils.Setting": "Enable lines and veils",
   "MY_MODULES.Safety.openDoor.Setting": "Enable open door",
+  "MY_MODULES.Tiles.calendarSheet": "Calendar sheet",
   "MY_MODULES.Tiles.Section": "My Modules",
   "MY_MODULES.Tiles.clickSound": "Click sound",
   "MY_MODULES.Tiles.quest": "Quest UUID",
