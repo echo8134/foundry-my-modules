@@ -82,6 +82,8 @@ To give a portrait a sound or link a note to a quest, open the tile's configurat
 - **Click sound** takes an audio file. A single left click plays it at the clicking user's interface volume. Clicking again restarts it from the beginning.
 - **Quest UUID** takes the world journal UUID, such as `JournalEntry.<id>`. A click opens the quest sheet for anyone who can view that quest.
 
+- **Calendar sheet** draws the current month over a blank parchment tile, with past days crossed out and today marked in red. The marks follow the world clock. A Harptos month displays its festival after the last tenday. Use the bundled `modules/foundry-my-modules/assets/quests/parchment.webp` as the tile texture.
+
 Test the tile on the token layer, where players use it. A hand cursor appears when the tile has an action you can use. On the Tiles layer, you can select, drag, or double-click the tile to configure it. Creation tools also work over the tile.
 
 Transparent pixels let clicks through, and overlapping tokens keep their normal controls. To put an invisible hotspot over artwork, set the tile's opacity to zero. Its entire rotated rectangle then responds to clicks.

@@ -284,6 +284,44 @@ await run(async () => {
       await waitFor(player, () => canvas.scene.tiles.getName("Portrait").y > 400);
     });
 
+    await check("the player sees today's cross move on the calendar when the GM advances the day", async () => {
+      const original = await gm.evaluate(() => game.time.worldTime);
+      try {
+        await gm.evaluate(async (m) => {
+          await game.time.set(0);
+          await canvas.scene.tiles.getName("Plain tile").setFlag(m, "calendarSheet", true);
+        }, MODULE_ID);
+        const readCross = () => {
+          const tile = canvas.scene.tiles.getName("Plain tile").object;
+          const surface = tile.mesh.texture.baseTexture.resource?.source;
+          if (!(surface instanceof HTMLCanvasElement)) return null;
+          const { width, height } = surface;
+          const pixels = surface.getContext("2d").getImageData(0, 0, width, height).data;
+          let count = 0;
+          let sum = 0;
+          for (let i = 0; i < pixels.length; i += 4) {
+            if (pixels[i] !== 160 || pixels[i + 1] !== 36 || pixels[i + 2] !== 36) continue;
+            count++;
+            sum += (i / 4) % width;
+          }
+          return count ? sum / count / width : null;
+        };
+        await waitFor(player, readCross);
+        const first = await player.evaluate(readCross);
+        await gm.evaluate(() => game.time.advance(game.time.calendar.days.hoursPerDay * 3600));
+        await waitFor(player, () => game.time.components.dayOfMonth === 1);
+        const second = await player.evaluate(readCross);
+        assert(second > first + 0.04, "the painted cross did not move to the next day");
+        await gm.evaluate((m) => canvas.scene.tiles.getName("Plain tile").unsetFlag(m, "calendarSheet"), MODULE_ID);
+        await waitFor(player, () => {
+          const tile = canvas.scene.tiles.getName("Plain tile").object;
+          return tile.mesh.texture === tile.texture;
+        });
+      } finally {
+        await gm.evaluate((time) => game.time.set(time), original);
+      }
+    });
+
     await check("TileConfig saves and clears the audio picker and quest UUID on the same tile", async () => {
       const quest = `JournalEntry.${questId}`;
       await configureTile(gm, { clickSound: SOUND, quest });

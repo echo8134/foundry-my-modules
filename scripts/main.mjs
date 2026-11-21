@@ -1,4 +1,5 @@
 import { setupActionHud } from "./action-hud/hud.mjs";
+import { setupCalendarTiles } from "./calendar-tile.mjs";
 import { MODULE_ID } from "./constants.mjs";
 import { setupCursors } from "./cursors.mjs";
 import { setupDeathSaves } from "./death-saves.mjs";
@@ -15,6 +16,7 @@ import { setupTiles } from "./tiles.mjs";
 import { getVariants, setVariant } from "./variants.mjs";
 
 setupActionHud();
+setupCalendarTiles();
 setupCursors();
 setupDeathSaves();
 setupDiceTray();
