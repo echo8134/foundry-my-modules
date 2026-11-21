@@ -15,7 +15,7 @@ check_tag() {
 }
 
 plan() {
-  local previous=$1 sha=$2 requested changed features major minor patch automatic
+  local previous=$1 sha=$2 requested changed minor_features major minor patch automatic
   local module_paths=(module.json "${runtime_paths[@]}")
   requested=$(git show "$sha:module.json" | jq -er '.version | strings')
   check_tag "v$requested"
@@ -29,13 +29,13 @@ plan() {
   changed=$(git diff --name-only "refs/tags/$previous" "$sha" -- "${module_paths[@]}")
   [[ -n $changed ]] || return 0
 
-  features=$(git log --show-pulls -z --format='%s%n%b' "refs/tags/$previous..$sha" -- "${module_paths[@]}" |
+  minor_features=$(git log --show-pulls -z --format='%s%n%b' "refs/tags/$previous..$sha" -- "${module_paths[@]}" |
     awk -v RS='\0' -F '\n' '
       { title = $1 ~ /^Merge pull request #[0-9]+ from / ? $2 : $1 }
-      title ~ /^feat(\([^)]+\))?!?: .+/ { print title }
+      title ~ /^feat(\([^)]+\))?!?: \[minor\] .+/ { print title }
     ')
   IFS=. read -r major minor patch <<< "${previous#v}"
-  if [[ -n $features ]]; then
+  if [[ -n $minor_features ]]; then
     automatic="v$major.$((minor + 1)).0"
   else
     automatic="v$major.$minor.$((patch + 1))"

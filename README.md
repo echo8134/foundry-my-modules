@@ -202,7 +202,9 @@ End each pull request description with `## Release notes`. Write one bullet per 
 
 For an internal change, write `- N/A` under the heading. If you push a change directly to `main`, you can put the same section in the commit message. The release includes the collected notes and a link to the full history.
 
-Merging a change to the module manifest, scripts, styles, translations or bundled assets into `main` publishes an update automatically. Start a feature commit or PR title with `feat:` or a scoped prefix such as `feat(safety):`. A release containing a feature advances the minor version, for example from `v0.8.3` to `v0.9.0`. Fixes and other module changes advance the patch version to `v0.8.4` in that example. Documentation and test changes alone skip publication.
+Merging a change to the module manifest, scripts, styles, translations or bundled assets into `main` publishes an update automatically. Fixes and small features advance the patch version, for example from `v0.9.1` to `v0.9.2`. Documentation and test changes alone skip publication.
+
+For a larger feature, start the commit or PR title with `feat: [minor]` or a scoped prefix such as `feat(quests): [minor]`. For example, `feat(quests): [minor] add a quest board` advances `v0.9.1` to `v0.10.0`.
 
 To choose a higher version, such as a major release, set it in both `module.json` and `package.json` in the same PR. The workflow stamps the published manifest and its copy inside `module.zip` with the release version. Foundry checks the stable manifest URL and downloads the ZIP for that exact version.
 

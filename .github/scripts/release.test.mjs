@@ -67,12 +67,12 @@ test("module changes advance the published patch, retries and documentation skip
   assert.equal(release("plan", "v0.8.0", commit()), "v0.8.1");
 });
 
-test("a merged feature bumps the minor once and honors a higher manifest version", (t) => {
+test("a marked feature in a merged branch bumps the minor once and honors a higher manifest version", (t) => {
   const { release, git, write, setVersion, commit } = repository(t);
   git("tag", "v0.8.3", commit());
   git("switch", "--quiet", "-c", "signals");
   write("scripts/signals.mjs", "export const pause = true;");
-  commit("feat(safety): add pause");
+  commit("feat(safety): [minor] add pause");
   write("lang/en.json", '{"pause":"Pause"}');
   commit("fix(safety): label the pause control");
   git("switch", "--quiet", "main");
@@ -83,11 +83,11 @@ test("a merged feature bumps the minor once and honors a higher manifest version
   assert.equal(release("plan", "v0.8.3", commit()), "v1.0.0");
 });
 
-test("a feature PR title counts for shipped changes and a documentation feature leaves fixes as patches", (t) => {
+test("a marked PR title counts for shipped changes and a marked documentation change leaves fixes as patches", (t) => {
   const { release, git, write, commit } = repository(t);
   git("tag", "v0.8.3", commit());
   write("README.md", "Usage instructions");
-  assert.equal(release("plan", "v0.8.3", commit("feat: add a guide")), "");
+  assert.equal(release("plan", "v0.8.3", commit("feat: [minor] add a guide")), "");
   write("scripts/main.mjs", "export const enabled = false;");
   assert.equal(release("plan", "v0.8.3", commit("fix: correct the default")), "v0.8.4");
   git("switch", "--quiet", "-c", "signals");
@@ -100,10 +100,25 @@ test("a feature PR title counts for shipped changes and a documentation feature 
     "-m",
     "Merge pull request #1 from table/signals",
     "-m",
-    "feat!: add a table signal",
+    "feat!: [minor] add a table signal",
     "signals"
   );
   assert.equal(release("plan", "v0.8.3", "HEAD"), "v0.9.0");
+});
+
+test("squash commits use patch for small features and minor for a marked feature since the last release", (t) => {
+  const { release, git, write, commit } = repository(t);
+  git("tag", "v0.9.1", commit());
+  write("styles/table.css", ".quest { color: red; }");
+  assert.equal(release("plan", "v0.9.1", commit("feat(quests): highlight a quest (#1)")), "v0.9.2");
+
+  write("scripts/main.mjs", "export const board = true;");
+  git("tag", "v0.10.0", commit("feat: [minor] add a quest board (#2)"));
+  assert.equal(release("plan", "v0.9.1", "HEAD"), "v0.10.0");
+
+  write("lang/en.json", '{"board":"Board"}');
+  const label = commit("feat: label the board (#3)\n\nfeat: [minor] add a quest board");
+  assert.equal(release("plan", "v0.10.0", label), "v0.10.1");
 });
 
 test("the Foundry manifest and ZIP use the same versioned download and files from the requested revision", (t) => {
