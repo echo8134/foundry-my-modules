@@ -1,7 +1,8 @@
 ## What changed and why
 
-<!-- Describe the change and the problem it solves. Add “Closes #123” if it resolves an issue.
-Fixes and small features get a patch release. For a larger feature, use a title like “feat: [minor] add a quest board” or “feat(quests): [minor] add a quest board”. -->
+<!-- Describe the change and the problem it solves. Use “Closes #123” for each issue this PR resolves.
+Fixes and small features get a patch release. For a larger feature, label its issue “release:minor”.
+Without an issue, use a title like “feat(quests): [minor] add a quest board”. -->
 
 ## Verification
 

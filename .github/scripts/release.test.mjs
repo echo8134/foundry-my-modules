@@ -121,6 +121,21 @@ test("squash commits use patch for small features and minor for a marked feature
   assert.equal(release("plan", "v0.10.0", label), "v0.10.1");
 });
 
+test("a reverted minor title only raises the version when the feature is restored", (t) => {
+  const { release, git, write, commit } = repository(t);
+  git("tag", "v0.9.1", commit());
+  write("scripts/main.mjs", "export const enabled = false;");
+  const feature = commit("feat: [minor] add player settings");
+  git("revert", "--no-edit", feature);
+  const rollback = git("rev-parse", "HEAD");
+  write("styles/table.css", ".table { color: red; }");
+  commit("fix: improve table contrast");
+  assert.equal(release("plan", "v0.9.1", "HEAD"), "v0.9.2");
+
+  git("revert", "--no-edit", rollback);
+  assert.equal(release("plan", "v0.9.1", "HEAD"), "v0.10.0");
+});
+
 test("the Foundry manifest and ZIP use the same versioned download and files from the requested revision", (t) => {
   const { root, release, write, commit } = repository(t);
   const revision = commit();
