@@ -94,6 +94,7 @@
   "MY_MODULES.Tiles.Section": "My Modules",
   "MY_MODULES.Tiles.clickSound": "Click sound",
   "MY_MODULES.Tiles.quest": "Quest UUID",
+  "MY_MODULES.Quests.ShowToPlayers": "Show to players",
   "MY_MODULES.Quests.Control": "Quests",
   "MY_MODULES.Quests.Log": "Quest Log",
   "MY_MODULES.Quests.OpenPrimary": "Open primary quest",

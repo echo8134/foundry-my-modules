@@ -104,6 +104,7 @@ As GM, click **Create quest** to start a hidden quest in the journal folder name
 #### Rewards, personal quests, and the tracker
 
 - Drop an Item from the sidebar or a compendium onto the quest sheet, or click **Add text reward** and edit the line. New rewards start locked. Use the eye to hide a reward or the lock to release it. Players can drag an unlocked Item onto their character sheet. For compendium Items, they need access to the source pack. Text rewards stay on the quest sheet.
+- Click the eye in the quest header to open the sheet for connected players who can view it. Each player sees their own objectives, rewards and pages.
 - At the bottom of the sheet, select the players who may see a personal quest. Clear every selection to share it with the whole party. The **Hidden** status keeps it GM-only.
 - Choose a **Parent quest** to list this quest and its status on the parent’s sheet. Click a sub-quest there to open it. The board groups related quests together in each status tab.
 - Mark a **Primary quest** on its sheet. Choosing another transfers the star. **Ctrl+Shift+Q** opens the primary quest for anyone who can see it.

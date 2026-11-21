@@ -123,8 +123,14 @@ async function checkPersonalQuest(gm, player, questId, sheet, row) {
       questId
     );
     await player.waitForSelector(row, { visible: true });
-    await click(player, `${row} [data-action=openQuest]`);
+    if (await player.$(sheet)) await click(player, `${sheet} [data-action=close]`);
+    await player.waitForSelector(sheet, { hidden: true });
+    await click(gm, `${sheet} [data-action=showToPlayers]`);
     await player.waitForSelector(sheet, { visible: true });
+    const revealed = await player.$eval(sheet, (app) => app.textContent);
+    assert(revealed.includes(PUBLIC) && !revealed.includes(SECRET) && !revealed.includes(NOTES), "wrong quest view");
+    assert(!(await player.$(`${sheet} [data-action=showToPlayers]`)), "player has a broadcast button");
+    assert(!(await other.$(sheet)), "personal quest opened for the excluded player");
     await click(gm, recipient);
     await other.waitForSelector(row, { visible: true });
   } finally {

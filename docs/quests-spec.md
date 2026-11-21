@@ -68,4 +68,4 @@ Each stage is one branch in its own worktree, ends with `npm run check` clean, n
 
 ## Not in scope
 
-The vault side (writing quests from the vault's quest cards, the weekly refresh in session prep, drawing note textures) is built in the ROTD repo, not here. Socket messages are not needed: only the GM writes, everyone reads documents.
+The vault side (writing quests from the vault's quest cards, the weekly refresh in session prep, drawing note textures) is built in the ROTD repo, not here. The sheet header lets the GM open the quest for its eligible players. The module sends its journal ID to those connected users. Each client checks the sender and the quest permissions before opening its own view.
