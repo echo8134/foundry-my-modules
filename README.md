@@ -17,6 +17,19 @@ Foundry offers each new release through the module's Update button.
 ## Features
 
 <details>
+<summary><h3>Appraise and harvest a corpse (dnd5e)</h3></summary>
+
+Target a dead creature. Use **Appraise** or **Harvest** on the Harvesting Kit, or open the harvesting tool in the token controls with your character selected. The active GM must be online. Appraisal takes one attempt per corpse and requires training in the creature's skill. Success whispers the parts, DCs and dangers to the appraiser, and helps another character harvest the same corpse.
+
+The GM reviews the Dexterity roll, chooses the kill condition, marks destroyed parts and can leave successful parts behind. Confirming spends one charge, copies the gained world items to the harvester, posts any danger and saves, and closes this corpse to further harvesting. A missing or empty kit requires skill proficiency and gives disadvantage. If an approved handoff is interrupted, use **Harvest** again with the original character to finish it. A disabled effect records each appraisal or confirmed harvest for that token. The kit records the charge used for each confirmed harvest.
+
+Character sheets store Harvesting Kit training under **Tool proficiencies**. Existing kits with proficiency set on the item also work. The two kit activity IDs are `AppraiseCreature` and `CheckKitSupplies`.
+
+The creature's actor supplies `flags.foundry-my-modules.harvest` with `appraise: {skill, dc}`, `size`, and a `components` array. Each component has an `id`, `name`, `dc`, `edible`, `quantity`, and `item` (exact world Item name or `Item.<id>` UUID). A danger carries `text` and optional `save: {ability, dc}` and `damage: {formula, type}`. Components with the same `exclusiveGroup` represent alternatives. The highest successful DC wins, with table order breaking ties. Macros can call `game.modules.get("foundry-my-modules").api.harvesting.request("harvest", actor)`.
+
+</details>
+
+<details>
 <summary><h3>Hide cursors</h3></summary>
 
 Hover a player’s row in the player list at the bottom left to see its cursor toggle. GMs also see toggles on GM rows.
