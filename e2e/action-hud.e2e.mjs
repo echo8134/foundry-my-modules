@@ -2,12 +2,55 @@ import { assert, check, join, joinGamemaster, MODULE_ID, PLAYER_NAME, run, waitF
 
 const HUD = "#my-action-hud";
 const DETACH_HOTBAR = "actionHudDetachHotbar";
+const DESIGN = "actionHudDesign";
 const HIDDEN = "actionHudHiddenCategories";
 const group = (name) => `${HUD} button[data-group="${name}"]`;
 const entry = (action, id) => `${HUD} [data-action="${action}"][data-id="${id}"]`;
 
 async function click(page, selector, options) {
   await page.locator(selector).setTimeout(10000).click(options);
+}
+
+async function assertMenuDesign(page, frame) {
+  const styles = await page.evaluate(
+    (hud, surface, tab) => {
+      const menu = document.createElement("nav");
+      menu.id = "context-menu";
+      menu.hidden = true;
+      const highlight = menu.appendChild(document.createElement("span"));
+      highlight.style.backgroundColor = "var(--hover-entry-background)";
+      highlight.style.borderTopColor = "var(--hover-entry-border)";
+      highlight.style.color = "var(--hover-text-color)";
+      document.querySelector("#interface").append(menu);
+      const appearance = (element) => {
+        const { backgroundColor, borderTopColor, color } = getComputedStyle(element);
+        return [backgroundColor, borderTopColor, color];
+      };
+      const chrome = (element) => {
+        const { backgroundImage, borderRadius, boxShadow, fontFamily } = getComputedStyle(element);
+        return [...appearance(element), backgroundImage, borderRadius, boxShadow, fontFamily];
+      };
+      const result = {
+        native: chrome(menu),
+        frame: chrome(document.querySelector(surface)),
+        panel: chrome(document.querySelector(`${hud} .hud-panel`)),
+        highlight: appearance(highlight),
+        tabFont: getComputedStyle(document.querySelector(tab)).fontFamily
+      };
+      menu.remove();
+      return result;
+    },
+    HUD,
+    frame,
+    group("attacks")
+  );
+  assert(
+    JSON.stringify(styles.frame) === JSON.stringify(styles.native) &&
+      JSON.stringify(styles.panel) === JSON.stringify(styles.native) &&
+      styles.tabFont === styles.native.at(-1),
+    JSON.stringify(styles)
+  );
+  return styles.highlight;
 }
 
 async function buildEncounter(gm) {
@@ -209,6 +252,104 @@ await run(async () => {
       await click(gm, group("spells"));
       await gm.waitForSelector(entry("item", ids.atWillSpell), { visible: true });
       await gm.evaluate(() => canvas.tokens.releaseAll());
+    });
+
+    await check("the personal HUD design follows Foundry themes, docking and reload", async () => {
+      const attacks = group("attacks");
+      const staff = entry("item", ids.items["Ashwood Staff"]);
+      const detached = `body > ${HUD}`;
+      const select = `#settings-config select[name="${MODULE_ID}.${DESIGN}"]`;
+      const openAttacks = async (page) => {
+        await page.waitForSelector(attacks, { visible: true });
+        if (!(await page.$(`${attacks}[aria-expanded="true"]`))) await click(page, attacks);
+        await page.waitForSelector(staff, { visible: true });
+      };
+      const theme = (uiTheme) =>
+        player.evaluate((uid) => {
+          const config = game.settings.get("core", "uiConfig");
+          game.configureUI({ ...config, colorScheme: { applications: "dark", interface: uid } });
+        }, uiTheme);
+      await gm.bringToFront();
+      await gm.evaluate((id) => canvas.tokens.get(id).control(), ids.hero);
+      await openAttacks(gm);
+      await player.bringToFront();
+      try {
+        await player.evaluate(() => game.settings.sheet.render({ force: true }));
+        await click(player, `#settings-config nav [data-tab="${MODULE_ID}"]`);
+        assert((await player.$eval(select, (el) => el.value)) === "wood", "wood and parchment is the default");
+        assert(
+          await player.evaluate((key) => game.settings.settings.get(key).scope === "client", `${MODULE_ID}.${DESIGN}`),
+          "HUD design must be stored per client"
+        );
+        await player.select(select, "menu");
+        await click(player, '#settings-config button[type="submit"]');
+        await player.waitForSelector("#settings-config", { hidden: true });
+        await openAttacks(player);
+
+        for (const palette of ["dark", "light"]) {
+          await theme(palette);
+          const highlight = await assertMenuDesign(player, "#hotbar");
+          const spells = group("spells");
+          await player.hover(spells);
+          await player.keyboard.press("Tab");
+          await player.focus(staff);
+          await waitFor(
+            player,
+            (selectors, expected) =>
+              selectors.every((selector) => {
+                const el = document.querySelector(selector);
+                if (!el) return false;
+                const { backgroundColor, borderTopColor, color } = getComputedStyle(el);
+                return [backgroundColor, borderTopColor, color].join() === expected.join();
+              }),
+            [attacks, spells, staff],
+            highlight
+          );
+          assert(
+            await player.$eval(
+              staff,
+              (el) => el.matches(":focus-visible") && getComputedStyle(el).outlineWidth === "2px"
+            ),
+            "keyboard focus has a visible outline"
+          );
+        }
+        await player.evaluate((m, key) => game.settings.set(m, key, true), MODULE_ID, DETACH_HOTBAR);
+        await player.waitForSelector(`${detached} .hud-grip`, { visible: true });
+        await assertMenuDesign(player, `${detached} .hud-bar`);
+
+        await player.reload({ waitUntil: "domcontentloaded" });
+        await player.waitForFunction(() => globalThis.game?.ready && globalThis.canvas?.ready, { timeout: 180000 });
+        await player.evaluate(async (id) => {
+          await game.user.sheet.close({ animate: false });
+          await game.scenes.get(id).view();
+        }, ids.scene);
+        await waitFor(player, (id) => canvas.ready && canvas.tokens.get(id)?.actor.isOwner, ids.hero);
+        await player.evaluate((id) => canvas.tokens.get(id).control(), ids.hero);
+        await openAttacks(player);
+        await player.waitForSelector(`${detached} .hud-grip`, { visible: true });
+        await assertMenuDesign(player, `${detached} .hud-bar`);
+
+        for (const [selector, texture] of [
+          ["#hotbar", "board.webp"],
+          [`${HUD} .hud-panel`, "parchment.webp"]
+        ]) {
+          assert(
+            await gm.$eval(selector, (el, image) => getComputedStyle(el).backgroundImage.includes(image), texture),
+            `the other client lost its ${texture} background`
+          );
+        }
+      } finally {
+        await player.evaluate(
+          async (m, design, detach) => {
+            await game.settings.set(m, design, "wood");
+            await game.settings.set(m, detach, false);
+          },
+          MODULE_ID,
+          DESIGN,
+          DETACH_HOTBAR
+        );
+        await gm.evaluate(() => canvas.tokens.releaseAll());
+      }
     });
 
     await check("players can choose their tabs and layout and use native macros", async () => {
