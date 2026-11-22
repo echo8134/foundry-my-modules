@@ -270,13 +270,18 @@
   --hud-menu-border: var(--color-cool-3);
   --hud-menu-divider: var(--color-cool-4);
   --hud-menu-highlight: var(--color-dark-1);
+  --hud-menu-text: var(--color-light-3);
+  --hud-menu-emphatic: var(--color-light-1);
 }
 
-body.theme-light :is(#my-action-hud.menu-design, #hotbar:has(> #my-action-hud.menu-design)) {
+:where(body:has(#interface.theme-light), body.theme-light:not(:has(#interface.theme-dark)))
+  :is(#my-action-hud.menu-design, #hotbar:has(> #my-action-hud.menu-design)) {
   --hud-menu-background: #d9d8c8;
   --hud-menu-border: #999;
   --hud-menu-divider: #999;
   --hud-menu-highlight: #f0f0e0;
+  --hud-menu-text: var(--color-dark-3);
+  --hud-menu-emphatic: var(--color-dark-1);
 }
 
 #my-action-hud.menu-design {
@@ -290,7 +295,7 @@ body.theme-light :is(#my-action-hud.menu-design, #hotbar:has(> #my-action-hud.me
   border-color: var(--hud-menu-border);
   border-radius: 5px;
   box-shadow: 0 3px 6px rgb(0 0 0 / 45%);
-  color: var(--color-text-secondary);
+  color: var(--hud-menu-text);
 }
 
 #hotbar > #my-action-hud.menu-design .hud-bar {
@@ -317,7 +322,7 @@ body.theme-light :is(#my-action-hud.menu-design, #hotbar:has(> #my-action-hud.me
 }
 
 #my-action-hud.menu-design .hud-panel :is(header, h3) {
-  color: var(--color-text-emphatic);
+  color: var(--hud-menu-emphatic);
   font-weight: 600;
 }
 
@@ -331,14 +336,14 @@ body.theme-light :is(#my-action-hud.menu-design, #hotbar:has(> #my-action-hud.me
   border-inline-width: 0;
   border-radius: 0;
   box-shadow: none;
-  color: var(--color-text-secondary);
+  color: var(--hud-menu-text);
   font: inherit;
 }
 
 #my-action-hud.menu-design button:is(:hover, :focus-visible, [aria-expanded="true"], [aria-pressed="true"]) {
   background: var(--hud-menu-highlight);
   border-color: var(--hud-menu-divider);
-  color: var(--color-text-emphatic);
+  color: var(--hud-menu-emphatic);
 }
 
 #my-action-hud.menu-design .hud-bar button:is(:hover, [aria-expanded="true"]) i {
