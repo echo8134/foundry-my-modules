@@ -1,6 +1,6 @@
 import { assert, check, join, joinGamemaster, PLAYER_NAME, run, waitFor } from "./harness.mjs";
 
-const tray = "#chat-message + .my-dice-tray";
+const tray = "#chat-message > .my-dice-tray";
 const editor = "#chat-message .ProseMirror";
 const die = (faces) => `${tray} [data-faces="${faces}"]`;
 
@@ -19,6 +19,31 @@ async function clickWith(page, key, selector) {
     await page.click(selector);
   } finally {
     await page.keyboard.up(key);
+  }
+}
+
+async function checkBar(page, parent) {
+  const selector = `${parent} > ${tray}`;
+  await page.waitForSelector(selector, { visible: true });
+  const { bar, field, controls, mode, die, nativeButton } = await page.$eval(selector, (element) => {
+    const rect = (el) => el.getBoundingClientRect().toJSON();
+    return {
+      bar: rect(element),
+      field: rect(element.parentElement.querySelector(".editor-container")),
+      controls: Array.from(element.querySelectorAll(":scope > button, :scope > input, [data-mode]"), rect),
+      mode: rect(element.querySelector("[data-mode]")),
+      die: rect(element.querySelector("[data-faces]")),
+      nativeButton: rect(document.querySelector("#message-modes button"))
+    };
+  });
+  assert(Math.abs(field.bottom - bar.top) <= 1, "gap between the editor and dice bar");
+  assert(Math.abs(field.left - bar.left) <= 1 && Math.abs(field.right - bar.right) <= 1, "bar edges are misaligned");
+  assert(bar.height <= nativeButton.height + 1, "dice bar is taller than a native chat button");
+  assert(mode.height < die.height, "ADV/DIS should be shorter than the dice controls");
+  const center = (bar.top + bar.bottom) / 2;
+  for (const control of controls) {
+    assert(control.top < center && control.bottom > center, "control is outside the row");
+    assert(control.left >= bar.left - 1 && control.right <= bar.right + 1, "control overflows the dice bar");
   }
 }
 
@@ -54,6 +79,53 @@ await run(async () => {
   };
 
   try {
+    await check("the sidebar dice bar sits flush against the editor in a single row", () =>
+      checkBar(player, ".chat-form")
+    );
+    await check("toggling the sidebar keeps the chat field between its open and closed positions", async () => {
+      const { open, closed, positions } = await player.evaluate(async () => {
+        const field = document.getElementById("chat-message");
+        const toggle = document.querySelector('#sidebar-tabs [data-action="toggleState"]');
+        const left = () => field.getBoundingClientRect().left;
+        const frame = () => new Promise(requestAnimationFrame);
+        async function settle() {
+          await frame();
+          const animations = document.getElementById("ui-right").getAnimations({ subtree: true });
+          await Promise.allSettled(
+            animations.filter((a) => a.effect.getTiming().iterations !== Infinity).map((a) => a.finished)
+          );
+        }
+        await settle();
+        const open = left();
+        toggle.click();
+        const positions = [left()];
+        await settle();
+        const closed = left();
+        for (let i = 0; i < 3; i++) {
+          toggle.click();
+          positions.push(left());
+          await frame();
+          positions.push(left());
+        }
+        await settle();
+        ui.sidebar.changeTab("actors", "primary");
+        toggle.click();
+        await settle();
+        document.querySelector('#sidebar-tabs [data-tab="chat"]').click();
+        positions.push(left());
+        await frame();
+        positions.push(left());
+        await settle();
+        return { open, closed, positions };
+      });
+      const min = Math.min(open, closed) - 1;
+      const max = Math.max(open, closed) + 1;
+      assert(
+        positions.every((x) => x >= min && x <= max),
+        `chat left the range ${min}–${max}: ${positions}`
+      );
+      await player.waitForSelector(`#sidebar-content.expanded #chat.active ${tray}`, { visible: true });
+    });
     await check("clicking dice builds an editable roll and updates its counters", async () => {
       await player.waitForSelector(tray, { visible: true });
       for (const faces of [6, 6, 6, 8]) await player.locator(die(faces)).click();
@@ -95,12 +167,17 @@ await run(async () => {
 
     await check("the same tray works below the editor in notifications and back in the sidebar", async () => {
       await player.evaluate(() => ui.sidebar.collapse());
-      await player.waitForSelector(`#chat-notifications > ${tray}`, { visible: true });
+      await checkBar(player, "#chat-notifications");
       const fits = await player.$eval(tray, (element) => {
         const box = element.getBoundingClientRect();
         return box.width > 0 && box.left >= 0 && box.right <= innerWidth && box.top >= 0 && box.bottom <= innerHeight;
       });
       assert(fits, "notifications tray is outside the viewport");
+      await player.click(`${tray} .my-dice-modifier`);
+      assert(
+        await player.$eval("#chat-message .menu-container", (menu) => !menu.getClientRects().length),
+        "using the dice bar opened the text formatting controls"
+      );
       await player.click(die(4));
       await waitForDraft("/r 1d4");
       await player.evaluate(() => {
@@ -111,6 +188,19 @@ await run(async () => {
       await player.click(die(4));
       await waitForDraft("/r 2d4");
       assert(await player.$$eval(".my-dice-tray", (elements) => elements.length === 1), "duplicate dice trays");
+    });
+
+    await check("the chat popout keeps the attached bar and the current roll draft", async () => {
+      await player.evaluate(() => {
+        ui.chat.renderPopout();
+      });
+      await checkBar(player, "#chat-popout .chat-form");
+      await waitForDraft("/r 2d4");
+      await player.click(die(4));
+      await waitForDraft("/r 3d4");
+      await player.evaluate(() => ui.chat.popout.close({ animate: false }));
+      await checkBar(player, "#sidebar-content .chat-form");
+      await waitForDraft("/r 3d4");
     });
 
     await check("dice added to an edited keep-highest roll count separately from dice inside other terms", async () => {
