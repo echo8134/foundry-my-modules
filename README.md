@@ -45,6 +45,10 @@ Hover a player’s row in the player list at the bottom left to see its cursor t
 
 The client setting "Show every level" lists all levels of a scene under the scene name, instead of three rows and a scroll bar. The client setting "Levels as a dropdown" folds the list into one row that names the current level; a click on it folds the list out and in. Both are off by default.
 
+A GM can save a camera center and zoom for each floor. Pan and zoom to the desired view, right-click the current level in scene navigation, and choose **Save view for this level**. For a single-level scene, right-click the scene name. When an alternate map variant is active, **Save view for this variant** gives it its own framing. Everyone viewing the floor sees its saved view on entry and can then pan and zoom freely.
+
+Variants without a saved view use the level view. Use **Clear variant view** or **Clear level view** in the same menu to remove a preset. Floors without either preset use Foundry's usual camera behavior.
+
 </details>
 
 <details>

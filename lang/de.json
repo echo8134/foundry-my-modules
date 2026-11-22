@@ -1,4 +1,10 @@
 {
+  "MY_MODULES.Levels.View.SaveLevel": "Ansicht für diese Ebene speichern",
+  "MY_MODULES.Levels.View.ClearLevel": "Gespeicherte Ebenenansicht entfernen",
+  "MY_MODULES.Levels.View.SaveVariant": "Ansicht für diese Variante speichern",
+  "MY_MODULES.Levels.View.ClearVariant": "Gespeicherte Variantenansicht entfernen",
+  "MY_MODULES.Levels.View.Saved": "Ansicht gespeichert.",
+  "MY_MODULES.Levels.View.Cleared": "Gespeicherte Ansicht entfernt.",
   "MY_MODULES.DiceTray.Title": "Würfelleiste",
   "MY_MODULES.DiceTray.Modifier": "Modifikator",
   "MY_MODULES.DiceTray.Roll": "Vorbereiteten Wurf ausführen",

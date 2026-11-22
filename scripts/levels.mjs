@@ -1,4 +1,5 @@
 import { MODULE_ID } from "./constants.mjs";
+import { setupLevelViews } from "./level-views.mjs";
 import { getVariants, setupVariants, setVariant } from "./variants.mjs";
 
 const FULL_LIST = "fullLevelList";
@@ -124,4 +125,5 @@ export function setupLevels() {
 
   Hooks.on("renderSceneNavigation", decorate);
   setupVariants(rerender);
+  setupLevelViews();
 }
