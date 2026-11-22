@@ -6,6 +6,7 @@ import { actionGroups, showsDeathSaves } from "./groups.mjs";
 const ENABLED = "actionHudEnabled";
 const ALWAYS_SHOW_CHARACTER = "actionHudAlwaysShowCharacter";
 const DETACH_HOTBAR = "actionHudDetachHotbar";
+const DESIGN = "actionHudDesign";
 const POSITIONS = "actionHudPositions";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -127,6 +128,7 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
 
   _onRender(context, options) {
     super._onRender(context, options);
+    this.element.classList.toggle("menu-design", game.settings.get(MODULE_ID, DESIGN) === "menu");
     this.layout();
   }
 
@@ -248,6 +250,16 @@ export function setupActionHud() {
       config: true,
       type: Boolean,
       default: false,
+      onChange: refresh
+    });
+    game.settings.register(MODULE_ID, DESIGN, {
+      name: "MY_MODULES.ActionHud.design",
+      hint: "MY_MODULES.ActionHud.designHint",
+      scope: "client",
+      config: true,
+      type: String,
+      choices: { wood: "MY_MODULES.ActionHud.designWood", menu: "MY_MODULES.ActionHud.designMenu" },
+      default: "wood",
       onChange: refresh
     });
     const storage = game.settings.storage.get("client");
