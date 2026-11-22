@@ -5,7 +5,7 @@ import {
   flagsAfter,
   prepareTokenCreate,
   prepareTokenEdit,
-  refreshPlayerTokens,
+  refreshVariantTokens,
   setupTokenVisibility,
   tokenUpdate,
   variantNames
@@ -336,7 +336,7 @@ export function setupVariants(onChange) {
   });
   Hooks.on("updateScene", (scene, changes, options, userId) => {
     if (!changes.flags?.[MODULE_ID] && !touchesCollections(scene, changes)) return;
-    refreshPlayerTokens(scene);
+    refreshVariantTokens(scene);
     onChange();
     if (!(options[MODULE_ID]?.variant && userId === game.user.id)) queueSync(scene);
   });
