@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "node",
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": true,
+  "draft": true,
+  "force-tag-creation": true,
+  "bootstrap-sha": "edb46a03e74bcf0f0435fd1eb48d544312d8c95a",
+  "packages": {
+    ".": {
+      "exclude-paths": [".claude", ".github", "docs", "e2e", "biome.json"],
+      "extra-files": [{ "type": "json", "path": "module.json", "jsonpath": "$.version" }]
+    }
+  }
+}

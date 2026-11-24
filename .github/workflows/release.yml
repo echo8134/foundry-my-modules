@@ -3,27 +3,46 @@ name: Release
 on:
   push:
     branches: [main]
-  workflow_dispatch:
 
 permissions:
   contents: write
   issues: write
-  pull-requests: read
+  pull-requests: write
+
+concurrency:
+  group: module-release-main
+  cancel-in-progress: false
 
 jobs:
-  release:
-    if: github.ref == 'refs/heads/main'
-    concurrency:
-      group: module-release-main
-      cancel-in-progress: false
+  release-please:
     runs-on: ubuntu-latest
+    outputs:
+      created: ${{ steps.release.outputs.release_created }}
+      tag: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - id: release
+        uses: googleapis/release-please-action@v5
+
+  publish:
+    needs: release-please
+    if: needs.release-please.outputs.created == 'true'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ needs.release-please.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
-          fetch-depth: 0
+          ref: ${{ needs.release-please.outputs.tag }}
           persist-credentials: false
-      - name: Publish module changes
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: bash .github/scripts/release.sh publish
+      - name: Package the Foundry manifest and ZIP
+        run: |
+          mkdir dist
+          jq --arg version "${TAG#v}" --arg url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/$TAG/module.zip" \
+            '.version = $version | .download = $url' module.json > dist/module.json
+          git archive --format=zip -o dist/module.zip HEAD scripts styles lang assets LICENSE README.md
+          (cd dist && zip -q -X module.zip module.json)
+      - name: Upload the assets and publish the draft release
+        run: |
+          gh release upload "$TAG" dist/module.json dist/module.zip --clobber
+          gh release edit "$TAG" --draft=false --latest
