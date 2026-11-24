@@ -217,6 +217,36 @@ await run(async () => {
       await waitForDraft("Keep this draft");
       assert(await player.$eval(`${tray} .my-dice-roll`, (el) => el.disabled), "plain chat can be sent as a roll");
     });
+
+    await check("a chat log taller than the sidebar scrolls and keeps the field on screen", async () => {
+      const ids = await player.evaluate(async () => {
+        const content = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. ".repeat(6);
+        const messages = await ChatMessage.createDocuments(Array.from({ length: 30 }, () => ({ content })));
+        return messages.map((message) => message.id);
+      });
+      created.push(...ids);
+      await waitFor(
+        player,
+        () =>
+          document.querySelector("#chat .chat-log").offsetHeight >
+          document.getElementById("sidebar-content").clientHeight
+      );
+      const { chat, sidebar, field, bar, screen, scrolls } = await player.$eval(`.chat-form > ${tray}`, (element) => {
+        const bottom = (el) => el.getBoundingClientRect().bottom;
+        const scroll = document.querySelector("#chat .chat-scroll");
+        return {
+          chat: bottom(document.getElementById("chat")),
+          sidebar: bottom(document.getElementById("sidebar-content")),
+          field: bottom(element.parentElement.querySelector(".editor-container")),
+          bar: bottom(element),
+          screen: innerHeight,
+          scrolls: scroll.scrollHeight > scroll.clientHeight
+        };
+      });
+      assert(chat <= sidebar + 1, `the chat tab grew past the sidebar: ${chat} > ${sidebar}`);
+      assert(field <= screen && bar <= screen, `the chat field left the screen: ${bar} > ${screen}`);
+      assert(scrolls, "the chat log does not scroll");
+    });
   } finally {
     await gm.evaluate(async (ids) => {
       if (ids.length) await ChatMessage.deleteDocuments(ids);
