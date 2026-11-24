@@ -168,6 +168,10 @@
 #sidebar-content.expanded.active-chat #chat:has(.chat-form > #chat-message) {
   overflow: visible;
 }
+/* Unclipped, the chat tab would grow to its whole log and push the field below the screen. */
+#sidebar-content.expanded.active-chat #chat:has(.chat-form > #chat-message) {
+  min-height: 0;
+}
 @media (prefers-reduced-motion: reduce) {
   #ui-right {
     --my-sidebar-duration: 0s;
