@@ -1,6 +1,6 @@
 {
   "name": "foundry-my-modules",
-  "version": "0.8.0",
+  "version": "0.10.4",
   "private": true,
   "type": "module",
   "description": "Small Foundry VTT table fixes for one group.",
@@ -8,6 +8,7 @@
   "scripts": {
     "check": "biome ci",
     "fix": "biome check --write",
+    "test": "node --test \"e2e/*.test.mjs\"",
     "e2e": "node e2e/action-hud.e2e.mjs && node e2e/cursors.e2e.mjs && node e2e/death-saves.e2e.mjs && node e2e/dice-tray.e2e.mjs && node e2e/harvesting-rules.test.mjs && node e2e/harvesting.e2e.mjs && node e2e/levels.e2e.mjs && node e2e/level-views.e2e.mjs && node e2e/localization.e2e.mjs && node e2e/names.e2e.mjs && node e2e/quests.e2e.mjs && node e2e/safety.e2e.mjs && node e2e/soundboard.e2e.mjs && node e2e/tiles.e2e.mjs && node e2e/variant-authority.e2e.mjs && node e2e/variant-table.e2e.mjs"
   },
   "devDependencies": {
