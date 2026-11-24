@@ -207,8 +207,8 @@ A variant is a set of documents (Tile, AmbientLight, AmbientSound, Wall, or Toke
 - Switching off saves the switched fields in the document flag `restore` and writes the off values: Tile `alpha` 0, light and sound `hidden`, Wall `move`, `sight`, `light` and `sound` 0. Switching on writes the saved values back and deletes the flag. Tiles switch by alpha, because the GM sees hidden tiles half transparent.
 - Create tiles, lights, sounds, and walls switched on. The active GM applies the stored variant when the scene loads and whenever the flags change.
 - Give a token its usual visibility when you create it. The module stores that choice in `flags.foundry-my-modules.gmHidden`. A new tagged token arrives hidden. The active GM reveals it when its variant is active and the saved choice permits it. Older tokens use their saved `restore.hidden` value or, if absent, their original visibility.
-- Use the eye in the token HUD or the Hidden checkbox in token configuration to change that choice even while a variant is off. A normal paste preserves it. Pasting as hidden sets it. Removing the last variant tag restores the saved choice.
-- Any GM can switch a variant. The active GM hides outgoing tokens and their attached Regions, publishes the new selection, then reveals incoming tokens. For example, a guard tagged `"Fest"` appears when Fest starts. A guard hidden by the GM for an ambush stays hidden.
+- Use the eye in the token HUD while its variant is active. The Hidden checkbox in token configuration also changes the saved choice while its variant is off. A normal paste preserves it. Pasting as hidden sets it. Removing the last variant tag restores the saved choice.
+- Any GM can switch a variant. The active GM hides outgoing tokens and their attached Regions, publishes the new selection, then reveals incoming tokens. Tokens outside their variant disappear from the canvas for everyone and lose their selection and targeting. In its active variant, a manually hidden ambush stays translucent for the GM and hidden from players.
 
 The API for macros and other modules:
 

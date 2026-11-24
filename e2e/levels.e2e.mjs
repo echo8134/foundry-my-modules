@@ -368,14 +368,18 @@ await run(async () => {
   await check("manual visibility edits while off take effect when the token's variant returns", async () => {
     await waitFor(gm, () => canvas.ready && canvas.tokens.placeables.some((token) => token.name === "Lookout"));
     await gm.evaluate(async (id) => {
+      await game.scenes.get(id).tokens.getName("Scout").update({ hidden: false });
+    }, sceneId);
+    await switchGround("Fest");
+    await gm.evaluate(async (id) => {
       const tokens = game.scenes.get(id).tokens;
-      await tokens.getName("Scout").update({ hidden: false });
       const lookout = tokens.getName("Lookout").object;
       lookout.control();
       await canvas.hud.token.bind(lookout);
     }, sceneId);
     await gm.locator('#token-hud [data-action="visibility"]').click();
     await waitFor(gm, () => document.querySelector('#token-hud [data-action="visibility"].active'));
+    await switchGround("Tag");
     await switchGround("Fest");
     await expectTokens("Guest", "Scout", "Bell ringer", "Resident");
   });

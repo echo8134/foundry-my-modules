@@ -264,7 +264,9 @@ async function buildCathedral(gm) {
         })),
         tokens: [
           { ...token("Caster", "Tag", 500, 400), texture: { src: "ui/parchment.jpg", tint: "#ff0000" } },
-          token("Guest", "Fest", 700, 400),
+          { ...token("Guest", ["Fest", "Night"], 700, 400), displayName: CONST.TOKEN_DISPLAY_MODES.ALWAYS },
+          { ...token("Ambush", "Fest", 300, 400), hidden: true },
+          { name: "Resident", level: ground, x: 100, y: 100 },
           token("Runner", "Fest", 200, 200),
           { ...token("Bell ringer", "Fest", 800, 400), elevation: 20, level: tower }
         ]
@@ -402,14 +404,18 @@ async function checkRendering(gm, player, { id, ground, tower }) {
       });
     }, id);
     const expectRegion = (hidden) =>
-      waitFor(
-        player,
-        (id, expected) => {
-          const region = game.scenes.get(id).regions.getName("Caster emanation");
-          return region?.object && region._source.hidden === expected && region.object.visible === !expected;
-        },
-        id,
-        hidden
+      Promise.all(
+        [gm, player].map((client) =>
+          waitFor(
+            client,
+            (id, expected) => {
+              const region = game.scenes.get(id).regions.getName("Caster emanation");
+              return region?.object && region._source.hidden === expected && region.object.visible === !expected;
+            },
+            id,
+            hidden
+          )
+        )
       );
     await expectRegion(false);
     await switchLevel(gm, id, ground, "Fest");
@@ -419,17 +425,96 @@ async function checkRendering(gm, player, { id, ground, tower }) {
   });
 }
 
+async function checkTokenVisibility(gm, player, { id, ground }) {
+  await check("inactive tokens disappear from both canvases and release selection and targeting", async () => {
+    const expectRoster = (variant) =>
+      Promise.all(
+        [gm, player].map((client) =>
+          waitFor(
+            client,
+            (id, variant, m) => {
+              if (!globalThis.canvas?.ready || canvas.scene?.id !== id) return false;
+              const scene = canvas.scene;
+              if ((scene.getFlag(m, "active")?.[canvas.level.id] ?? "Tag") !== variant) return false;
+              const roster = {
+                Caster: variant === "Tag",
+                Guest: variant !== "Tag",
+                Resident: true,
+                Ambush: game.user.isGM && variant === "Fest"
+              };
+              return Object.entries(roster).every(([name, visible]) => {
+                const object = scene.tokens.getName(name)?.object;
+                return (
+                  object?.mesh &&
+                  object.isVisible === visible &&
+                  object.visible === visible &&
+                  object.mesh.visible === visible
+                );
+              });
+            },
+            id,
+            variant,
+            MODULE_ID
+          )
+        )
+      );
+    await switchLevel(gm, id, ground, "Fest");
+    await expectRoster("Fest");
+    await gm.evaluate(async () => {
+      canvas.tokens.activate();
+      const guest = canvas.scene.tokens.getName("Guest").object;
+      if (!guest.control()) throw new Error("could not select the active guest");
+      await canvas.hud.token.bind(guest);
+      guest.setTarget();
+      canvas.scene.tokens.getName("Resident").object.setTarget(true, { releaseOthers: false });
+    });
+    await switchLevel(gm, id, ground, "Tag");
+    await expectRoster("Tag");
+    await gm.evaluate(() => {
+      const guest = canvas.scene.tokens.getName("Guest").object;
+      if (guest.border.worldVisible || guest.nameplate.worldVisible)
+        throw new Error("inactive guest left a border or name");
+      if (guest.controlled || guest.isTargeted || guest.hasActiveHUD)
+        throw new Error("guest retained selection, target or HUD");
+      if (!canvas.scene.tokens.getName("Resident").object.isTargeted) throw new Error("resident lost its target");
+      const rect = { x: guest.center.x - 5, y: guest.center.y - 5, width: 10, height: 10 };
+      canvas.tokens.selectObjects(rect);
+      canvas.tokens.targetObjects(rect);
+      if (guest.controlled || guest.isTargeted)
+        throw new Error("canvas selection or targeting acquired the inactive guest");
+    });
+    await Promise.all([gm, player].map((client) => client.reload({ waitUntil: "domcontentloaded" })));
+    await expectRoster("Tag");
+    await switchLevel(gm, id, ground, "Night");
+    await expectRoster("Night");
+    await switchLevel(gm, id, ground, "Fest");
+    await expectRoster("Fest");
+    await gm.evaluate((m) => {
+      const token = canvas.scene.tokens.getName("Ambush");
+      if (token.x !== 300 || token.y !== 400 || !token.getFlag(m, "gmHidden") || !token.object.mesh.hidden) {
+        throw new Error("returning ambush lost its position or manual visibility");
+      }
+    }, MODULE_ID);
+    await switchLevel(gm, id, ground, "Tag");
+  });
+}
+
 async function checkMovement(gm, player, { id, ground, tower }) {
   await check("cut and paste preserves an inactive token's visibility except when pasted as hidden", async () => {
-    const cutPaste = (hidden) =>
-      gm.evaluate(
+    for (const hidden of [false, true]) {
+      await switchLevel(gm, id, ground, "Fest");
+      await gm.evaluate(() => {
+        canvas.tokens.activate();
+        if (!canvas.scene.tokens.getName("Guest").object.control())
+          throw new Error("could not select the active guest");
+        if (canvas.tokens.copyObjects({ cut: true }).length !== 1) throw new Error("expected one cut token");
+      });
+      await switchLevel(gm, id, ground, "Tag");
+      await gm.evaluate(
         async (id, hidden) => {
           const scene = game.scenes.get(id);
           const token = scene.tokens.getName("Guest");
           const { x, y } = token._source;
-          canvas.tokens.activate();
-          token.object.control({ releaseOthers: true });
-          if (canvas.tokens.copyObjects({ cut: true }).length !== 1) throw new Error("expected one cut token");
           const [moved] = await canvas.tokens.pasteObjects({ x: hidden ? 850 : 450, y: 550 }, { hidden, snap: false });
           if (moved !== token || (x === moved._source.x && y === moved._source.y))
             throw new Error("cut did not move the token");
@@ -437,8 +522,6 @@ async function checkMovement(gm, player, { id, ground, tower }) {
         id,
         hidden
       );
-    for (const hidden of [false, true]) {
-      await cutPaste(hidden);
       await switchLevel(gm, id, ground, "Fest");
       await waitFor(
         player,
@@ -538,6 +621,7 @@ await run(async () => {
   const cathedral = await buildCathedral(gm);
   try {
     await checkRendering(gm, player, cathedral);
+    await checkTokenVisibility(gm, player, cathedral);
     await checkMovement(gm, player, cathedral);
   } finally {
     await gm.evaluate(async ({ id, previous }) => {
