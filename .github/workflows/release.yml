@@ -4,10 +4,7 @@ on:
   push:
     branches: [main]
 
-permissions:
-  contents: write
-  issues: write
-  pull-requests: write
+permissions: {}
 
 concurrency:
   group: module-release-main
@@ -16,17 +13,23 @@ concurrency:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
     outputs:
       created: ${{ steps.release.outputs.release_created }}
       tag: ${{ steps.release.outputs.tag_name }}
     steps:
       - id: release
-        uses: googleapis/release-please-action@v5
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
 
   publish:
     needs: release-please
     if: needs.release-please.outputs.created == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ needs.release-please.outputs.tag }}
