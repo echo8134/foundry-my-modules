@@ -13,9 +13,7 @@
     "verified": "14"
   },
   "socket": true,
-  "esmodules": [
-    "scripts/main.mjs"
-  ],
+  "esmodules": ["scripts/main.mjs"],
   "styles": [
     "styles/cursors.css",
     "styles/levels.css",
