@@ -275,13 +275,13 @@ await run(async () => {
       await received("soundboardPlay");
       assert(await gm.$eval(button, (b) => b.ariaPressed === "false"), "the player started the GM's cue");
       assert(await gm.evaluate(() => soundboard.horn.length === 0), "player command reached Sound.play");
-      await gm.$eval(button, (b) => b.click());
+      await gm.locator(button).setTimeout(10000).click();
       await waitFor(gm, () => soundboard.horn.length === 1 && soundboard.horn[0].sound.playing);
       await sendAsPlayer("soundboardStop");
       await received("soundboardStop");
       assert(await gm.$eval(button, (b) => b.ariaPressed === "true"), "the player stopped the GM's cue");
       assert(await gm.evaluate(() => soundboard.horn[0].sound.playing), "playback stopped after the player command");
-      await gm.$eval(button, (b) => b.click());
+      await gm.locator(button).setTimeout(10000).click();
       await waitFor(gm, () => !soundboard.horn[0].sound.playing);
     });
 
