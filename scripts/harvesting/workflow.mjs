@@ -22,7 +22,7 @@ import {
 } from "./award.mjs";
 import { setupCorpseHUD } from "./hud.mjs";
 import { harvestEquipment, harvestTable, isCorpse, isHarvestKit, previewHarvest } from "./rules.mjs";
-import { chooseAction, confirmRoll, key, renderHarvestMessage, reviewHarvest, t } from "./views.mjs";
+import { chooseAction, confirmRoll, fail, key, renderHarvestMessage, reviewHarvest, t } from "./views.mjs";
 
 const plants = new Set(["identify", "gather"]);
 const inspections = {
@@ -45,9 +45,6 @@ const prepareQuery = `${MODULE_ID}.prepareHarvest`;
 const executeQuery = `${MODULE_ID}.executeHarvest`;
 const requests = new Map();
 const busy = new Set();
-const fail = (name, fields) => {
-  throw new Error(t(name, fields));
-};
 const flag = (key) => `flags.${MODULE_ID}.${key}`;
 
 function context(data, user) {
@@ -103,7 +100,7 @@ function context(data, user) {
   const trained = (trainedSkill?.effectValue ?? trainedSkill?.value ?? 0) >= 1;
   const { kit, proficiency } = harvestEquipment(harvester, data.kitId);
   const appraise = data.action === "appraise";
-  if ((appraise || !kit) && !trained) fail("needSkill", { skill: CONFIG.DND5E.skills[table.appraise.skill].label });
+  if ((appraise || !kit) && !trained) fail("needSkill", { skill: table.appraise.skill });
   const advantage = appraise ? proficiency >= 1 : Boolean(kit) && Boolean(token.getFlag(MODULE_ID, "appraisalSuccess"));
   const mode = !appraise && !kit ? "disadvantage" : advantage ? "advantage" : "ordinary";
   return { actor: harvester, token, table, kit, proficiency, mode };
@@ -294,6 +291,24 @@ async function execute({ ticket, tab, method, gathererUuid }, { user }) {
   return lock(0);
 }
 
+// Foundry forwards thrown query errors as text. Send rule failures as data for the requesting client's locale.
+function localizedQuery(handler) {
+  return async (...args) => {
+    try {
+      return await handler(...args);
+    } catch (error) {
+      if (error.harvestFailure) return { failure: error.harvestFailure };
+      throw error;
+    }
+  };
+}
+
+async function askGM(gm, query, data, timeout) {
+  const response = await gm.query(query, data, { timeout });
+  if (response?.failure) fail(response.failure.name, response.failure.fields);
+  return response;
+}
+
 async function request(action, actor, kitId) {
   const plant = plants.has(action);
   const gm = game.users.activeGM;
@@ -310,18 +325,14 @@ async function request(action, actor, kitId) {
     actingTokenId: actor.isToken ? actor.token.id : null,
     kitId
   };
-  const info = await gm.query(prepareQuery, data, { timeout: 10000 });
+  const info = await askGM(gm, prepareQuery, data, 10000);
   let selection;
   if (!info.resume) {
     selection = plant ? await confirmPlantRoll(action, actor, info) : await confirmRoll(action, actor, info);
     if (!selection || selection === "cancel") return false;
   }
   return (
-    (await gm.query(
-      executeQuery,
-      { ticket: info.ticket, tab: info.tab, ...(plant && selection) },
-      { timeout: 600000 }
-    )) !== false
+    (await askGM(gm, executeQuery, { ticket: info.ticket, tab: info.tab, ...(plant && selection) }, 600000)) !== false
   );
 }
 
@@ -349,8 +360,8 @@ export function setupHarvesting() {
     Hooks.once("i18nInit", () => {
       CONFIG.DND5E.tools.harvest.label = t("kit");
     });
-    CONFIG.queries[prepareQuery] = prepare;
-    CONFIG.queries[executeQuery] = execute;
+    CONFIG.queries[prepareQuery] = localizedQuery(prepare);
+    CONFIG.queries[executeQuery] = localizedQuery(execute);
     Hooks.on("dnd5e.preUseActivity", (activity) => {
       const actions = isHerbalismKit(activity.item)
         ? { IdentifyHerb0001: "identify", CheckKitSupplies: "gather" }

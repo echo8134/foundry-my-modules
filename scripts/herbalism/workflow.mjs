@@ -1,7 +1,7 @@
 import { MODULE_ID } from "../constants.mjs";
 import { awardPlan, gatherRollId } from "../harvesting/award.mjs";
 import { sourceItem } from "../harvesting/rules.mjs";
-import { t } from "../harvesting/views.mjs";
+import { fail, t } from "../harvesting/views.mjs";
 import {
   gatherMode,
   herbalismEquipment,
@@ -33,17 +33,17 @@ function gathererChoices(actor, token, user, table) {
 
 export function plantContext(data, actor, token, user) {
   const table = token.actor.getFlag(MODULE_ID, "herbalism");
-  if (!validHerbalismTable(table)) throw new Error(t("needPlant"));
+  if (!validHerbalismTable(table)) fail("needPlant");
   const { kit, identifyKit, proficiency } = herbalismEquipment(actor, data.kitId);
   const identify = data.action === "identify";
   const gatherers = identify ? gathererChoices(actor, token, user, table) : [];
   const gatherer = gatherers.find((choice) => choice.uuid === (data.gathererUuid ?? actor.uuid));
-  if (identify && !gatherer) throw new Error(t("needGatherer"));
+  if (identify && !gatherer) fail("needGatherer");
   const methods = identify
     ? [...new Set([table.identify.skill, "nat", "med", ...(identifyKit ? ["herb"] : [])])]
     : ["sur", "nat"];
   const method = data.method ?? methods[0];
-  if (!methods.includes(method)) throw new Error(t("changed"));
+  if (!methods.includes(method)) fail("changed");
   const identified =
     token.getFlag(MODULE_ID, "identificationSuccess") && token.getFlag(MODULE_ID, "identifiedFor") === actor.uuid;
   const mode = identify ? "ordinary" : gatherMode({ withKit: Boolean(kit), identified, proficiency });
@@ -83,11 +83,10 @@ export function deferredGather(action, token, actor) {
   const receipt = game.messages.get(reference ?? gatherRollId(token));
   if (!receipt && !reference) return;
   const attempt = receipt?.getFlag(MODULE_ID, "gatherRoll");
-  if (!receipt?.author?.isGM || attempt?.token !== token.uuid) throw new Error(t("brokenReceipt"));
-  if (action !== "gather" || attempt.actor !== actor.uuid) throw new Error(t("gatherStarted"));
+  if (!receipt?.author?.isGM || attempt?.token !== token.uuid) fail("brokenReceipt");
+  if (action !== "gather" || attempt.actor !== actor.uuid) fail("gatherStarted");
   const kit = attempt.kit && actor.items.get(attempt.kit);
-  if (attempt.kit && (!isHerbalismKit(kit) || kit.system.quantity < 1 || !kit.system.uses?.value))
-    throw new Error(t("kitChanged"));
+  if (attempt.kit && (!isHerbalismKit(kit) || kit.system.quantity < 1 || !kit.system.uses?.value)) fail("kitChanged");
   return { actor, token, table: attempt.table, kit, attempt };
 }
 
@@ -108,7 +107,7 @@ export async function rememberGather({ token, actor, kit, table }, total) {
     },
     { keepId: true }
   );
-  if (receipt?.id !== id || !(await token.setFlag(MODULE_ID, "gatherRoll", id))) throw new Error(t("saveError"));
+  if (receipt?.id !== id || !(await token.setFlag(MODULE_ID, "gatherRoll", id))) fail("saveError");
 }
 
 export function gatherRows(current, total) {
@@ -125,11 +124,11 @@ export async function gatherPlan(current, total, selection) {
   for (const [index, row] of rows.entries()) {
     if (row.outcome !== "superior") continue;
     const { bonus, price } = selection[index];
-    if (!["portion", "charge", "value"].includes(bonus)) throw new Error(t("changed"));
+    if (!["portion", "charge", "value"].includes(bonus)) fail("changed");
     row.bonus = bonus;
     if (bonus === "value") {
       const base = sourceItem(row.component.item)?.system.price;
-      if (!base || !Number.isFinite(price) || price <= base.value) throw new Error(t("changed"));
+      if (!base || !Number.isFinite(price) || price <= base.value) fail("changed");
       row.price = { value: price, denomination: base.denomination };
     }
   }
@@ -137,17 +136,16 @@ export async function gatherPlan(current, total, selection) {
   const specimens = [];
   for (const gain of plan.gains) {
     const source = game.items.get(gain.source);
-    if (gain.chargeFormula && !source.system.uses) throw new Error(t("needItemUses", { name: source.name }));
+    if (gain.chargeFormula && !source.system.uses) fail("needItemUses", { name: source.name });
     const formula = gain.chargeFormula ?? source.toObject().system.uses?.max;
     if (!formula) {
-      if (gain.bonus === "charge") throw new Error(t("changed"));
+      if (gain.bonus === "charge") fail("changed");
       specimens.push(gain);
       continue;
     }
     for (let i = 0; i < gain.quantity; i++) {
       const roll = await new Roll(String(formula), actor.getRollData()).evaluate();
-      if (!Number.isSafeInteger(roll.total) || roll.total < 0)
-        throw new Error(t("invalidCharges", { name: source.name }));
+      if (!Number.isSafeInteger(roll.total) || roll.total < 0) fail("invalidCharges", { name: source.name });
       const specimen = { ...gain, id: i === 0 ? gain.id : foundry.utils.randomID(), quantity: 1, charges: roll.total };
       if ((gain.bonus === "charge" && i !== 0) || (gain.bonus === "portion" && i !== gain.quantity - 1))
         delete specimen.bonus;

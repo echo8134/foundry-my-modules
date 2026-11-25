@@ -196,6 +196,10 @@ await run(async () => {
         );
         const retry = await player.evaluate((m) => game.modules.get(m).api.herbalism.request("gather"), MODULE_ID);
         assert(retry === false, "plant accepted a second gather");
+        await waitFor(player, () =>
+          document.querySelector("#notifications")?.textContent.includes("An dieser Pflanze wurde bereits gesammelt.")
+        );
+
         const state = await inventory();
         assert(
           state.spent === 1 &&

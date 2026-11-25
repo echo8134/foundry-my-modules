@@ -1,6 +1,6 @@
 import { MODULE_ID } from "../constants.mjs";
 import { harvestTable, isCorpse, sourceItem } from "./rules.mjs";
-import { renderCard, t } from "./views.mjs";
+import { fail, renderCard, t } from "./views.mjs";
 
 const path = (flag) => `flags.${MODULE_ID}.${flag}`;
 const id = () => foundry.utils.randomID();
@@ -61,8 +61,7 @@ export function corpseClaim(token, action, round = 0) {
   const effect = token.actor.effects.get(claimId(token, action, round));
   if (!effect) return;
   const claim = effect.getFlag(MODULE_ID, actions[action].claim);
-  if (claim?.token !== token.uuid || claim.action !== action || (claim.round ?? 0) !== round)
-    throw new Error(t("brokenReceipt"));
+  if (claim?.token !== token.uuid || claim.action !== action || (claim.round ?? 0) !== round) fail("brokenReceipt");
   return claim;
 }
 
@@ -82,7 +81,7 @@ export async function claimCorpse(token, action, values, round = 0) {
     ],
     { keepId: true }
   );
-  if (effect?.getFlag(MODULE_ID, actions[action].claim)?.id !== claim.id) throw new Error(t("saveError"));
+  if (effect?.getFlag(MODULE_ID, actions[action].claim)?.id !== claim.id) fail("saveError");
   return claim;
 }
 
@@ -91,7 +90,7 @@ export function awardPlan(actor, token, kit, rows, total, action = "harvest") {
     .filter((r) => ["gained", "superior"].includes(r.outcome))
     .map(({ component, bonus, price }) => {
       const source = sourceItem(component.item);
-      if (!source) throw new Error(t("missingItem", { item: component.item }));
+      if (!source) fail("missingItem", { item: component.item });
       const quantity = component.quantity + (bonus === "portion" ? 1 : 0);
       return {
         id: id(),
@@ -174,15 +173,15 @@ export function pendingAward(token, actor, action = "harvest") {
     (plan.action ?? "harvest") !== action ||
     (plan.round ?? 0) !== round
   )
-    throw new Error(t("brokenReceipt"));
+    fail("brokenReceipt");
   return { receipt, plan };
 }
 
 async function reserveCharge(kit, token, slot, receipt, action, round) {
   const existing = kit.effects.get(slot);
   if (existing?.getFlag(MODULE_ID, "harvestReservation")?.receipt === receipt.id) return existing;
-  if (chargeSlot(kit) !== slot || kit.system.uses.value < 1) throw new Error(t("kitChanged"));
-  if (existing) throw new Error(t("busy"));
+  if (chargeSlot(kit) !== slot || kit.system.uses.value < 1) fail("kitChanged");
+  if (existing) fail("busy");
   // Only one receipt can claim this charge. Debiting moves the kit to a new slot even across manual refills.
   const data = {
     _id: slot,
@@ -199,17 +198,17 @@ async function reserveCharge(kit, token, slot, receipt, action, round) {
     [reservation] = await kit.createEmbeddedDocuments("ActiveEffect", [data], { keepId: true });
   } catch (error) {
     if (error.message?.includes(`_id [${slot}] already exists within the parent collection`))
-      throw new Error(t("busy"), { cause: error });
+      fail("busy", undefined, { cause: error });
     throw error;
   }
-  if (reservation?.getFlag(MODULE_ID, "harvestReservation")?.receipt !== receipt.id) throw new Error(t("saveError"));
+  if (reservation?.getFlag(MODULE_ID, "harvestReservation")?.receipt !== receipt.id) fail("saveError");
   return reservation;
 }
 
 function checkAwardRound(token, plan) {
   if ((plan.action ?? "harvest") !== "harvest") return;
-  if ((plan.round ?? 0) !== harvestRound(token)) throw new Error(t("changed"));
-  if (harvested(token, plan.round ?? 0)) throw new Error(t("alreadyHarvested"));
+  if ((plan.round ?? 0) !== harvestRound(token)) fail("changed");
+  if (harvested(token, plan.round ?? 0)) fail("alreadyHarvested");
 }
 
 async function reserveAward(token, actor, { plan, receipt }) {
@@ -217,7 +216,7 @@ async function reserveAward(token, actor, { plan, receipt }) {
   checkAwardRound(token, plan);
   const round = plan.round ?? 0;
   const kit = plan.kit && actor.items.get(plan.kit);
-  if (plan.kit && !kit) throw new Error(t("kitChanged"));
+  if (plan.kit && !kit) fail("kitChanged");
   const paid = kit?.getFlag(MODULE_ID, "harvestCharges")?.[receipt.id];
   const reservation =
     kit && !paid && (await reserveCharge(kit, token, plan.chargeSlot ?? chargeSlot(kit), receipt, action, round));
@@ -225,8 +224,7 @@ async function reserveAward(token, actor, { plan, receipt }) {
     checkAwardRound(token, plan);
     const claimed = corpseClaim(token, action, round);
     if (!claimed) await claimCorpse(token, action, { id: receipt.id }, round);
-    else if (claimed.id !== receipt.id)
-      throw new Error(t(action === "gather" ? "alreadyGathered" : "alreadyHarvested"));
+    else if (claimed.id !== receipt.id) fail(action === "gather" ? "alreadyGathered" : "alreadyHarvested");
   } catch (error) {
     const winner = corpseClaim(token, action, round);
     if (reservation && winner && winner.id !== receipt.id) await reservation.delete();
@@ -245,7 +243,7 @@ export async function recordAward(token, plan) {
     content: t(action === "gather" ? "gatherApproved" : "approved", { target: foundry.utils.escapeHTML(token.name) }),
     flags: { [MODULE_ID]: { harvestAward: plan } }
   });
-  if (!receipt) throw new Error(t("saveError"));
+  if (!receipt) fail("saveError");
   const actor = fromUuidSync(plan.actor);
   try {
     await reserveAward(token, actor, { plan, receipt });
@@ -258,17 +256,16 @@ export async function recordAward(token, plan) {
       await receipt.delete();
     throw error;
   }
-  if (!(await token.update({ [path(roundFlag(actions[action].pending, round))]: receipt.id })))
-    throw new Error(t("saveError"));
+  if (!(await token.update({ [path(roundFlag(actions[action].pending, round))]: receipt.id }))) fail("saveError");
   return { receipt, plan };
 }
 
 export async function finishAward(token, actor, { receipt, plan }) {
   const checkGM = () => {
-    if (!game.user.isActiveGM) throw new Error(t("needGM"));
+    if (!game.user.isActiveGM) fail("needGM");
     checkAwardRound(token, plan);
   };
-  if (plan.actor !== actor.uuid || plan.token !== token.uuid) throw new Error(t("otherHarvester"));
+  if (plan.actor !== actor.uuid || plan.token !== token.uuid) fail("otherHarvester");
   checkGM();
   const kit = await reserveAward(token, actor, { receipt, plan });
   const items = [];
@@ -276,7 +273,7 @@ export async function finishAward(token, actor, { receipt, plan }) {
     const existing = actor.items.get(gain.id);
     if (existing?.getFlag(MODULE_ID, "harvestReceipt") === receipt.id) continue;
     const source = game.items.get(gain.source);
-    if (existing || !source) throw new Error(t("missingItem", { item: gain.name }));
+    if (existing || !source) fail("missingItem", { item: gain.name });
     const data = source.toObject();
     data._id = gain.id;
     data.folder = null;
@@ -291,7 +288,7 @@ export async function finishAward(token, actor, { receipt, plan }) {
   }
   if (kit && !kit.getFlag(MODULE_ID, "harvestCharges")?.[receipt.id]) {
     checkGM();
-    if (kit.system.uses.value < 1) throw new Error(t("kitChanged"));
+    if (kit.system.uses.value < 1) fail("kitChanged");
     if (
       !(await kit.update({
         "system.uses.spent": kit.system.uses.spent + 1,
@@ -299,22 +296,21 @@ export async function finishAward(token, actor, { receipt, plan }) {
         [path("nextHarvestCharge")]: receipt.id
       }))
     )
-      throw new Error(t("saveError"));
+      fail("saveError");
   }
   checkGM();
   if (items.length) {
     const granted = await actor.createEmbeddedDocuments("Item", items, { keepId: true });
-    if (granted.length !== items.length) throw new Error(t("saveError"));
+    if (granted.length !== items.length) fail("saveError");
   }
   for (const card of plan.cards) {
     if (game.messages.has(card.id)) continue;
     checkGM();
-    if (!(await ChatMessage.create(cardData(card, actor), { keepId: true, messageMode: "public" })))
-      throw new Error(t("saveError"));
+    if (!(await ChatMessage.create(cardData(card, actor), { keepId: true, messageMode: "public" }))) fail("saveError");
   }
   checkGM();
   const { done, pending } = actions[plan.action ?? "harvest"];
   const round = plan.round ?? 0;
   if (!(await token.update({ [path(roundFlag(done, round))]: true, [path(roundFlag(pending, round))]: _del })))
-    throw new Error(t("saveError"));
+    fail("saveError");
 }

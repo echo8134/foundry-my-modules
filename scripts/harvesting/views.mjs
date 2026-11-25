@@ -6,6 +6,11 @@ export const t = (name, data) => (data ? game.i18n.format(key(name), data) : gam
 export const esc = (value) => foundry.utils.escapeHTML(value);
 export const dialog = (options) => foundry.applications.api.DialogV2.wait(options);
 
+export function fail(name, fields, options) {
+  const labels = name === "needSkill" ? { skill: CONFIG.DND5E.skills[fields.skill].label } : fields;
+  throw Object.assign(new Error(t(name, labels), options), { harvestFailure: { name, fields } });
+}
+
 export function dangerText(danger) {
   if (!danger) return "";
   const details = [danger.text];
