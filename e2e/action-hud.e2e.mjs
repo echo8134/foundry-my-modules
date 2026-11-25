@@ -56,9 +56,9 @@ async function assertMenuDesign(page, frame) {
 async function buildEncounter(gm) {
   return gm.evaluate(async (playerName) => {
     const player = game.users.getName(playerName);
-    const activity = (type) => {
+    const activity = (type, data = {}) => {
       const id = foundry.utils.randomID();
-      return { [id]: { _id: id, type } };
+      return { [id]: { _id: id, type, ...data } };
     };
     const spell = (name, level, prepared, method = "spell") => ({
       name,
@@ -72,6 +72,7 @@ async function buildEncounter(gm) {
       prototypeToken: { actorLink: true, texture: { src: "systems/dnd5e/tokens/heroes/WizardTome.webp" } },
       ownership: { [player.id]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER },
       system: {
+        attributes: { hp: { value: 10, max: 10 } },
         abilities: { int: { value: 18 }, dex: { value: 14 }, wis: { value: 12 } },
         skills: { arc: { value: 1 } },
         spells: { spell1: { value: 2, override: 3 }, pact: { value: 1, override: 2 } }
@@ -81,12 +82,56 @@ async function buildEncounter(gm) {
           name: "Ashwood Staff",
           type: "weapon",
           img: "icons/weapons/staves/staff-blue-jewel.webp",
-          system: { equipped: true, activities: activity("attack") }
+          system: {
+            type: { value: "simpleM" },
+            equipped: true,
+            range: { reach: 10, units: "ft" },
+            damage: { base: { number: 1, denomination: 6, types: ["bludgeoning"] } },
+            activities: {
+              ...activity("attack", { name: "Strike", sort: 0 }),
+              ...activity("damage", {
+                name: "Flame burst",
+                sort: 10,
+                damage: { parts: [{ number: 2, denomination: 8, types: ["fire"] }] }
+              })
+            }
+          }
+        },
+        {
+          name: "Shortbow",
+          type: "weapon",
+          system: {
+            type: { value: "simpleR" },
+            equipped: true,
+            range: { value: 80, long: 320, units: "ft" },
+            activities: activity("attack")
+          }
+        },
+        {
+          name: "Freezing Breath",
+          type: "feat",
+          system: {
+            activities: activity("save", {
+              save: { ability: ["dex"], dc: { calculation: "", formula: "13" } },
+              range: { value: 30, units: "ft" },
+              target: { template: { size: "15", type: "cone", units: "ft" } },
+              damage: { parts: [{ number: 2, denomination: 6, types: ["cold"] }] }
+            })
+          }
         },
         {
           name: "Stowed Dagger",
           type: "weapon",
           system: { equipped: false, activities: activity("attack") }
+        },
+        {
+          name: "Cure Wounds",
+          type: "spell",
+          system: {
+            level: 1,
+            prepared: 1,
+            activities: activity("heal", { healing: { number: 2, denomination: 8, types: ["healing"] } })
+          }
         },
         spell("Light", 0, 1),
         spell("Mage Hand", 0, 1),
@@ -105,7 +150,10 @@ async function buildEncounter(gm) {
           name: "Healing Draught",
           type: "consumable",
           img: "icons/consumables/potions/bottle-corked-red.webp",
-          system: { quantity: 3, activities: activity("heal") }
+          system: {
+            quantity: 3,
+            activities: activity("heal", { healing: { number: 1, denomination: 4, types: ["healing"] } })
+          }
         }
       ]
     });
@@ -120,8 +168,8 @@ async function buildEncounter(gm) {
     });
     hudTestDocuments.push(guard);
     const tokens = await Promise.all([
-      wizard.getTokenDocument({ x: 500, y: 400 }),
-      guard.getTokenDocument({ x: 750, y: 400 })
+      wizard.getTokenDocument({ x: 500, y: 400, level: Scene.metadata.defaultLevelId }),
+      guard.getTokenDocument({ x: 750, y: 400, level: Scene.metadata.defaultLevelId })
     ]);
     const scene = await Scene.create({
       name: "The Watchpost",
@@ -147,7 +195,7 @@ async function buildEncounter(gm) {
 
 await run(async () => {
   const gm = await joinGamemaster();
-  const player = await join(PLAYER_NAME);
+  const player = await join(PLAYER_NAME, "", "en");
   const previousCategories = await player.evaluate((m, key) => game.settings.get(m, key), MODULE_ID, HIDDEN);
   await gm.evaluate(() => {
     globalThis.hudTestDocuments = [];
@@ -254,13 +302,61 @@ await run(async () => {
       await gm.evaluate(() => canvas.tokens.releaseAll());
     });
 
+    await check("the sentry's fixed attack bonus appears in the HUD", async () => {
+      await gm.evaluate((id) => canvas.tokens.get(id).control(), ids.guard);
+      const weapon = await gm.evaluate(async () => {
+        const id = foundry.utils.randomID();
+        const [item] = await canvas.tokens.controlled[0].actor.createEmbeddedDocuments("Item", [
+          {
+            name: "Sentry spear",
+            type: "weapon",
+            system: {
+              equipped: true,
+              activities: { [id]: { _id: id, type: "attack", attack: { flat: true, bonus: "8" } } }
+            }
+          }
+        ]);
+        return item.id;
+      });
+      await click(gm, group("attacks"));
+      const button = await gm.waitForSelector(entry("item", weapon), { visible: true });
+      assert((await button.evaluate((el) => el.textContent)).includes("+8"), "missing fixed +8 attack bonus");
+      await gm.evaluate(() => canvas.tokens.releaseAll());
+    });
+
+    await check("Legendary Resistance can stabilize a dying sentry until it takes damage", async () => {
+      const result = await gm.evaluate(async (id) => {
+        const sentry = canvas.tokens.get(id).document.baseActor;
+        await sentry.update({
+          "system.attributes.hp.value": 0,
+          "system.attributes.death.success": 2,
+          "system.attributes.death.failure": 1,
+          "system.resources.legres.max": 1
+        });
+        const card = await ChatMessage.create({
+          type: "save",
+          speaker: ChatMessage.getSpeaker({ actor: sentry }),
+          system: { type: "death", deltas: { actor: [{ keyPath: "system.attributes.death.failure", delta: 1 }] } }
+        });
+        hudTestDocuments.push(card);
+        await sentry.system.resistSave(card);
+        const { showsDeathSaves } = await import("/modules/foundry-my-modules/scripts/action-hud/death-saves.mjs");
+        const stable = card.system.outcome === "stable" && !showsDeathSaves(sentry);
+        await sentry.applyDamage(1);
+        return stable && showsDeathSaves(sentry);
+      }, ids.guard);
+      assert(result, "sentry should need a new death save only after taking damage");
+    });
+
     await check("the personal HUD design follows Foundry themes, docking and reload", async () => {
       const attacks = group("attacks");
       const staff = entry("item", ids.items["Ashwood Staff"]);
       const detached = `body > ${HUD}`;
       const select = `#settings-config select[name="${MODULE_ID}.${DESIGN}"]`;
       const openAttacks = async (page) => {
-        await page.waitForSelector(attacks, { visible: true });
+        await page.waitForSelector(`${HUD} [data-actor="Actor.${ids.actor}"] [data-group="attacks"]`, {
+          visible: true
+        });
         if (!(await page.$(`${attacks}[aria-expanded="true"]`))) await click(page, attacks);
         await page.waitForSelector(staff, { visible: true });
       };
@@ -291,7 +387,8 @@ await run(async () => {
           const highlight = await assertMenuDesign(player, "#hotbar");
           const spells = group("spells");
           await player.hover(spells);
-          await player.keyboard.press("Tab");
+          // Tab cycles the controlled token in Foundry. Shift puts the browser in keyboard focus mode.
+          await player.keyboard.press("Shift");
           await player.focus(staff);
           await waitFor(
             player,
@@ -349,6 +446,55 @@ await run(async () => {
           DETACH_HOTBAR
         );
         await gm.evaluate(() => canvas.tokens.releaseAll());
+      }
+    });
+
+    await check("the skull and activity details fit a narrow HUD in both layouts and designs", async () => {
+      const viewport = player.viewport();
+      const hp = await gm.evaluate((id) => game.actors.get(id).system.attributes.hp.value, ids.actor);
+      await player.setViewport({ ...viewport, width: 900 });
+      await gm.evaluate((id) => game.actors.get(id).update({ "system.attributes.hp.value": 0 }), ids.actor);
+      await click(player, group("features"));
+      const row = entry("item", ids.items["Freezing Breath"]);
+      try {
+        for (const design of ["wood", "menu"]) {
+          await player.evaluate((m, key, value) => game.settings.set(m, key, value), MODULE_ID, DESIGN, design);
+          for (const detached of [false, true]) {
+            await player.evaluate(
+              (m, key, value) => game.settings.set(m, key, value),
+              MODULE_ID,
+              DETACH_HOTBAR,
+              detached
+            );
+            const hud = `${detached ? "body" : "#hotbar"} > ${HUD}${design === "menu" ? ".menu-design" : ":not(.menu-design)"}`;
+            await player.waitForSelector(`${hud} .hud-bar [data-action="deathSave"] .fa-skull`, { visible: true });
+            const fits = await player.$eval(row, (button) => {
+              const panel = button.closest(".hud-panel");
+              const skull = button.closest(".hud-body").querySelector('[data-action="deathSave"]');
+              return (
+                panel.scrollWidth <= panel.clientWidth + 1 &&
+                [...button.querySelectorAll("span, small")].every(
+                  (label) => label.scrollWidth <= label.clientWidth + 1
+                ) &&
+                /2d6.*cold/i.test(button.textContent) &&
+                parseFloat(getComputedStyle(skull).borderTopWidth) > 0
+              );
+            });
+            assert(fits, `clipped activity details or missing skull border in ${design}, detached=${detached}`);
+          }
+        }
+      } finally {
+        await player.setViewport(viewport);
+        await gm.evaluate((id, hp) => game.actors.get(id).update({ "system.attributes.hp.value": hp }), ids.actor, hp);
+        await player.evaluate(
+          async (m, design, detach) => {
+            await game.settings.set(m, design, "wood");
+            await game.settings.set(m, detach, false);
+          },
+          MODULE_ID,
+          DESIGN,
+          DETACH_HOTBAR
+        );
       }
     });
 
@@ -577,6 +723,38 @@ await run(async () => {
       }
     });
 
+    await check("attacks show their modifiers, damage and range, and list alternate activities on hover", async () => {
+      await click(player, group("attacks"));
+      const staff = entry("item", ids.items["Ashwood Staff"]);
+      await player.waitForSelector(staff, { visible: true });
+      const expected = await player.evaluate((id) => {
+        const item = canvas.tokens.controlled[0].actor.items.get(id);
+        const { labels } = item.system.activities.getName("Strike");
+        return [labels.toHit, labels.damages[0].label, item.labels.reach];
+      }, ids.items["Ashwood Staff"]);
+      const summary = await player.$eval(staff, (el) => el.textContent);
+      assert(
+        expected.every((label) => label && summary.includes(label)),
+        JSON.stringify({ summary, expected })
+      );
+      assert(!summary.includes("2d8"), "secondary damage appeared on the row");
+      await player.hover(staff);
+      await waitFor(player, () => {
+        const tooltip = document.querySelector("#tooltip.active");
+        return tooltip?.textContent.includes("Flame burst") && /2d8.*fire/i.test(tooltip.textContent);
+      });
+      const bow = await player.$eval(entry("item", ids.items.Shortbow), (el) => el.textContent);
+      assert(bow.includes("80/320"), bow);
+      await gm.evaluate(
+        (id) =>
+          game.actors.get(id).items.getName("Ashwood Staff").update({
+            "system.damage.base.denomination": 12
+          }),
+        ids.actor
+      );
+      await waitFor(player, (s) => document.querySelector(s)?.textContent.includes("1d12"), staff);
+    });
+
     await check("the wizard's staff and Arcana skill call dnd5e on the selected actor", async () => {
       await player.evaluate((id) => {
         const actor = canvas.tokens.controlled[0].actor;
@@ -622,6 +800,8 @@ await run(async () => {
       for (const name of ["Light", "Shield", "Alarm", "Faerie Fire", "Hex"]) {
         await player.waitForSelector(entry("item", ids.items[name]), { visible: true });
       }
+      const healingSpell = await player.$eval(entry("item", ids.items["Cure Wounds"]), (el) => el.textContent);
+      assert(/2d8 Hit Points/i.test(healingSpell), healingSpell);
       for (const name of ["Mage Hand", "Disguise Self"]) {
         assert(!(await player.$(entry("item", ids.items[name]))), `unprepared ${name} appeared`);
       }
@@ -647,7 +827,14 @@ await run(async () => {
     await check("remaining feature uses and item quantities stay current while open", async () => {
       const ward = ids.items["Arcane Ward"];
       await click(player, group("features"));
+      const cone = await player.waitForSelector(entry("item", ids.items["Freezing Breath"]), { visible: true });
+      const details = await cone.evaluate((el) => el.textContent);
+      for (const pattern of [/13/, /dex/i, /2d6.*cold/i, /30/, /15/, /cone/i]) {
+        assert(pattern.test(details), `expected ${pattern} in ${details}`);
+      }
       await waitFor(player, (s) => document.querySelector(s)?.textContent.includes("2/3"), entry("item", ward));
+      const utility = await player.$eval(entry("item", ward), (el) => el.textContent);
+      assert(!/damage|undefined|null|NaN/i.test(utility), utility);
       await gm.evaluate(
         (actor, id) => game.actors.get(actor).items.get(id).update({ "system.uses.spent": 2 }),
         ids.actor,
@@ -657,6 +844,8 @@ await run(async () => {
       const potion = ids.items["Healing Draught"];
       await click(player, group("items"));
       await waitFor(player, (s) => document.querySelector(s)?.textContent.includes("×3"), entry("item", potion));
+      const heal = await player.$eval(entry("item", potion), (el) => el.textContent);
+      assert(/1d4 Hit Points/i.test(heal), heal);
       await gm.evaluate(
         (actor, id) => game.actors.get(actor).items.get(id).update({ "system.quantity": 2 }),
         ids.actor,

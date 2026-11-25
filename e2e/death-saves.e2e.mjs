@@ -381,39 +381,84 @@ await run(async () => {
       await assertAudience(clients, id);
     });
 
-    await check("the unconscious character can roll a private death save from the skull tab", async () => {
-      const previous = await player.evaluate(() => game.user.character?.id ?? null);
+    await check("the HUD skull rolls private saves at zero HP and disappears after each terminal outcome", async () => {
+      const hiddenKey = "actionHudHiddenCategories";
+      const previous = await player.evaluate(
+        (m, key) => ({
+          character: game.user.character?.id ?? null,
+          categories: game.settings.get(m, key),
+          dice: game.settings.get("core", "diceConfiguration")
+        }),
+        MODULE_ID,
+        hiddenKey
+      );
+      const bar = `#my-action-hud [data-actor="Actor.${actorId}"] .hud-bar`;
+      const skull = `${bar} button[data-action="deathSave"]`;
+      const heal = () =>
+        player.evaluate((id) => game.actors.get(id).update({ "system.attributes.hp.value": 1 }), actorId);
+      const categories = (value) =>
+        player.evaluate((m, key, list) => game.settings.set(m, key, list), MODULE_ID, hiddenKey, value);
       try {
         await gm.evaluate((id, name) => game.users.getName(name).update({ character: id }), actorId, PLAYER_NAME);
-        await player.evaluate(async (id) => {
-          const actor = game.actors.get(id);
-          await actor.sheet.close({ animate: false });
-          await actor.update({ "system.attributes.hp.value": 1 });
-          await actor.toggleStatusEffect("unconscious", { active: false });
-        }, actorId);
-        const bar = `#my-action-hud [data-actor="Actor.${actorId}"]`;
-        const tab = `${bar} [data-group="deathSaves"]`;
+        await player.evaluate((id) => game.actors.get(id).sheet.close({ animate: false }), actorId);
+        await categories(previous.categories.filter((id) => id !== "deathSaves"));
+        await heal();
+        await player.evaluate((id) => game.actors.get(id).toggleStatusEffect("sleeping", { active: true }), actorId);
         await player.waitForSelector(bar, { visible: true });
-        assert(!(await player.$(tab)), "an awake character has a death saves tab");
-        await reset(player, actorId, 2);
-        await player.evaluate((id) => game.actors.get(id).toggleStatusEffect("unconscious", { active: true }), actorId);
-        await player.locator(tab).setTimeout(10000).click();
-        const id = await nextRoll(gm, actorId, () =>
-          rollWithDialog(player, `${bar} [data-action="deathSave"]`, "gm", true)
-        );
-        const outcome = await terminalOutcome(gm, actorId, id);
-        await assertAudience(clients, id, recipient, outcome);
-        await player.evaluate(
-          (id) => game.actors.get(id).toggleStatusEffect("unconscious", { active: false }),
-          actorId
-        );
-        await player.waitForSelector(tab, { hidden: true });
+        assert(!(await player.$(skull)), "sleeping at positive HP showed a death save");
+        await player.evaluate((id) => game.actors.get(id).toggleStatusEffect("sleeping", { active: false }), actorId);
+        await reset(player, actorId);
+        await player.waitForSelector(`${skull} .fa-skull`, { visible: true });
         assert(
-          !(await player.$(`${bar} [data-action="deathSave"]`)),
-          "the awake character can still roll from the HUD"
+          !(await player.evaluate((id) => game.actors.get(id).statuses.has("unconscious"), actorId)),
+          "fixture is already unconscious at zero HP"
         );
+        await heal();
+        await player.waitForSelector(skull, { hidden: true });
+        await reset(player, actorId, 2);
+        await player.waitForSelector(skull, { visible: true });
+        await categories([...new Set([...previous.categories, "deathSaves"])]);
+        await player.waitForSelector(skull, { hidden: true });
+        await categories(previous.categories.filter((id) => id !== "deathSaves"));
+
+        for (const [face, terminal] of [
+          [14, "stable"],
+          [5, "death"]
+        ]) {
+          await player.waitForSelector(skull, { visible: true });
+          await player.evaluate(async (face) => {
+            CONFIG.Dice.fulfillment.methods.hudTest = { label: "HUD test d20", handler: () => face };
+            const dice = game.settings.get("core", "diceConfiguration");
+            await game.settings.set("core", "diceConfiguration", { ...dice, d20: "hudTest" });
+          }, face);
+          const id = await nextRoll(gm, actorId, async () => {
+            if (terminal === "stable") return rollWithDialog(player, skull, "gm", true);
+            await player.keyboard.down("Shift");
+            try {
+              await player.locator(skull).setTimeout(10000).click();
+            } finally {
+              await player.keyboard.up("Shift");
+            }
+          });
+          assert((await terminalOutcome(gm, actorId, id)) === terminal, `expected ${terminal}`);
+          await player.waitForSelector(skull, { hidden: true });
+          await assertAudience(clients, id, recipient, terminal);
+          if (terminal === "stable") {
+            await heal();
+            await reset(player, actorId, 2);
+          }
+        }
       } finally {
-        await gm.evaluate((name, id) => game.users.getName(name).update({ character: id }), PLAYER_NAME, previous);
+        await player.evaluate(async (dice) => {
+          await game.settings.set("core", "diceConfiguration", dice);
+          delete CONFIG.Dice.fulfillment.methods.hudTest;
+        }, previous.dice);
+        await categories(previous.categories);
+        await gm.evaluate(
+          (name, id) => game.users.getName(name).update({ character: id }),
+          PLAYER_NAME,
+          previous.character
+        );
         await player.evaluate((id) => game.actors.get(id).sheet.render({ force: true }), actorId);
       }
     });
