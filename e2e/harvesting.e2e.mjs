@@ -296,11 +296,11 @@ await run(async () => {
       await waitFor(gm, (id) => canvas.tokens.hover?.id === id, f.second);
       await gm.mouse.click(x, y, { button: "right" });
       await gm.waitForSelector(`${status}[data-state=unharvested]`, { visible: true });
-      await gm.hover(status);
+      await gm.locator(status).hover();
       await waitFor(gm, () => document.querySelector("#tooltip.active")?.textContent.trim() === "Not yet harvested");
       await openHUD(gm, f.first);
       await gm.waitForSelector(`${status}[data-state=harvested]`, { visible: true });
-      await gm.hover(status);
+      await gm.locator(status).hover();
       await waitFor(gm, () => document.querySelector("#tooltip.active")?.textContent.includes("Reset harvest"));
       await hp(8);
       await openHUD(gm, f.first);
@@ -462,7 +462,7 @@ await run(async () => {
       await openHUD(player, f.first);
       const button = `${status}[data-state=harvested]:disabled`;
       await player.waitForSelector(button, { visible: true });
-      await player.hover(button);
+      await player.locator(button).hover();
       await waitFor(
         player,
         () => document.querySelector("#tooltip.active")?.textContent.trim() === "Bereits abgeerntet"
