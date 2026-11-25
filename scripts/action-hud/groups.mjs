@@ -19,6 +19,23 @@ const group = (id, sections) => ({
   sections: sections.filter((s) => s.entries.length || s.slots)
 });
 
+function activitySummary(activity) {
+  const { labels, range, save, target } = activity;
+  const parts = [];
+  if (labels.toHit) parts.push(game.i18n.format("EDITOR.DND5E.Inline.AttackLong", { formula: labels.toHit }));
+  if (save?.dc.value != null) {
+    const abilities = Array.from(save.ability, (id) => CONFIG.DND5E.abilities[id]?.label).filter(Boolean);
+    const ability = game.i18n.getListFormatter({ type: "disjunction" }).format(abilities);
+    parts.push(game.i18n.format("DND5E.SaveDC", { dc: save.dc.value, ability }).trim());
+  }
+  for (const damage of labels.damages ?? []) parts.push(damage.label);
+  if (activity.type === "attack" && activity.item.type === "weapon" && !range.override) {
+    parts.push(activity.getRangeLabel());
+  } else if (range?.units) parts.push(labels.range);
+  parts.push(target?.template?.label);
+  return parts.filter(Boolean).join(" · ");
+}
+
 function itemEntry(item, activities) {
   const details = [];
   if (item.system.quantity != null) details.push(`×${item.system.quantity}`);
@@ -29,7 +46,16 @@ function itemEntry(item, activities) {
       details.push(`${label} ${uses.value}/${uses.max}`);
     }
   }
-  return { action: "item", id: item.id, img: item.img, name: item.name, detail: details.join(" · ") };
+  const [primary, ...alternatives] = activities;
+  return {
+    action: "item",
+    id: item.id,
+    img: item.img,
+    name: item.name,
+    summary: primary && activitySummary(primary),
+    tooltip: alternatives.map((a) => [a.name, activitySummary(a)].filter(Boolean).join(": ")).join("\n"),
+    detail: details.join(" · ")
+  };
 }
 
 function spellSections(spells, slots) {
@@ -72,10 +98,6 @@ function rolls(actor) {
     ),
     section(entries("skill", actor.system.skills, config.skills, (s) => s.total).sort(byName), key("skills"))
   ];
-}
-
-export function showsDeathSaves(actor) {
-  return actor?.statuses.has("unconscious") && !!actor.system.attributes?.death;
 }
 
 export function actionGroups(actor) {
@@ -122,9 +144,6 @@ export function actionGroups(actor) {
     group("items", [section(items)]),
     group("rolls", rolls(actor)),
     group("conditions", [section(conditions)]),
-    group("rests", [section(rests)]),
-    group("deathSaves", [
-      section(showsDeathSaves(actor) ? [{ action: "deathSave", name: game.i18n.localize(key("rollDeathSave")) }] : [])
-    ])
+    group("rests", [section(rests)])
   ].filter((g) => g.sections.length);
 }
