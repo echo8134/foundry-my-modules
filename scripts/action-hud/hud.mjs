@@ -1,11 +1,13 @@
 import english from "../../lang/en.json" with { type: "json" };
 import { MODULE_ID } from "../constants.mjs";
 import { HIDDEN_CATEGORIES, HudCategories } from "./categories.mjs";
-import { actionGroups, showsDeathSaves } from "./groups.mjs";
+import { showsDeathSaves, trackStabilization } from "./death-saves.mjs";
+import { actionGroups } from "./groups.mjs";
 
 const ENABLED = "actionHudEnabled";
 const ALWAYS_SHOW_CHARACTER = "actionHudAlwaysShowCharacter";
 const DETACH_HOTBAR = "actionHudDetachHotbar";
+const DESIGN = "actionHudDesign";
 const POSITIONS = "actionHudPositions";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -93,12 +95,19 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
     const groups = actionGroups(actor).filter((group) => !hidden.includes(group.id));
     const open = groups.find((g) => g.id === this.group);
     this.group = open?.id;
-    return { actor, groups, open, docked: !game.settings.get(MODULE_ID, DETACH_HOTBAR) };
+    const deathSave = !hidden.includes("deathSaves") && showsDeathSaves(actor);
+    return { actor, groups, open, deathSave, docked: !game.settings.get(MODULE_ID, DETACH_HOTBAR) };
   }
 
   _onFirstRender(context, options) {
     super._onFirstRender(context, options);
     this.saved = game.settings.get(MODULE_ID, POSITIONS)[game.user.id];
+    this.element.addEventListener("focusin", ({ target }) => {
+      if (target.matches("[data-tooltip-text]:focus-visible")) game.tooltip.activate(target);
+    });
+    this.element.addEventListener("focusout", ({ target }) => {
+      if (game.tooltip.element === target) game.tooltip.deactivate();
+    });
     this.element.addEventListener("pointerdown", (e) => {
       if (e.button === 0 && e.isPrimary && e.target.closest(".hud-grip")) this.drag(e);
     });
@@ -127,6 +136,7 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
 
   _onRender(context, options) {
     super._onRender(context, options);
+    this.element.classList.toggle("menu-design", game.settings.get(MODULE_ID, DESIGN) === "menu");
     this.layout();
   }
 
@@ -218,6 +228,7 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
 export function setupActionHud() {
   Hooks.once("init", () => {
     if (game.system.id !== "dnd5e") return;
+    trackStabilization();
     const hud = new ActionHud();
     const refresh = foundry.utils.debounce(() => {
       if (resolveActor()) hud.render({ force: true });
@@ -248,6 +259,16 @@ export function setupActionHud() {
       config: true,
       type: Boolean,
       default: false,
+      onChange: refresh
+    });
+    game.settings.register(MODULE_ID, DESIGN, {
+      name: "MY_MODULES.ActionHud.design",
+      hint: "MY_MODULES.ActionHud.designHint",
+      scope: "client",
+      config: true,
+      type: String,
+      choices: { wood: "MY_MODULES.ActionHud.designWood", menu: "MY_MODULES.ActionHud.designMenu" },
+      default: "wood",
       onChange: refresh
     });
     const storage = game.settings.storage.get("client");

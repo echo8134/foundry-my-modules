@@ -86,6 +86,18 @@
   font-size: 0.78em;
 }
 
+#my-action-hud .hud-bar [data-action="deathSave"] {
+  justify-content: center;
+  min-width: 2rem;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+}
+
+#my-action-hud .hud-bar [data-action="deathSave"] i {
+  font-size: 1rem;
+  color: inherit;
+}
+
 #my-action-hud .hud-bar button:is(:hover, [aria-expanded="true"]) {
   background: #f0dfb9;
   color: #362317;
@@ -167,6 +179,13 @@
   background: #d6bc8e;
 }
 
+#my-action-hud .hud-entries [data-action="item"] {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: start;
+  row-gap: 0.1rem;
+}
+
 #my-action-hud button:focus-visible {
   outline: 2px solid #a26334;
   outline-offset: -2px;
@@ -177,6 +196,12 @@
   height: 1.55rem;
   border: 0;
   border-radius: 2px;
+}
+
+#my-action-hud [data-action="item"] img {
+  grid-column: 1;
+  grid-row: 1 / span 3;
+  align-self: start;
 }
 
 #my-action-hud [data-action="condition"] img {
@@ -193,13 +218,17 @@
   color: #59432f;
 }
 
+#my-action-hud [data-action="item"] :is(span, small) {
+  grid-column: 2;
+  margin-inline-start: 0;
+}
+
+#tooltip.my-action-hud-activities {
+  white-space: pre-line;
+}
+
 #hotbar:has(> #my-action-hud) {
   --hotbar-size: clamp(36px, 3.4vw, 54px);
-  --slot-color: #231c17;
-  --key-bg-color-empty: #32251b;
-  --key-bg-color-full: #32251b;
-  --key-text-color: #fff2cf;
-  --page-control-color: #dcc495;
   display: grid;
   grid-template-columns: auto auto auto;
   justify-items: center;
@@ -209,6 +238,14 @@
   height: auto;
   padding: 4px 7px 7px;
   opacity: 1;
+}
+
+#hotbar:has(> #my-action-hud:where(:not(.menu-design))) {
+  --slot-color: #231c17;
+  --key-bg-color-empty: #32251b;
+  --key-bg-color-full: #32251b;
+  --key-text-color: #fff2cf;
+  --page-control-color: #dcc495;
 }
 
 #hotbar > #my-action-hud {
@@ -243,19 +280,110 @@
   grid-template-columns: repeat(5, var(--hotbar-size));
 }
 
-#hotbar:has(> #my-action-hud) .slot {
+#hotbar:has(> #my-action-hud:where(:not(.menu-design))) .slot {
   border: 1px solid #79664b;
   border-radius: 3px;
 }
 
-#hotbar:has(> #my-action-hud) .slot:hover {
+#hotbar:has(> #my-action-hud:where(:not(.menu-design))) .slot:hover {
   border-color: #f4d89e;
 }
 
-#hotbar:has(> #my-action-hud) .slot .slot-icon {
+#hotbar:has(> #my-action-hud:where(:not(.menu-design))) .slot .slot-icon {
   border-radius: 2px;
 }
 
-#hotbar:has(> #my-action-hud) .slot .key {
+#hotbar:has(> #my-action-hud:where(:not(.menu-design))) .slot .key {
   border-radius: 2px 0 5px;
+}
+
+/* Match Foundry's #context-menu theme variables. */
+#my-action-hud.menu-design,
+#hotbar:has(> #my-action-hud.menu-design) {
+  --hud-menu-background: var(--color-cool-5);
+  --hud-menu-border: var(--color-cool-3);
+  --hud-menu-divider: var(--color-cool-4);
+  --hud-menu-highlight: var(--color-dark-1);
+  --hud-menu-text: var(--color-light-3);
+  --hud-menu-emphatic: var(--color-light-1);
+}
+
+:where(body:has(#interface.theme-light), body.theme-light:not(:has(#interface.theme-dark)))
+  :is(#my-action-hud.menu-design, #hotbar:has(> #my-action-hud.menu-design)) {
+  --hud-menu-background: #d9d8c8;
+  --hud-menu-border: #999;
+  --hud-menu-divider: #999;
+  --hud-menu-highlight: #f0f0e0;
+  --hud-menu-text: var(--color-dark-3);
+  --hud-menu-emphatic: var(--color-dark-1);
+}
+
+#my-action-hud.menu-design {
+  font-family: var(--font-body);
+  font-size: var(--font-size-12);
+}
+
+#my-action-hud.menu-design :is(.hud-bar, .hud-panel),
+#hotbar:has(> #my-action-hud.menu-design) {
+  background: var(--hud-menu-background);
+  border-color: var(--hud-menu-border);
+  border-radius: 5px;
+  box-shadow: 0 3px 6px rgb(0 0 0 / 45%);
+  color: var(--hud-menu-text);
+}
+
+#hotbar > #my-action-hud.menu-design .hud-bar {
+  background: none;
+  border-bottom-color: var(--hud-menu-divider);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+#my-action-hud.menu-design :is(.hud-name, .hud-bar i, .hud-panel small) {
+  color: inherit;
+}
+
+#my-action-hud.menu-design .hud-panel {
+  scrollbar-color: var(--hud-menu-border) transparent;
+}
+
+#my-action-hud.menu-design .hud-panel header {
+  border-bottom: 1px solid var(--hud-menu-divider);
+}
+
+#my-action-hud.menu-design .hud-panel :is(header, h3, small) {
+  font: inherit;
+}
+
+#my-action-hud.menu-design .hud-panel :is(header, h3) {
+  color: var(--hud-menu-emphatic);
+  font-weight: 600;
+}
+
+#my-action-hud.menu-design [data-action="condition"] img {
+  background: none;
+}
+
+#my-action-hud.menu-design button {
+  background: transparent;
+  border: 1px solid transparent;
+  border-inline-width: 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--hud-menu-text);
+  font: inherit;
+}
+
+#my-action-hud.menu-design button:is(:hover, :focus-visible, [aria-expanded="true"], [aria-pressed="true"]) {
+  background: var(--hud-menu-highlight);
+  border-color: var(--hud-menu-divider);
+  color: var(--hud-menu-emphatic);
+}
+
+#my-action-hud.menu-design .hud-bar button:is(:hover, [aria-expanded="true"]) i {
+  color: inherit;
+}
+
+#my-action-hud.menu-design button:focus-visible {
+  outline-color: var(--button-focus-outline-color);
 }

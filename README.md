@@ -177,11 +177,15 @@ Players have **Always show my character’s action HUD** enabled by default. Whe
 
 The tabs and macro slots share a frame by default. To move the HUD separately, turn on **Detach action HUD from hotbar** and drag the actor's name. Double-click the name to reset its position. Turning off the setting docks the tabs again. Updating the module preserves a saved layout choice.
 
+Use **Action HUD design** to switch from **Wood and parchment** to **Foundry menus** in this browser. The Foundry menu design follows your interface theme and applies to both layouts, including the shared frame when docked.
+
 Open **Action HUD** in the module settings and choose **Visible action categories** to select your tabs. **Conditions** and **Rests** start hidden. Each player can choose their own categories.
 
 Click a group to open it and click it again to fold it away. **Attacks**, **Spells**, **Features**, and **Items** use the item through dnd5e. The attack list shows equipped weapons and other usable items with an attack activity. The spell list starts with cantrips and groups spells by level. Spells with the at-will, ritual, innate, or pact casting method appear even when unprepared. Slot counts, uses, and quantities update as you play. Right-click an item to open its sheet.
 
-**Checks/Saves** shows modifiers for ability checks, saving throws, and skills. **Conditions** toggles dnd5e effects. Click Exhaustion to add one level or right-click it to remove one. **Rests** starts a short or long rest. When your character is unconscious, open the skull tab **Death Saves** to roll with the same rules as the character sheet. Shift-click to skip the configuration dialog where dnd5e supports it.
+Each item shows the attack bonus or save DC, damage or healing, range, and area of its first usable activity where applicable. Hover over the item or focus it with the keyboard to see its other activities.
+
+**Checks/Saves** shows modifiers for ability checks, saving throws, and skills. **Conditions** toggles dnd5e effects. Click Exhaustion to add one level or right-click it to remove one. **Rests** starts a short or long rest. At 0 HP, click the skull in the bar to roll a death save. It uses the same roll and privacy settings as the character sheet. The button disappears when you stabilize, die, or regain HP. Hide it with the **Death Saves** category. Shift-click to skip the configuration dialog where dnd5e supports it.
 
 </details>
 

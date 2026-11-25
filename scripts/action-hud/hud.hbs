@@ -10,6 +10,11 @@
       <i class="fa-solid {{icon}}" inert></i><span>{{localize label}}</span>
     </button>
     {{/each}}
+    {{#if deathSave}}
+    <button type="button" id="my-action-death-save" data-action="deathSave" data-tooltip aria-label="{{localize 'MY_MODULES.ActionHud.rollDeathSave'}}">
+      <i class="fa-solid fa-skull" inert></i>
+    </button>
+    {{/if}}
   </nav>
   {{#if open}}
   <section class="hud-panel" aria-label="{{localize open.label}}">
@@ -19,9 +24,10 @@
       {{#if label}}<h3>{{localize label}}{{#if slots}}<small>{{slots}}</small>{{/if}}</h3>{{/if}}
       <div class="hud-entries">
       {{#each entries}}
-        <button type="button" id="my-action-{{action}}-{{id}}" data-action="{{action}}" data-id="{{id}}" {{#if (eq action "condition")}}aria-pressed="{{active}}"{{/if}}>
+        <button type="button" id="my-action-{{action}}-{{id}}" data-action="{{action}}" data-id="{{id}}" {{#if (eq action "condition")}}aria-pressed="{{active}}"{{/if}} {{#if tooltip}}data-tooltip-text="{{tooltip}}" data-tooltip-class="my-action-hud-activities" aria-description="{{tooltip}}"{{/if}}>
           {{#if img}}<img src="{{img}}" alt="">{{/if}}
           <span>{{name}}</span>
+          {{#if summary}}<small>{{summary}}</small>{{/if}}
           {{#if detail}}<small>{{detail}}</small>{{/if}}
           {{#if active}}<i class="fa-solid fa-check" inert></i>{{/if}}
         </button>
