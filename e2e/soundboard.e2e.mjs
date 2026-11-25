@@ -37,6 +37,62 @@ async function openPlaylists(page) {
   await page.waitForSelector(".playlists-sidebar", { visible: true });
 }
 
+async function checkPlaylistAppearance(page, playlistName) {
+  await page.evaluate(
+    async (selector, playlistName) => {
+      const popout = await ui.playlists.renderPopout();
+      try {
+        for (const app of [ui.playlists, popout]) {
+          const board = app.element.querySelector(selector);
+          const playing = app.element.querySelector(".currently-playing");
+          const compare = (part, actual, native, properties) => {
+            const a = getComputedStyle(actual);
+            const b = getComputedStyle(native);
+            for (const property of properties) {
+              if (a[property] !== b[property])
+                throw new Error(`${app.id} ${part} ${property}: ${a[property]} vs ${b[property]}`);
+            }
+          };
+          compare("frame", board, playing, ["backgroundColor", "backgroundImage", "color", "fontFamily", "fontSize"]);
+          const header = board.firstElementChild;
+          const nativeHeader = playing.querySelector("header");
+          compare("heading", header, nativeHeader, [
+            "backgroundColor",
+            "color",
+            "borderTop",
+            "borderBottom",
+            "lineHeight",
+            "padding"
+          ]);
+          compare("title", header.firstElementChild, nativeHeader.firstElementChild, [
+            "fontFamily",
+            "fontSize",
+            "fontWeight"
+          ]);
+          const body = header.nextElementSibling;
+          compare("body", body, nativeHeader.nextElementSibling, ["padding", "fontFamily", "fontSize", "color"]);
+          if (playlistName) {
+            const hint = game.i18n.format("MY_MODULES.Soundboard.Empty", { playlist: playlistName });
+            if (!body.checkVisibility() || body.textContent.trim() !== hint)
+              throw new Error(`${app.id} is missing the empty playlist hint`);
+          } else {
+            compare("cue", body.querySelector("button"), app.element.querySelector(".create-entry"), [
+              "backgroundColor",
+              "backgroundImage",
+              "borderTopColor",
+              "fontFamily"
+            ]);
+          }
+        }
+      } finally {
+        await popout.close({ animate: false });
+      }
+    },
+    PANEL,
+    playlistName
+  );
+}
+
 await run(async () => {
   const gm = await joinGamemaster();
   const player = await join(PLAYER_NAME);
@@ -49,46 +105,55 @@ await run(async () => {
   );
   let playlistId;
   try {
+    const fixture = await gm.evaluate(async () => {
+      const list = await Playlist.create({ name: `Soundboard test ${foundry.utils.randomID()}` });
+      return { id: list.id, name: list.name };
+    });
+    playlistId = fixture.id;
+    await gm.evaluate(
+      async (id, name) => {
+        await game.settings.set(id, "soundboardEnabled", true);
+        await game.settings.set(id, "soundboardPlaylist", name);
+      },
+      MODULE_ID,
+      fixture.name
+    );
+    await openPlaylists(gm);
+    await check("the empty board matches Currently Playing in the sidebar and popout", async () => {
+      await checkPlaylistAppearance(gm, fixture.name);
+    });
+
     let button;
     let door;
     await check("the GM sees each sound from the configured playlist and players see no board", async () => {
-      const fixture = await gm.evaluate(
-        async (path, doorPath) => {
-          const list = await Playlist.create({
-            name: `Soundboard test ${foundry.utils.randomID()}`,
-            sounds: [
-              { name: "Watchman's horn", path, volume: 0.35, repeat: true },
-              { name: "Cellar door", path: doorPath }
-            ]
-          });
+      const cues = await gm.evaluate(
+        async (id, path, doorPath) => {
+          const list = game.playlists.get(id);
+          await list.createEmbeddedDocuments("PlaylistSound", [
+            { name: "Watchman's horn", path, volume: 0.35, repeat: true },
+            { name: "Cellar door", path: doorPath }
+          ]);
           return {
-            id: list.id,
-            name: list.name,
             horn: list.sounds.getName("Watchman's horn").id,
             door: list.sounds.getName("Cellar door").id
           };
         },
+        playlistId,
         SOUND,
         DOOR
       );
-      playlistId = fixture.id;
-      door = `${PANEL} button[data-sound-id="${fixture.door}"]`;
-      button = `${PANEL} button[data-sound-id="${fixture.horn}"]`;
-      await gm.evaluate(
-        async (id, name) => {
-          await game.settings.set(id, "soundboardEnabled", true);
-          await game.settings.set(id, "soundboardPlaylist", name);
-        },
-        MODULE_ID,
-        fixture.name
-      );
-      await openPlaylists(gm);
+      door = `${PANEL} button[data-sound-id="${cues.door}"]`;
+      button = `${PANEL} button[data-sound-id="${cues.horn}"]`;
       await player.evaluate(() => ui.sidebar.changeTab("playlists", "primary"));
       await player.waitForSelector(".playlists-sidebar", { visible: true });
       await gm.waitForSelector(button, { visible: true });
       const labels = await gm.$$eval(`${PANEL} button`, (buttons) => buttons.map((b) => b.textContent.trim()).sort());
       assert(labels.join("|") === "Cellar door|Watchman's horn", labels.join("|"));
       assert(!(await player.$(PANEL)), "the player has a soundboard panel");
+    });
+
+    await check("the populated board matches Currently Playing in the sidebar and popout", async () => {
+      await checkPlaylistAppearance(gm);
     });
 
     await Promise.all([gm, player].map(observeAudio));
@@ -124,36 +189,60 @@ await run(async () => {
       }
     );
 
-    await check("one GM click plays the one-shot on both clients and the next stops it on both", async () => {
-      await Promise.all(
-        [gm, player].map((page) =>
-          page.evaluate(() => {
-            soundboard.horn.length = 0;
-          })
-        )
-      );
-      await gm.locator(button).setTimeout(10000).click();
-      for (const page of [gm, player]) {
-        await waitFor(page, () => {
-          const sound = soundboard.horn[0]?.sound;
-          return (
-            sound?.playing &&
-            Math.abs(sound.volume - 0.35) < 0.001 &&
-            [game.audio.interface, game.audio.environment].includes(sound.context)
-          );
-        });
-      }
-      await gm.locator(button).setTimeout(10000).click();
-      for (const page of [gm, player]) {
-        await waitFor(
-          page,
-          () =>
-            soundboard.horn.length === 1 &&
-            !soundboard.horn[0].sound.playing &&
-            !soundboard.finished.has(soundboard.horn[0].sound)
+    for (const view of ["sidebar", "popout"]) {
+      await check(`Tab focuses a ${view} cue and the keyboard starts and stops playback on both clients`, async () => {
+        await Promise.all(
+          [gm, player].map((page) =>
+            page.evaluate(() => {
+              soundboard.horn.length = 0;
+            })
+          )
         );
-      }
-    });
+        await gm.bringToFront();
+        const root = await gm.evaluate(async (view) => {
+          const app = view === "popout" ? await ui.playlists.renderPopout() : ui.playlists;
+          return `#${CSS.escape(app.element.id)}`;
+        }, view);
+        const cue = `${root} ${button}`;
+        await gm.focus(`${root} ${door}`);
+        await gm.keyboard.press("Tab");
+        assert(
+          await gm.$eval(
+            cue,
+            (el) => el.matches(":focus-visible") && parseFloat(getComputedStyle(el).outlineWidth) > 0
+          ),
+          "Tab did not visibly focus the horn"
+        );
+        const icon = () => gm.$eval(cue, (el) => getComputedStyle(el, "::before").content);
+        const idleIcon = await icon();
+        await gm.keyboard.press("Enter");
+        await gm.waitForSelector(`${cue}[aria-pressed="true"]`);
+        assert((await icon()) !== idleIcon, "the playing cue still shows the idle icon");
+        for (const page of [gm, player]) {
+          await waitFor(page, () => {
+            const sound = soundboard.horn[0]?.sound;
+            return (
+              sound?.playing &&
+              Math.abs(sound.volume - 0.35) < 0.001 &&
+              [game.audio.interface, game.audio.environment].includes(sound.context)
+            );
+          });
+        }
+        await gm.keyboard.press("Space");
+        await gm.waitForSelector(`${cue}[aria-pressed="false"]`);
+        assert((await icon()) === idleIcon, "the stopped cue still shows the playing icon");
+        for (const page of [gm, player]) {
+          await waitFor(
+            page,
+            () =>
+              soundboard.horn.length === 1 &&
+              !soundboard.horn[0].sound.playing &&
+              !soundboard.finished.has(soundboard.horn[0].sound)
+          );
+        }
+        if (view === "popout") await gm.evaluate(() => ui.playlists.popout.close({ animate: false }));
+      });
+    }
 
     await check("a player sender can neither start a stopped cue nor stop a GM's playing cue", async () => {
       const playerId = await player.evaluate(() => game.user.id);
