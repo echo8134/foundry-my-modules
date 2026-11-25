@@ -394,6 +394,87 @@ async function checkRendering(gm, player, { id, ground, tower }) {
     }
   );
 
+  await check(
+    "ordinary tokens never render pale on the GM canvas and the ambush stays hidden from players",
+    async () => {
+      await gm.bringToFront();
+      for (const client of [gm, player]) {
+        await client.evaluate((id) => {
+          const scene = game.scenes.get(id);
+          const tokens = ["Caster", "Guest", "Ambush"].map((name) => scene.tokens.getName(name));
+          const renderer = canvas.app.renderer;
+          const screenFrame = () => renderer.lastObjectRendered === canvas.stage && !renderer.renderTexture.current;
+          const probe = { last: [], failures: [] };
+          const sample = () => {
+            if (!screenFrame()) return;
+            probe.last = tokens.map(({ object }) => {
+              const mesh = object?.mesh;
+              return mesh?.worldVisible && mesh.renderable ? (mesh.hidden ? "pale" : "visible") : "absent";
+            });
+            if (probe.failures.length) return;
+            for (const [i, state] of probe.last.entries()) {
+              if ((i < 2 && state === "pale") || (!game.user.isGM && i === 2 && state !== "absent"))
+                probe.failures.push(`${tokens[i].name} was ${state}`);
+            }
+          };
+          renderer.on("postrender", sample);
+          globalThis.variantAppearance = probe;
+          const io = foundry.helpers.SocketInterface;
+          const dispatch = io.dispatch;
+          if (game.user.isGM) {
+            // Let Foundry paint each network interval, including concealment before publication and pending reveal.
+            io.dispatch = async function (event, request) {
+              const { type, action, operation } = request;
+              if (
+                event === "modifyDocument" &&
+                action === "update" &&
+                ((type === "Scene" && operation.updates.some((u) => u._id === id)) ||
+                  (type === "Token" && operation.parentUuid === scene.uuid))
+              ) {
+                await new Promise((resolve) => {
+                  let remaining = 2;
+                  const painted = () => {
+                    if (!screenFrame() || --remaining) return;
+                    renderer.off("postrender", painted);
+                    resolve();
+                  };
+                  renderer.on("postrender", painted);
+                });
+              }
+              return dispatch.call(this, event, request);
+            };
+          }
+          probe.stop = () => {
+            renderer.off("postrender", sample);
+            if (game.user.isGM) io.dispatch = dispatch;
+          };
+        }, id);
+      }
+      try {
+        for (const variant of ["Tag", "Fest", "Tag"]) {
+          await switchLevel(gm, id, ground, variant);
+          for (const client of [gm, player]) {
+            const expected =
+              variant === "Tag"
+                ? ["visible", "absent", "absent"]
+                : ["absent", "visible", client === gm ? "pale" : "absent"];
+            await waitFor(
+              client,
+              (expected) => expected.every((state, i) => variantAppearance.last[i] === state),
+              expected
+            );
+          }
+        }
+        for (const client of [gm, player]) {
+          const failures = await client.evaluate(() => variantAppearance.failures);
+          assert(!failures.length, `${client === gm ? "GM" : "Player"} frame: ${failures.join(", ")}`);
+        }
+      } finally {
+        for (const client of [gm, player]) await client.evaluate(() => variantAppearance.stop());
+      }
+    }
+  );
+
   await check("the caster's attached ALWAYS-visible emanation hides and returns with its bearer", async () => {
     await gm.evaluate(async (id) => {
       const scene = game.scenes.get(id);

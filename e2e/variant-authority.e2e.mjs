@@ -101,8 +101,74 @@ await run(async () => {
   const player = await join(PLAYER_NAME);
   const [primary, secondary] = (await gm.evaluate(() => game.users.activeGM.isSelf)) ? [gm, other] : [other, gm];
   await waitFor(secondary, () => !game.users.activeGM.isSelf);
-  let sceneId, foreignId, actorId;
+  let sceneId, foreignId, legacyId, actorId;
   try {
+    await check("a visiting GM sees the legacy base while players await the active GM's selection", async () => {
+      legacyId = await primary.evaluate(async (m) => {
+        const scene = await Scene.create(
+          {
+            name: "Unmigrated variants",
+            tokenVision: false,
+            ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER },
+            tokens: [
+              { name: "Resident" },
+              { name: "English base", x: 100, flags: { [m]: { variant: "Default" } } },
+              { name: "German base", x: 200, flags: { [m]: { variant: ["Grundzustand"] } } },
+              { name: "Guest", x: 300, flags: { [m]: { variant: "Fest" } } },
+              { name: "Ambush", x: 400, hidden: true, flags: { [m]: { variant: ["Default", "Grundzustand"] } } }
+            ]
+          },
+          { noHook: true }
+        );
+        return scene.id;
+      }, MODULE_ID);
+      for (const [client, language, expected] of [
+        [player, "en", ["Resident"]],
+        [secondary, "en", ["Resident", "English base", "Ambush"]],
+        [secondary, "de", ["Resident", "German base", "Ambush"]]
+      ]) {
+        await waitFor(client, (id) => game.scenes.has(id) && canvas.ready && !canvas.loading, legacyId);
+        const visible = await client.evaluate(
+          async (id, lang) => {
+            const previous = canvas.scene;
+            const previousLanguage = game.i18n.lang;
+            try {
+              await game.i18n.setLanguage(lang);
+              const scene = game.scenes.get(id);
+              await scene.view();
+              await new Promise((resolve) => canvas.app.ticker.addOnce(resolve));
+              return scene.tokens
+                .filter((t) => t.object.mesh.worldVisible && t.object.mesh.renderable)
+                .map((t) => t.name);
+            } finally {
+              await game.i18n.setLanguage(previousLanguage);
+              await previous.view();
+            }
+          },
+          legacyId,
+          language
+        );
+        assert(
+          JSON.stringify(visible.sort()) === JSON.stringify(expected.sort()),
+          `${client === player ? "player" : "secondary GM"} (${language}) saw ${visible.join(", ")}`
+        );
+      }
+      const pristine = await primary.evaluate(
+        (id, m) => {
+          const scene = game.scenes.get(id);
+          return (
+            game.users.activeGM.isSelf &&
+            canvas.scene.id !== id &&
+            scene.getFlag(m, "defaultName") == null &&
+            scene.getFlag(m, "active") == null
+          );
+        },
+        legacyId,
+        MODULE_ID
+      );
+      assert(pristine, "the active GM migrated or visited the legacy scene");
+    });
+
     await check("a previously GM-hidden legacy ambush stays hidden on its first migration and activation", async () => {
       ({ sceneId, actorId } = await primary.evaluate(
         async (m, playerName) => {
@@ -406,7 +472,7 @@ await run(async () => {
         await game.actors.get(actor)?.delete();
         await game.users.get(user)?.delete();
       },
-      [sceneId, foreignId],
+      [sceneId, foreignId, legacyId],
       actorId,
       otherId
     );
