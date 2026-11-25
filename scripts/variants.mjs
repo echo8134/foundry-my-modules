@@ -330,32 +330,38 @@ export function setupVariants(onChange) {
       prepareSceneEdit(scene, changes, options);
     }
   });
+  Hooks.on("canvasInit", ({ scene }) => refreshVariantTokens(scene, baseName));
   Hooks.on("canvasReady", (canvas) => canvas.scene && queueSync(canvas.scene));
   Hooks.on("createScene", (scene) => {
     if (scene.tokens.some((t) => variantsOf(t).length && t.getFlag(MODULE_ID, "gmHidden") != null)) queueSync(scene);
   });
   Hooks.on("updateScene", (scene, changes, options, userId) => {
     if (!changes.flags?.[MODULE_ID] && !touchesCollections(scene, changes)) return;
-    refreshVariantTokens(scene);
+    refreshVariantTokens(scene, baseName);
     onChange();
     if (!(options[MODULE_ID]?.variant && userId === game.user.id)) queueSync(scene);
   });
+  const refreshLegacyTokens = foundry.utils.debounce((scene) => refreshVariantTokens(scene, baseName), 0);
+  const membershipChanged = (scene) => {
+    if (game.user.isGM && canvas.scene === scene && scene.getFlag(MODULE_ID, "defaultName") == null) {
+      refreshLegacyTokens(scene);
+    }
+    onChange();
+    queueSync(scene);
+  };
   for (const type of TYPES) {
-    const membershipChanged = (doc) => {
-      if (!variantsOf(doc).length) return;
-      onChange();
-      queueSync(doc.parent);
+    const taggedMemberChanged = (doc) => {
+      if (variantsOf(doc).length) membershipChanged(doc.parent);
     };
-    Hooks.on(`create${type}`, membershipChanged);
-    Hooks.on(`delete${type}`, membershipChanged);
+    Hooks.on(`create${type}`, taggedMemberChanged);
+    Hooks.on(`delete${type}`, taggedMemberChanged);
     Hooks.on(`update${type}`, (doc, changes, options, userId) => {
       if (options[MODULE_ID]?.sync && userId === game.users.activeGM?.id) {
         if (type === "Token" && doc.getFlag(MODULE_ID, "releaseHidden") != null) queueSync(doc.parent);
         return;
       }
       if (touchesVariants(changes)) {
-        onChange();
-        queueSync(doc.parent);
+        membershipChanged(doc.parent);
       } else if (
         type === "Token" &&
         (variantsOf(doc).length || doc.getFlag(MODULE_ID, "releaseHidden") != null) &&

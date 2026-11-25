@@ -85,17 +85,25 @@ export function tokenUpdate(token, on) {
   return foundry.utils.isEmpty(changes) ? null : { _id: token.id, ...changes };
 }
 
-function inactiveVariant(token) {
-  const names = variantNames(token?._source.flags[MODULE_ID]?.variant);
+const gmBaseNames = new WeakMap();
+
+function concealedVariant(token) {
+  const flags = token?._source.flags[MODULE_ID];
+  const names = variantNames(flags?.variant);
   if (!names.length || token.parent?.documentName !== "Scene") return false;
+  // A switch hides ordinary tokens before publishing the selection and reveals them afterwards.
+  if (token._source.hidden && savedHidden(flags) === false) return true;
   const sceneFlags = token.parent._source.flags[MODULE_ID];
-  // Only a shared base name can authorize a reveal on players using different languages.
-  const selected = sceneFlags?.active?.[token._source.level] ?? sceneFlags?.defaultName;
+  // Only GMs can use a local base name before the active GM publishes it to all clients.
+  const selected =
+    sceneFlags?.active?.[token._source.level] ??
+    sceneFlags?.defaultName ??
+    (game.user.isGM ? gmBaseNames.get(token.parent) : undefined);
   return !names.includes(selected);
 }
 
 function playerMask(token) {
-  return savedHidden(token._source.flags[MODULE_ID]) || inactiveVariant(token);
+  return savedHidden(token._source.flags[MODULE_ID]) || concealedVariant(token);
 }
 
 let concealedScene;
@@ -118,10 +126,10 @@ function managedToken(token) {
 }
 
 function refreshRegion(region, token) {
-  const inactive = inactiveVariant(token);
+  const concealed = concealedVariant(token);
   if (!game.user.isGM) region.hidden = region._source.hidden || token._source.hidden || playerMask(token);
-  if (inactive && region.rendered && region.object.controlled) region.object.release();
-  const hidden = inactive || (!game.user.isGM && region.hidden);
+  if (concealed && region.rendered && region.object.controlled) region.object.release();
+  const hidden = concealed || (!game.user.isGM && region.hidden);
   if (!region.rendered || (hidden && !region.object.visible)) return;
   if (hidden) queueConcealment(region.parent);
   region.object.renderFlags.set({ refreshVisibility: true });
@@ -134,7 +142,7 @@ function refreshToken(token) {
   for (const region of token.attachments.regions) refreshRegion(region, token);
   if (!token.rendered || !token.object.mesh) return;
   const object = token.object;
-  const concealed = inactiveVariant(token) || (!game.user.isGM && token.hidden);
+  const concealed = concealedVariant(token) || (!game.user.isGM && token.hidden);
   if (concealed && object.controlled) object.release();
   if (concealed && object.isTargeted) object.setTarget(false);
   if (concealed && (object.visible || object.mesh.visible)) {
@@ -145,8 +153,9 @@ function refreshToken(token) {
   object.renderFlags.set({ refreshState: true });
 }
 
-export function refreshVariantTokens(scene) {
+export function refreshVariantTokens(scene, baseName) {
   if (!scene || (game.user.isGM && canvas.scene !== scene)) return;
+  if (game.user.isGM) gmBaseNames.set(scene, baseName(scene));
   for (const token of scene.tokens) refreshToken(token);
   presentConcealment(scene);
 }
@@ -159,11 +168,11 @@ export function setupTokenVisibility() {
   Hooks.once("setup", () => {
     CONFIG.Token.objectClass = class extends CONFIG.Token.objectClass {
       get isVisible() {
-        return !inactiveVariant(this.document) && super.isVisible;
+        return !concealedVariant(this.document) && super.isVisible;
       }
 
       get isInteractable() {
-        return !inactiveVariant(this.document) && super.isInteractable;
+        return !concealedVariant(this.document) && super.isInteractable;
       }
 
       // Foundry combines the paste-as-hidden option with effective visibility before firing pasteToken.
@@ -178,7 +187,7 @@ export function setupTokenVisibility() {
     };
     CONFIG.Region.objectClass = class extends CONFIG.Region.objectClass {
       get isVisible() {
-        return !inactiveVariant(this.document.attachment.token) && super.isVisible;
+        return !concealedVariant(this.document.attachment.token) && super.isVisible;
       }
     };
 
@@ -204,7 +213,6 @@ export function setupTokenVisibility() {
       if (managedToken(token) && (token._source.hidden || playerMask(token))) this.hidden = true;
       return result;
     };
-    Hooks.on("canvasInit", ({ scene }) => refreshVariantTokens(scene));
     Hooks.on("updateRegion", (region, changes) => {
       const token = region.attachment.token;
       if ("hidden" in changes && managedToken(token)) refreshRegion(region, token);
