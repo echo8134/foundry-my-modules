@@ -1,6 +1,17 @@
 import { MODULE_ID } from "../constants.mjs";
-import { awardPlan, cardData, claimCorpse, corpseClaim, finishAward, pendingAward, recordAward } from "./award.mjs";
-import { harvestEquipment, isHarvestKit, previewHarvest, validTable } from "./rules.mjs";
+import {
+  awardPlan,
+  cardData,
+  claimCorpse,
+  corpseClaim,
+  finishAward,
+  harvested,
+  harvestRound,
+  pendingAward,
+  recordAward
+} from "./award.mjs";
+import { setupCorpseHUD } from "./hud.mjs";
+import { harvestEquipment, harvestTable, isCorpse, isHarvestKit, previewHarvest } from "./rules.mjs";
 import { chooseAction, confirmRoll, key, renderHarvestMessage, reviewHarvest, t } from "./views.mjs";
 
 const prepareQuery = `${MODULE_ID}.prepareHarvest`;
@@ -23,23 +34,16 @@ function context(data, user) {
   const harvester = actingToken ? actingToken.actor : actor;
   if (!harvester || (data.actingTokenId && !actingToken) || !harvester.testUserPermission(user, "OWNER"))
     fail("needActor");
-  if (
-    !token.actor ||
-    token.actor.uuid === harvester.uuid ||
-    (!token.combatant?.isDefeated &&
-      !token.actor.statuses.has(CONFIG.specialStatusEffects.DEFEATED) &&
-      !token.actor.statuses.has("dead") &&
-      !(token.actor.type === "npc" && token.actor.system.attributes?.hp?.value === 0))
-  )
-    fail("needCorpse");
-  if (token.getFlag(MODULE_ID, "harvested")) fail("alreadyHarvested");
+  if (!isCorpse(token) || token.actor.uuid === harvester.uuid) fail("needCorpse");
+  if (data.round !== undefined && data.round !== harvestRound(token)) fail("changed");
+  if (harvested(token)) fail("alreadyHarvested");
   const pending = pendingAward(token, harvester);
   if (pending) {
     if (data.action !== "harvest" || pending.plan.actor !== harvester.uuid) fail("otherHarvester");
     return { actor: harvester, token, pending };
   }
-  const table = token.actor.getFlag(MODULE_ID, "harvest");
-  if (!validTable(table)) fail("noTable");
+  const table = harvestTable(token);
+  if (!table) fail("noTable");
   if (data.action === "appraise") {
     const claim = corpseClaim(token, "appraise");
     const attempted = token.getFlag(MODULE_ID, "appraisedBy")?.length;
@@ -173,7 +177,11 @@ function prepare(data, { user }) {
   const current = context(data, user);
   const ticket = foundry.utils.randomID();
   // User.query broadcasts to every tab of the active GM. Only the tab whose answer reached the player owns this ticket.
-  requests.set(ticket, { data: foundry.utils.deepClone(data), userId: user.id, expires: Date.now() + 300000 });
+  requests.set(ticket, {
+    data: { ...foundry.utils.deepClone(data), round: harvestRound(current.token) },
+    userId: user.id,
+    expires: Date.now() + 300000
+  });
   for (const [id, entry] of requests) if (entry.expires < Date.now()) requests.delete(id);
   return {
     ticket,
@@ -246,6 +254,7 @@ export const harvesting = { request: notifyRequest };
 export function setupHarvesting() {
   Hooks.once("init", () => {
     if (game.system.id !== "dnd5e") return;
+    setupCorpseHUD();
     CONFIG.DND5E.tools.harvest = { id: "", ability: "dex", label: key("kit") };
     CONFIG.DND5E.toolProficiencies.harvest = key("kit");
     Hooks.once("i18nInit", () => {

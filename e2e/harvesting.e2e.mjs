@@ -2,6 +2,15 @@ import { assert, check, join, joinGamemaster, MODULE_ID, PLAYER_NAME, run, waitF
 
 const rollPrompt = ".harvest-roll [data-action=roll]";
 const review = ".harvest-review";
+const status = "#token-hud .my-harvest-status";
+
+function openHUD(page, id) {
+  return page.evaluate(async (id) => {
+    const token = canvas.tokens.get(id);
+    token.control();
+    await canvas.hud.token.bind(token);
+  }, id);
+}
 
 async function setup(gm) {
   return gm.evaluate(
@@ -71,9 +80,13 @@ async function setup(gm) {
         }
       });
       const pc = await actor.getTokenDocument({ x: 200, y: 200, actorLink: true });
-      const monster = await creature.getTokenDocument({ x: 300, y: 200, actorLink: false });
+      const monster = await creature.getTokenDocument({ x: 300, y: 200, actorLink: true });
       const scene = await Scene.create({
         name: `Harvest test ${suffix}`,
+        width: 1400,
+        height: 1000,
+        padding: 0,
+        initial: { x: 450, y: 320, scale: 1 },
         tokenVision: false,
         ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER },
         tokens: [pc.toObject(), monster.toObject(), { ...monster.toObject(), _id: null, x: 450 }]
@@ -218,7 +231,10 @@ await run(async () => {
         partial.awards.length === 1 && partial.spent === 1,
         "the test did not interrupt the handoff after the charge and loot"
       );
+      await openHUD(gm, f.first);
+      await gm.waitForSelector(`${status}[data-state=unharvested]:disabled`, { visible: true });
       assert((await request()) === true, "retry failed to finish the approved handoff");
+      await gm.waitForSelector(`${status}[data-state=harvested]:enabled`, { visible: true });
       await waitFor(gm, (f) => game.actors.get(f.actor).items.get(f.kit).system.uses.spent === 1, f);
       await waitFor(gm, (f) => game.actors.get(f.actor).items.some((i) => i.name === game.items.get(f.goods).name), f);
       const state = await inventory(gm, f);
@@ -250,6 +266,108 @@ await run(async () => {
       await gm.click(`${review} [data-action=cancel]`);
       const state = await inventory(gm, f);
       assert(state.spent === 1 && state.awards.length === 1, "second use duplicated the loot or cost");
+    });
+
+    await check("the GM can reopen just the selected corpse for a different harvester", async () => {
+      const hp = (value) =>
+        gm.evaluate((id, hp) => game.actors.get(id).update({ "system.attributes.hp.value": hp }), f.creature, value);
+      const harvestHistory = () =>
+        gm.evaluate(
+          (f, m) => ({
+            inventory: game.actors.get(f.actor).items.map((item) => item.id),
+            spent: game.actors.get(f.actor).items.get(f.kit).system.uses.spent,
+            appraisal: canvas.scene.tokens.get(f.first).getFlag(m, "appraisedBy"),
+            success: canvas.scene.tokens.get(f.first).getFlag(m, "appraisalSuccess"),
+            messages: game.messages.map((message) => message.id)
+          }),
+          f,
+          MODULE_ID
+        );
+      await gm.bringToFront();
+      await gm.reload({ waitUntil: "domcontentloaded" });
+      await waitFor(gm, () => globalThis.game?.ready && canvas.ready && !canvas.loading);
+      await gm.evaluate((id) => game.scenes.get(id).view(), f.scene);
+      await waitFor(gm, (id) => canvas.ready && canvas.scene.id === id, f.scene);
+      const { x, y } = await gm.evaluate((id) => {
+        const { x, y } = canvas.clientCoordinatesFromCanvas(canvas.tokens.get(id).center);
+        return { x, y };
+      }, f.second);
+      await gm.mouse.move(x, y);
+      await waitFor(gm, (id) => canvas.tokens.hover?.id === id, f.second);
+      await gm.mouse.click(x, y, { button: "right" });
+      await gm.waitForSelector(`${status}[data-state=unharvested]`, { visible: true });
+      await gm.locator(status).hover();
+      await waitFor(gm, () => document.querySelector("#tooltip.active")?.textContent.trim() === "Not yet harvested");
+      await openHUD(gm, f.first);
+      await gm.waitForSelector(`${status}[data-state=harvested]`, { visible: true });
+      await gm.locator(status).hover();
+      await waitFor(gm, () => document.querySelector("#tooltip.active")?.textContent.includes("Reset harvest"));
+      await hp(8);
+      await openHUD(gm, f.first);
+      assert(!(await gm.$(status)), "living NPC still has a harvest control");
+      await hp(0);
+      const table = await gm.evaluate((id, m) => game.actors.get(id).getFlag(m, "harvest"), f.creature, MODULE_ID);
+      await gm.evaluate(
+        (id, m) => game.actors.get(id).update({ [`flags.${m}.harvest.components`]: [] }),
+        f.creature,
+        MODULE_ID
+      );
+      await openHUD(gm, f.first);
+      assert(!(await gm.$(status)), "corpse with an invalid harvest table still has a harvest control");
+      await gm.evaluate(
+        (id, m, table) => game.actors.get(id).setFlag(m, "harvest", table),
+        f.creature,
+        MODULE_ID,
+        table
+      );
+      await openHUD(gm, f.first);
+      const before = await harvestHistory();
+      await gm.locator(`${status}[data-state=harvested]`).setTimeout(8000).click();
+      await gm.waitForSelector(`${status}[data-state=unharvested]`, { visible: true });
+      assert(
+        JSON.stringify(await harvestHistory()) === JSON.stringify(before),
+        "reset changed past awards or appraisal"
+      );
+      const second = await gm.evaluate(async (name) => {
+        const actor = await Actor.create({
+          name: "Second harvester",
+          type: "character",
+          ownership: { [game.users.getName(name).id]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER },
+          system: { skills: { nat: { value: 1 } }, abilities: { dex: { value: 18 } } }
+        });
+        return actor.id;
+      }, PLAYER_NAME);
+      try {
+        await player.bringToFront();
+        await player.evaluate((f) => canvas.tokens.get(f.first).setTarget(true, { releaseOthers: true }), f);
+        const request = () =>
+          player.evaluate(
+            (id, m) => game.modules.get(m).api.harvesting.request("harvest", game.actors.get(id)),
+            second,
+            MODULE_ID
+          );
+        const attempt = request();
+        await player.locator(rollPrompt).click();
+        await gm.bringToFront();
+        await gm.locator(`${review} [data-action=confirm]`).click();
+        assert(await attempt, "second harvester could not harvest the reopened corpse");
+        await gm.waitForSelector(`${status}[data-state=harvested]`, { visible: true });
+        assert((await request()) === false, "reopened token paid out twice");
+        const secondLoot = await gm.evaluate(
+          (id, name) =>
+            game.actors
+              .get(id)
+              .items.filter((item) => item.name === name)
+              .map((item) => item.system.quantity),
+          second,
+          f.goodsName
+        );
+        assert(secondLoot.length === 1 && secondLoot[0] === 3, "second harvester did not receive exactly one award");
+        await openHUD(gm, f.second);
+        await gm.waitForSelector(`${status}[data-state=unharvested]`, { visible: true });
+      } finally {
+        await gm.evaluate((id) => game.actors.get(id).delete(), second);
+      }
     });
 
     await check("a proficient character can use an empty kit without spending another charge", async () => {
@@ -330,6 +448,36 @@ await run(async () => {
         assert(result.refilled === true, "the losing corpse could not be harvested after a refill");
       }
     );
+    await check("a player who owns the corpse can read its harvest status but cannot reset it", async () => {
+      await gm.evaluate(
+        (f, name) =>
+          game.actors
+            .get(f.creature)
+            .update({ [`ownership.${game.users.getName(name).id}`]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER }),
+        f,
+        PLAYER_NAME
+      );
+      await waitFor(player, (id) => canvas.tokens.get(id).isOwner, f.first);
+      await player.bringToFront();
+      await openHUD(player, f.first);
+      const button = `${status}[data-state=harvested]:disabled`;
+      await player.waitForSelector(button, { visible: true });
+      await player.locator(button).hover();
+      await waitFor(
+        player,
+        () => document.querySelector("#tooltip.active")?.textContent.trim() === "Bereits abgeerntet"
+      );
+      const reset = await player.evaluate(
+        async (id, m) => {
+          const { openHarvestRound, harvestRound } = await import(`/modules/${m}/scripts/harvesting/award.mjs`);
+          const token = canvas.scene.tokens.get(id);
+          return openHarvestRound(token, harvestRound(token));
+        },
+        f.first,
+        MODULE_ID
+      );
+      assert(reset === false, "the player could reset the completed harvest");
+    });
   } catch (error) {
     for (const page of [gm, player])
       console.log(
@@ -338,7 +486,9 @@ await run(async () => {
             el.textContent.trim().slice(0, 400)
           ),
           notifications: document.querySelector("#notifications")?.textContent,
-          targets: [...game.user.targets].map((t) => t.name)
+          targets: [...game.user.targets].map((t) => t.name),
+          hud: document.querySelector(".my-harvest-status")?.outerHTML,
+          hudBounds: document.querySelector(".my-harvest-status")?.getBoundingClientRect().toJSON()
         }))
       );
     console.log(notices.slice(-15));

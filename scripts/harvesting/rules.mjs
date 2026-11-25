@@ -1,3 +1,5 @@
+import { MODULE_ID } from "../constants.mjs";
+
 const skills = new Set(["arc", "nat", "inv", "med"]);
 const abilities = new Set(["str", "dex", "con", "int", "wis", "cha"]);
 const text = (value) => typeof value === "string" && value.trim().length > 0;
@@ -21,6 +23,22 @@ export function validTable(table) {
       return true;
     })
   );
+}
+
+export function isCorpse(token) {
+  const actor = token.actor;
+  return Boolean(
+    actor &&
+      (token.combatant?.isDefeated ||
+        actor.statuses.has(CONFIG.specialStatusEffects.DEFEATED) ||
+        actor.statuses.has("dead") ||
+        (actor.type === "npc" && actor.system.attributes?.hp?.value === 0))
+  );
+}
+
+export function harvestTable(token) {
+  const table = token.actor?.getFlag(MODULE_ID, "harvest");
+  if (validTable(table)) return table;
 }
 
 export function previewHarvest(table, total, { condition = "normal", ruined = [], passed = [] } = {}, withKit = true) {

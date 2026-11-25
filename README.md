@@ -23,6 +23,8 @@ Target a dead creature. Use **Appraise** or **Harvest** on the Harvesting Kit, o
 
 The GM reviews the Dexterity roll, chooses the kill condition, marks destroyed parts and can leave successful parts behind. Confirming spends one charge, copies the gained world items to the harvester, posts any danger and saves, and closes this corpse to further harvesting. A missing or empty kit requires skill proficiency and gives disadvantage. If an approved handoff is interrupted, use **Harvest** again with the original character to finish it. A disabled effect records each appraisal or confirmed harvest for that token. The kit records the charge used for each confirmed harvest.
 
+As GM, right-click a dead creature with a valid harvest table to see its status. Click the checkmark to reopen that token for another harvest. The reset preserves earlier loot, kit charges and chat messages. A successful appraisal still helps the next harvester.
+
 Character sheets store Harvesting Kit training under **Tool proficiencies**. Existing kits with proficiency set on the item also work. The two kit activity IDs are `AppraiseCreature` and `CheckKitSupplies`.
 
 The creature's actor supplies `flags.foundry-my-modules.harvest` with `appraise: {skill, dc}`, `size`, and a `components` array. Each component has an `id`, `name`, `dc`, `edible`, `quantity`, and `item` (exact world Item name or `Item.<id>` UUID). A danger carries `text` and optional `save: {ability, dc}` and `damage: {formula, type}`. Components with the same `exclusiveGroup` represent alternatives. The highest successful DC wins, with table order breaking ties. Macros can call `game.modules.get("foundry-my-modules").api.harvesting.request("harvest", actor)`.
