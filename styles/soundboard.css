@@ -3,79 +3,37 @@
   min-height: 0;
   max-height: 36%;
   overflow-y: auto;
-  padding: 0.5rem;
-  background:
-    linear-gradient(#241c18b8, #312620bd),
-    #4b4035 url("../assets/quests/board.webp") center / cover;
-  color: #f2e3c4;
-}
-
-.my-soundboard h3 {
-  margin: 0 0 0.4rem;
-  border: 0;
-  color: inherit;
-  font:
-    1.15rem / 1.1 "Quest Fell SC",
-    Georgia,
-    serif;
 }
 
 .my-soundboard p {
   margin: 0;
-  font:
-    1rem / 1.2 "Quest Fell",
-    Georgia,
-    serif;
 }
 
-.my-soundboard-grid {
+.my-soundboard .my-soundboard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 7rem), 1fr));
-  gap: 0.32rem;
+  gap: 4px;
 }
 
 .my-soundboard-grid button {
+  --button-size: 2rem;
   justify-content: flex-start;
-  gap: 0.42rem;
   height: auto;
-  min-height: 1.9rem;
-  border: 1px solid #725b40;
-  border-radius: 2px;
-  padding: 0.25rem 0.45rem;
-  background:
-    linear-gradient(#f1deb9b3, #d2bb9780),
-    #dbc69e url("../assets/quests/note.webp") center / cover;
-  box-shadow: 0 2px 3px #21170fa6;
-  color: #302317;
-  font:
-    1rem / 1.1 "Quest Fell",
-    Georgia,
-    serif;
+  border: 1px solid var(--button-border-color);
+  font-size: inherit;
   text-align: start;
-  text-shadow: none;
-  white-space: normal;
   overflow-wrap: anywhere;
 }
 
 .my-soundboard-grid button::before {
-  content: "";
-  flex: none;
-  width: 0.55rem;
-  height: 0.6rem;
-  background: #64482e;
-  clip-path: polygon(10% 0, 100% 50%, 10% 100%);
-}
-
-.my-soundboard-grid button[aria-pressed="true"] {
-  box-shadow: inset 0 -3px #81402d;
+  content: "\f04b" / "";
+  flex: 0 0 1em;
+  font-family: var(--font-awesome);
+  font-weight: 900;
+  text-align: center;
 }
 
 .my-soundboard-grid button[aria-pressed="true"]::before {
-  clip-path: none;
-  background: #81402d;
-}
-
-.my-soundboard-grid button:is(:hover, :focus-visible) {
-  outline: 2px solid #cc995b;
-  outline-offset: -2px;
+  content: "\f0c8" / "";
+  color: var(--color-text-accent);
 }

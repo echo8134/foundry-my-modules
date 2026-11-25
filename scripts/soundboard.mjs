@@ -91,17 +91,23 @@ function renderBoard(_app, element) {
   const name = game.settings.get(MODULE_ID, "soundboardPlaylist");
   const playlist = game.playlists.getName(name);
   const panel = document.createElement("section");
-  panel.className = "my-soundboard";
-  const heading = document.createElement("h3");
+  panel.className = "my-soundboard global-control";
+  const header = document.createElement("header");
+  header.className = "playlist-header";
+  const heading = document.createElement("strong");
+  heading.role = "heading";
+  heading.ariaLevel = "3";
   heading.textContent = game.i18n.localize("MY_MODULES.Soundboard.Title");
-  panel.append(heading);
+  header.append(heading);
+  panel.append(header);
   if (playlist?.sounds.size) {
     const grid = document.createElement("div");
-    grid.className = "my-soundboard-grid";
+    grid.className = "my-soundboard-grid playlist-sounds";
     for (const id of playlist.playbackOrder) {
       const track = playlist.sounds.get(id);
       const button = document.createElement("button");
       button.type = "button";
+      button.dataset.keyboardFocus = "true";
       button.dataset.soundId = id;
       button.dataset.uuid = track.uuid;
       button.ariaPressed = String(isPressed(track.uuid));
@@ -113,6 +119,7 @@ function renderBoard(_app, element) {
     panel.append(grid);
   } else {
     const hint = document.createElement("p");
+    hint.className = "playlist-sounds";
     hint.textContent = game.i18n.format("MY_MODULES.Soundboard.Empty", { playlist: name });
     panel.append(hint);
   }
