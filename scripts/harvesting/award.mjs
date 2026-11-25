@@ -1,10 +1,23 @@
 import { MODULE_ID } from "../constants.mjs";
 import { harvestTable, isCorpse, sourceItem } from "./rules.mjs";
-import { renderCard, t } from "./views.mjs";
+import { fail, renderCard, t } from "./views.mjs";
 
 const path = (flag) => `flags.${MODULE_ID}.${flag}`;
 const id = () => foundry.utils.randomID();
 const chargeSlot = (kit) => kit.getFlag(MODULE_ID, "nextHarvestCharge") ?? "HarvestKitCharge";
+
+const actions = {
+  appraise: { prefix: "Apr", claim: "corpseClaim", record: "appraisalRecord" },
+  harvest: {
+    prefix: "Hrv",
+    claim: "corpseClaim",
+    record: "harvestRecord",
+    pending: "harvestPending",
+    done: "harvested"
+  },
+  identify: { prefix: "Idn", claim: "plantClaim", record: "identificationRecord" },
+  gather: { prefix: "Gth", claim: "plantClaim", record: "gatherRecord", pending: "gatherPending", done: "gathered" }
+};
 
 // Round zero uses the flags and claim IDs from existing worlds.
 export function harvestRound(token) {
@@ -38,15 +51,17 @@ function claimId(token, action, round) {
   let hash = 0xcbf29ce484222325n;
   const key = round ? `${token.uuid}:${round}` : token.uuid;
   for (const char of key) hash = BigInt.asUintN(64, (hash ^ BigInt(char.charCodeAt(0))) * 0x100000001b3n);
-  return (action === "harvest" ? "Hrv" : "Apr") + hash.toString(36).padStart(13, "0");
+  return actions[action].prefix + hash.toString(36).padStart(13, "0");
 }
+
+// The private roll and the public claim live in different Foundry collections.
+export const gatherRollId = (token) => claimId(token, "gather", 0);
 
 export function corpseClaim(token, action, round = 0) {
   const effect = token.actor.effects.get(claimId(token, action, round));
   if (!effect) return;
-  const claim = effect.getFlag(MODULE_ID, "corpseClaim");
-  if (claim?.token !== token.uuid || claim.action !== action || (claim.round ?? 0) !== round)
-    throw new Error(t("brokenReceipt"));
+  const claim = effect.getFlag(MODULE_ID, actions[action].claim);
+  if (claim?.token !== token.uuid || claim.action !== action || (claim.round ?? 0) !== round) fail("brokenReceipt");
   return claim;
 }
 
@@ -57,26 +72,35 @@ export async function claimCorpse(token, action, values, round = 0) {
     [
       {
         _id: claimId(token, action, round),
-        name: t(action === "harvest" ? "harvestRecord" : "appraisalRecord", { target: token.name }),
+        name: t(actions[action].record, { target: token.name }),
         disabled: true,
         transfer: false,
         origin: token.uuid,
-        flags: { [MODULE_ID]: { corpseClaim: claim } }
+        flags: { [MODULE_ID]: { [actions[action].claim]: claim } }
       }
     ],
     { keepId: true }
   );
-  if (effect?.getFlag(MODULE_ID, "corpseClaim")?.id !== claim.id) throw new Error(t("saveError"));
+  if (effect?.getFlag(MODULE_ID, actions[action].claim)?.id !== claim.id) fail("saveError");
   return claim;
 }
 
-export function awardPlan(actor, token, kit, rows, total) {
+export function awardPlan(actor, token, kit, rows, total, action = "harvest") {
   const gains = rows
-    .filter((r) => r.outcome === "gained")
-    .map(({ component }) => {
+    .filter((r) => ["gained", "superior"].includes(r.outcome))
+    .map(({ component, bonus, price }) => {
       const source = sourceItem(component.item);
-      if (!source) throw new Error(t("missingItem", { item: component.item }));
-      return { id: id(), source: source.id, name: component.name, quantity: component.quantity };
+      if (!source) fail("missingItem", { item: component.item });
+      const quantity = component.quantity + (bonus === "portion" ? 1 : 0);
+      return {
+        id: id(),
+        source: source.id,
+        name: component.name,
+        quantity,
+        ...(bonus && { bonus }),
+        ...(price && { price }),
+        ...(action === "gather" && component.charges && { chargeFormula: component.charges })
+      };
     });
   const subject = { actor: actor.name, target: token.name, total };
   const cards = rows
@@ -84,14 +108,25 @@ export function awardPlan(actor, token, kit, rows, total) {
     .map(({ component }) => ({
       id: id(),
       type: "danger",
+      ...(action === "gather" && { plant: true }),
       ...subject,
       actorUuid: actor.uuid,
       name: component.name,
       danger: component.danger
     }));
-  cards.push({ id: id(), type: "summary", ...subject, parts: gains.map(({ name, quantity }) => ({ name, quantity })) });
+  cards.push({
+    id: id(),
+    type: action === "gather" ? "gatherSummary" : "summary",
+    ...subject,
+    parts: gains.map(({ name, quantity, bonus, price }) => ({
+      name,
+      quantity,
+      ...(bonus && { bonus }),
+      ...(price && { price })
+    }))
+  });
   return {
-    round: harvestRound(token),
+    ...(action === "gather" ? { action } : { round: harvestRound(token) }),
     token: token.uuid,
     actor: actor.uuid,
     kit: kit?.id ?? null,
@@ -111,15 +146,19 @@ export function cardData(card, actor, whisper = []) {
   };
 }
 
-export function pendingAward(token, actor) {
-  const round = harvestRound(token);
+export function pendingAward(token, actor, action = "harvest") {
+  const round = action === "harvest" ? harvestRound(token) : 0;
   let reference =
-    corpseClaim(token, "harvest", round)?.id ?? token.getFlag(MODULE_ID, roundFlag("harvestPending", round));
+    corpseClaim(token, action, round)?.id ?? token.getFlag(MODULE_ID, roundFlag(actions[action].pending, round));
   if (!reference && actor) {
     // The GM may have disconnected between reserving the kit's next charge and claiming the corpse.
     for (const kit of actor.items) {
       const reservation = kit.effects.get(chargeSlot(kit))?.getFlag(MODULE_ID, "harvestReservation");
-      if (reservation?.token === token.uuid && (reservation.round ?? 0) === round) {
+      if (
+        reservation?.token === token.uuid &&
+        (reservation.action ?? "harvest") === action &&
+        (reservation.round ?? 0) === round
+      ) {
         reference = reservation.receipt;
         break;
       }
@@ -128,16 +167,21 @@ export function pendingAward(token, actor) {
   if (!reference) return;
   const receipt = game.messages.get(reference);
   const plan = receipt?.getFlag(MODULE_ID, "harvestAward");
-  if (!receipt?.author?.isGM || plan?.token !== token.uuid || (plan.round ?? 0) !== round)
-    throw new Error(t("brokenReceipt"));
+  if (
+    !receipt?.author?.isGM ||
+    plan?.token !== token.uuid ||
+    (plan.action ?? "harvest") !== action ||
+    (plan.round ?? 0) !== round
+  )
+    fail("brokenReceipt");
   return { receipt, plan };
 }
 
-async function reserveCharge(kit, token, slot, receipt, round) {
+async function reserveCharge(kit, token, slot, receipt, action, round) {
   const existing = kit.effects.get(slot);
   if (existing?.getFlag(MODULE_ID, "harvestReservation")?.receipt === receipt.id) return existing;
-  if (chargeSlot(kit) !== slot || kit.system.uses.value < 1) throw new Error(t("kitChanged"));
-  if (existing) throw new Error(t("busy"));
+  if (chargeSlot(kit) !== slot || kit.system.uses.value < 1) fail("kitChanged");
+  if (existing) fail("busy");
   // Only one receipt can claim this charge. Debiting moves the kit to a new slot even across manual refills.
   const data = {
     _id: slot,
@@ -145,40 +189,44 @@ async function reserveCharge(kit, token, slot, receipt, round) {
     disabled: true,
     transfer: false,
     origin: token.uuid,
-    flags: { [MODULE_ID]: { harvestReservation: { token: token.uuid, receipt: receipt.id, round } } }
+    flags: {
+      [MODULE_ID]: { harvestReservation: { action, token: token.uuid, receipt: receipt.id, round } }
+    }
   };
   let reservation;
   try {
     [reservation] = await kit.createEmbeddedDocuments("ActiveEffect", [data], { keepId: true });
   } catch (error) {
     if (error.message?.includes(`_id [${slot}] already exists within the parent collection`))
-      throw new Error(t("busy"), { cause: error });
+      fail("busy", undefined, { cause: error });
     throw error;
   }
-  if (reservation?.getFlag(MODULE_ID, "harvestReservation")?.receipt !== receipt.id) throw new Error(t("saveError"));
+  if (reservation?.getFlag(MODULE_ID, "harvestReservation")?.receipt !== receipt.id) fail("saveError");
   return reservation;
 }
 
-function checkAwardRound(token, round) {
-  if (round !== harvestRound(token)) throw new Error(t("changed"));
-  if (harvested(token, round)) throw new Error(t("alreadyHarvested"));
+function checkAwardRound(token, plan) {
+  if ((plan.action ?? "harvest") !== "harvest") return;
+  if ((plan.round ?? 0) !== harvestRound(token)) fail("changed");
+  if (harvested(token, plan.round ?? 0)) fail("alreadyHarvested");
 }
 
 async function reserveAward(token, actor, { plan, receipt }) {
+  const action = plan.action ?? "harvest";
+  checkAwardRound(token, plan);
   const round = plan.round ?? 0;
-  checkAwardRound(token, round);
   const kit = plan.kit && actor.items.get(plan.kit);
-  if (plan.kit && !kit) throw new Error(t("kitChanged"));
+  if (plan.kit && !kit) fail("kitChanged");
   const paid = kit?.getFlag(MODULE_ID, "harvestCharges")?.[receipt.id];
   const reservation =
-    kit && !paid && (await reserveCharge(kit, token, plan.chargeSlot ?? chargeSlot(kit), receipt, round));
+    kit && !paid && (await reserveCharge(kit, token, plan.chargeSlot ?? chargeSlot(kit), receipt, action, round));
   try {
-    checkAwardRound(token, round);
-    const claimed = corpseClaim(token, "harvest", round);
-    if (!claimed) await claimCorpse(token, "harvest", { id: receipt.id }, round);
-    else if (claimed.id !== receipt.id) throw new Error(t("alreadyHarvested"));
+    checkAwardRound(token, plan);
+    const claimed = corpseClaim(token, action, round);
+    if (!claimed) await claimCorpse(token, action, { id: receipt.id }, round);
+    else if (claimed.id !== receipt.id) fail(action === "gather" ? "alreadyGathered" : "alreadyHarvested");
   } catch (error) {
-    const winner = corpseClaim(token, "harvest", round);
+    const winner = corpseClaim(token, action, round);
     if (reservation && winner && winner.id !== receipt.id) await reservation.delete();
     throw error;
   }
@@ -186,15 +234,16 @@ async function reserveAward(token, actor, { plan, receipt }) {
 }
 
 export async function recordAward(token, plan) {
+  const action = plan.action ?? "harvest";
+  checkAwardRound(token, plan);
   const round = plan.round ?? 0;
-  checkAwardRound(token, round);
   // The approved plan stays in a GM whisper. A token's flags are visible to players on the scene.
   const receipt = await ChatMessage.create({
     whisper: game.users.filter((user) => user.isGM).map((user) => user.id),
-    content: t("approved", { target: foundry.utils.escapeHTML(token.name) }),
+    content: t(action === "gather" ? "gatherApproved" : "approved", { target: foundry.utils.escapeHTML(token.name) }),
     flags: { [MODULE_ID]: { harvestAward: plan } }
   });
-  if (!receipt) throw new Error(t("saveError"));
+  if (!receipt) fail("saveError");
   const actor = fromUuidSync(plan.actor);
   try {
     await reserveAward(token, actor, { plan, receipt });
@@ -203,22 +252,20 @@ export async function recordAward(token, plan) {
       .get(plan.kit)
       ?.effects.get(plan.chargeSlot)
       ?.getFlag(MODULE_ID, "harvestReservation");
-    if (corpseClaim(token, "harvest", round)?.id !== receipt.id && reservation?.receipt !== receipt.id)
+    if (corpseClaim(token, action, round)?.id !== receipt.id && reservation?.receipt !== receipt.id)
       await receipt.delete();
     throw error;
   }
-  if (!(await token.update({ [path(roundFlag("harvestPending", round))]: receipt.id })))
-    throw new Error(t("saveError"));
+  if (!(await token.update({ [path(roundFlag(actions[action].pending, round))]: receipt.id }))) fail("saveError");
   return { receipt, plan };
 }
 
 export async function finishAward(token, actor, { receipt, plan }) {
-  const round = plan.round ?? 0;
   const checkGM = () => {
-    if (!game.user.isActiveGM) throw new Error(t("needGM"));
-    checkAwardRound(token, round);
+    if (!game.user.isActiveGM) fail("needGM");
+    checkAwardRound(token, plan);
   };
-  if (plan.actor !== actor.uuid || plan.token !== token.uuid) throw new Error(t("otherHarvester"));
+  if (plan.actor !== actor.uuid || plan.token !== token.uuid) fail("otherHarvester");
   checkGM();
   const kit = await reserveAward(token, actor, { receipt, plan });
   const items = [];
@@ -226,17 +273,22 @@ export async function finishAward(token, actor, { receipt, plan }) {
     const existing = actor.items.get(gain.id);
     if (existing?.getFlag(MODULE_ID, "harvestReceipt") === receipt.id) continue;
     const source = game.items.get(gain.source);
-    if (existing || !source) throw new Error(t("missingItem", { item: gain.name }));
+    if (existing || !source) fail("missingItem", { item: gain.name });
     const data = source.toObject();
     data._id = gain.id;
     data.folder = null;
     data.system.quantity = gain.quantity;
+    if (gain.price) Object.assign(data.system.price, gain.price);
+    if (gain.charges != null) {
+      data.system.uses.max = String(gain.charges);
+      data.system.uses.spent = 0;
+    }
     foundry.utils.setProperty(data, path("harvestReceipt"), receipt.id);
     items.push(data);
   }
   if (kit && !kit.getFlag(MODULE_ID, "harvestCharges")?.[receipt.id]) {
     checkGM();
-    if (kit.system.uses.value < 1) throw new Error(t("kitChanged"));
+    if (kit.system.uses.value < 1) fail("kitChanged");
     if (
       !(await kit.update({
         "system.uses.spent": kit.system.uses.spent + 1,
@@ -244,25 +296,21 @@ export async function finishAward(token, actor, { receipt, plan }) {
         [path("nextHarvestCharge")]: receipt.id
       }))
     )
-      throw new Error(t("saveError"));
+      fail("saveError");
   }
   checkGM();
   if (items.length) {
     const granted = await actor.createEmbeddedDocuments("Item", items, { keepId: true });
-    if (granted.length !== items.length) throw new Error(t("saveError"));
+    if (granted.length !== items.length) fail("saveError");
   }
   for (const card of plan.cards) {
     if (game.messages.has(card.id)) continue;
     checkGM();
-    if (!(await ChatMessage.create(cardData(card, actor), { keepId: true, messageMode: "public" })))
-      throw new Error(t("saveError"));
+    if (!(await ChatMessage.create(cardData(card, actor), { keepId: true, messageMode: "public" }))) fail("saveError");
   }
   checkGM();
-  if (
-    !(await token.update({
-      [path(roundFlag("harvested", round))]: true,
-      [path(roundFlag("harvestPending", round))]: _del
-    }))
-  )
-    throw new Error(t("saveError"));
+  const { done, pending } = actions[plan.action ?? "harvest"];
+  const round = plan.round ?? 0;
+  if (!(await token.update({ [path(roundFlag(done, round))]: true, [path(roundFlag(pending, round))]: _del })))
+    fail("saveError");
 }

@@ -32,6 +32,39 @@ The creature's actor supplies `flags.foundry-my-modules.harvest` with `appraise:
 </details>
 
 <details>
+<summary><h3>Identify and gather herbs (dnd5e)</h3></summary>
+
+As GM, create a world Item for each specimen the plant can yield. Create an NPC for the plant and place its token on the scene. For example, after creating a plant named **Silverleaf patch** and a world Item named **Silverleaf**, run this script macro as GM:
+
+```js
+await game.actors.getName("Silverleaf patch").setFlag("foundry-my-modules", "herbalism", {
+  identify: { skill: "nat" },
+  components: [
+    {
+      id: "leaves",
+      name: "Silverleaf",
+      item: "Silverleaf",
+      quantity: 2,
+      dc: 15,
+      danger: { text: "The leaves release a cloud of stinging pollen." }
+    }
+  ]
+});
+```
+
+Use an exact, unique world Item name or an `Item.<id>` UUID. Instead of `dc`, set `rarity` to `common`, `uncommon`, `rare`, `veryRare`, or `legendary` for DC 12, 15, 18, 21, or 24 respectively. Set the DC for a signature herb yourself. For a hostile biome, you can raise it by 2 to 5. Use the source Item to describe the herb’s purpose (quest, trade or recipe), price, and any preparation or direct-use effect. The campaign allows one active herb effect per creature. For an Item with limited uses, set `charges: "1d4"` on the component to roll charges when it is gathered. A superior specimen can gain an extra charge, an extra portion, or a higher trade value at the GM's discretion.
+
+Hover over the plant token, press **T** to target it, then open the herbalism tool in the token controls, or use **Identify** or **Gather** on the campaign kit. Identify is optional and available once per token. Choose Nature, Medicine, or the kit. The default DC is 15 plus the intended gatherer's proficiency bonus. If another character will gather, select them before identifying. To override the DC, set `identify.dc` on the plant. Success reveals the components' DCs and hazards and gives a trained gatherer with a charged kit advantage.
+
+Gather with Wisdom (Survival) or Intelligence (Nature). With a charged kit, add the character's herbalism proficiency. With an empty or missing kit, roll the matching skill at disadvantage, even if untrained. The GM reviews the roll. Meeting a component's DC yields its specimen. Beating it by at least 5 yields a superior specimen. A miss by up to 5 with a kit yields nothing. A larger miss, or any kitless miss, triggers the herb's hazard.
+
+Each plant token gets one Gather roll. If the GM closes the review, the original gatherer can use **Gather** again to reopen the same result, including after a reload. Confirmation spends one kit charge and awards the approved specimens. Each charge-bearing specimen has its own uses. If delivery is interrupted, use **Gather** again to finish it.
+
+Set the kit’s maximum uses to 10 and leave use recovery empty. The campaign kit costs 50 gp, weighs 7 lb., and holds ten charges of vials, pressing paper, and preservation salt. For a 40 gp refill, settle the payment and restore all ten uses on the kit sheet.
+
+</details>
+
+<details>
 <summary><h3>Hide cursors</h3></summary>
 
 Hover a player’s row in the player list at the bottom left to see its cursor toggle. GMs also see toggles on GM rows.
