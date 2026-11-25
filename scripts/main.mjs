@@ -4,7 +4,7 @@ import { MODULE_ID } from "./constants.mjs";
 import { setupCursors } from "./cursors.mjs";
 import { localizeRulesJournal, setupDeathSaves } from "./death-saves.mjs";
 import { setupDiceTray } from "./dice-tray.mjs";
-import { harvesting, setupHarvesting } from "./harvesting/workflow.mjs";
+import { harvesting, herbalism, setupHarvesting } from "./harvesting/workflow.mjs";
 import { setupHotbar } from "./hotbar.mjs";
 import { setupLevels } from "./levels.mjs";
 import { rollName, setupNames } from "./names.mjs";
@@ -42,5 +42,5 @@ Hooks.once("init", () => {
     localizeRulesJournal(this);
     return result;
   };
-  game.modules.get(MODULE_ID).api = { getVariants, setVariant, rollName, quests, harvesting };
+  game.modules.get(MODULE_ID).api = { getVariants, setVariant, rollName, quests, harvesting, herbalism };
 });
