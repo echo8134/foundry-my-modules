@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.8](https://github.com/echo8134/foundry-my-modules/compare/v0.10.7...v0.10.8) (2026-11-26)
+
+
+### Features
+
+* **party-glance:** show a GM-only stat ring around player tokens ([#64](https://github.com/echo8134/foundry-my-modules/issues/64)) ([bdee29b](https://github.com/echo8134/foundry-my-modules/commit/bdee29b2fd30c223f7f93bc3b01ebfd9c81b26bb))
+
 ## [0.10.7](https://github.com/echo8134/foundry-my-modules/compare/v0.10.6...v0.10.7) (2026-11-25)
 
 ### Features
