@@ -213,7 +213,11 @@ function assertMarks(page, selector, success, failure) {
     (sel, good, bad) => {
       const marks = document.querySelector(sel);
       const pips = (count) => "●".repeat(count) + "○".repeat(3 - count);
-      return marks?.checkVisibility() && marks.dataset.success === pips(good) && marks.dataset.failure === pips(bad);
+      return (
+        marks?.checkVisibility() &&
+        getComputedStyle(marks, "::before").content === `"✓ ${pips(good)}"` &&
+        getComputedStyle(marks, "::after").content === `"× ${pips(bad)}"`
+      );
     },
     selector,
     success,
@@ -251,6 +255,13 @@ async function checkStackedRows(player, actorId) {
     return effect.id;
   }, actorId);
   try {
+    await player.evaluate((m) => game.settings.set(m, "actionHudShowEffects", false), MODULE_ID);
+    await waitFor(player, () => {
+      const body = document.querySelector("#my-action-hud .hud-body");
+      const death = body?.querySelector(".hud-death-saves")?.getBoundingClientRect();
+      const bar = body?.querySelector(".hud-bar")?.getBoundingClientRect();
+      return !body?.querySelector(".hud-effects") && death?.height > 0 && bar && Math.abs(death.bottom - bar.top) <= 1;
+    });
     await player.evaluate((m) => game.settings.set(m, "actionHudShowEffects", true), MODULE_ID);
     await player.locator(rolls).click();
     for (const design of ["wood", "menu"]) {
@@ -270,8 +281,8 @@ async function checkStackedRows(player, actorId) {
             const macros = document.querySelector("#action-bar").getBoundingClientRect();
             return (
               rows[0].height > 0 &&
-              rows[0].bottom <= rows[1].top + 1 &&
-              rows[1].bottom <= rows[2].top + 1 &&
+              Math.abs(rows[0].bottom - rows[1].top) <= 1 &&
+              Math.abs(rows[1].bottom - rows[2].top) <= 1 &&
               rows[2].bottom <= macros.top + 1 &&
               (popup.bottom <= rows[0].top + 1 || popup.top >= rows[2].bottom - 1)
             );
@@ -574,11 +585,16 @@ await run(async () => {
           ),
           "badge is not directly below the unselected token"
         );
+        for (const page of [gm, player]) await page.evaluate((id) => canvas.tokens.get(id).control(), tokens.dying);
+        await gm.waitForSelector(`${bar} [data-action="deathSave"]`, { visible: true });
+        assert(!(await gm.$(strip)), "the GM saw the player's death save strip");
+        await assertMarks(gm, badge, 0, 0);
         assert(
           (await player.$$(skull)).length === 1 && (await player.$(`${strip} [data-action="deathSave"]`)),
           "expected one skull in the strip"
         );
         await checkStackedRows(player, actorId);
+        await player.evaluate(() => canvas.tokens.releaseAll());
         for (const page of [player, observer, otherGM]) assert(!(await page.$(badge)), "unexpected map counters");
         const alternate = await otherGM.evaluate(() => game.user.id);
         await setRecipient(gm, clients, alternate);
@@ -623,6 +639,7 @@ await run(async () => {
         await fixedDie(player, 14);
         const publicRoll = await nextRoll(gm, actorId, () => rollWithDialog(player, skull, "public", false));
         await assertAudience(clients, publicRoll);
+        await assertMarks(player, `${strip} .my-death-save-marks`, 2, 1);
         await setRecipient(gm, clients, recipient);
         await displays(false);
         await gm.waitForSelector(badge, { hidden: true });
@@ -630,8 +647,10 @@ await run(async () => {
         assert(!(await player.$(strip)), "the disabled strip is still present");
         await displays(true);
         await assertMarks(gm, badge, 2, 1);
+        await assertMarks(player, `${strip} .my-death-save-marks`, 2, 1);
         await heal();
         await player.waitForSelector(skull, { hidden: true });
+        await player.waitForSelector(strip, { hidden: true });
         await gm.waitForSelector(badge, { hidden: true });
         await reset(player, actorId, 2);
         await player.waitForSelector(skull, { visible: true });
@@ -656,6 +675,7 @@ await run(async () => {
           });
           assert((await terminalOutcome(gm, actorId, id)) === terminal, `expected ${terminal}`);
           await player.waitForSelector(skull, { hidden: true });
+          await player.waitForSelector(strip, { hidden: true });
           await gm.waitForSelector(badge, { hidden: true });
           await assertAudience(clients, id, recipient, terminal);
           if (terminal === "stable") {

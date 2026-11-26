@@ -224,7 +224,7 @@ Each item shows the attack bonus or save DC, damage or healing, range, and area 
 
 **Checks/Saves** shows modifiers for ability checks, saving throws, and skills. **Conditions** toggles dnd5e effects. Click Exhaustion to add one level or right-click it to remove one. **Rests** starts a short or long rest. At 0 HP, click the skull in the bar to roll a death save. It uses the same roll and privacy settings as the character sheet. The button disappears when you stabilize, die, or regain HP. Hide it with the **Death Saves** category. Shift-click to skip the configuration dialog where dnd5e supports it.
 
-The **Show death save counters** world setting is off by default. Enable it to see ongoing saves beneath tokens as GM, regardless of the selected token or the Party Glance ring. Players see their skull button, successes (✓) and failures (×) together above their character’s Action HUD. Turning off the counters returns the skull to the main HUD bar. The **Private death saves** house rule applies in either layout.
+The **Show death save counters** world setting is off by default. When enabled, players see one skull button with three success marks (✓) and three failure marks (×) directly above their character’s Action HUD. Any visible effects sit above that row. The GM sees the counters beneath tokens, even without selecting one or enabling the Party Glance ring. When the GM selects a dying character, the skull button stays in the main HUD bar. Turning off the counters also returns the player's skull to the main bar. The **Private death saves** house rule applies in either layout.
 
 </details>
 
