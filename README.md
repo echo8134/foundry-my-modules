@@ -214,6 +214,8 @@ The tabs and macro slots share a frame by default. To move the HUD separately, t
 
 Use **Action HUD design** to switch from **Wood and parchment** to **Foundry menus** in this browser. The Foundry menu design follows your interface theme and applies to both layouts, including the shared frame when docked.
 
+Turn on **Show active effects above the Action HUD** to see your character’s active spells and conditions. Hover over an icon to see its source and remaining duration. Click the highlighted concentration icon to end the spell on all linked targets. Right-click another effect to end it or remove one level of a condition such as Exhaustion.
+
 Open **Action HUD** in the module settings and choose **Visible action categories** to select your tabs. **Conditions** and **Rests** start hidden. Each player can choose their own categories.
 
 Click a group to open it and click it again to fold it away. **Attacks**, **Spells**, **Features**, and **Items** use the item through dnd5e. The attack list shows equipped weapons and other usable items with an attack activity. The spell list starts with cantrips and groups spells by level. Spells with the at-will, ritual, innate, or pact casting method appear even when unprepared. Slot counts, uses, and quantities update as you play. Right-click an item to open its sheet.

@@ -1,3 +1,4 @@
+import { checkEffectStrip } from "./action-hud-effects.mjs";
 import { assert, check, join, joinGamemaster, MODULE_ID, PLAYER_NAME, run, waitFor } from "./harness.mjs";
 
 const HUD = "#my-action-hud";
@@ -249,6 +250,8 @@ await run(async () => {
       await player.evaluate((id) => canvas.tokens.get(id).control(), ids.hero);
       await player.waitForSelector(group("attacks"), { visible: true });
     });
+
+    await checkEffectStrip(gm, player, ids);
 
     await check(
       "the GM can hide and restore the macro hotbar while the HUD follows and the player's bar stays visible",

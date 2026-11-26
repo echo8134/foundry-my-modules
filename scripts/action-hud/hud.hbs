@@ -1,5 +1,14 @@
 <div class="hud-body" data-actor="{{actor.uuid}}">
   {{#if actor}}
+  {{#if effects.length}}
+  <section class="hud-effects" aria-label="{{localize 'MY_MODULES.ActionHud.activeEffects'}}">
+    {{#each effects}}
+    <button type="button" data-effect-uuid="{{uuid}}" {{#if concentrating}}data-action="endConcentration"{{/if}} aria-label="{{name}}" aria-description="{{tooltip}}" data-tooltip-text="{{tooltip}}" data-tooltip-class="my-action-hud-effects">
+      <img src="{{img}}" alt="">
+    </button>
+    {{/each}}
+  </section>
+  {{/if}}
   <nav class="hud-bar" aria-label="{{localize 'MY_MODULES.ActionHud.title'}}">
     <span class="hud-name{{#unless docked}} hud-grip{{/unless}}" {{#unless docked}}title="{{localize 'MY_MODULES.ActionHud.move'}}"{{/unless}}>
       {{#unless docked}}<i class="fa-solid fa-grip-vertical" inert></i>{{/unless}}
