@@ -9,8 +9,9 @@ export function slotAngles(count) {
   return Array.from({ length: count }, (_, i) => (i * 360) / count);
 }
 
-export function ringRadius(diameter, count, extra = 0) {
-  return diameter / 2 + (count >= WIDE_RING ? WIDE_GAP : GAP) + extra;
+export function ringRadius(diameter, count, distance) {
+  const gap = count >= WIDE_RING ? WIDE_GAP : GAP;
+  return diameter / 2 + (gap * distance) / 100;
 }
 
 export function slotOffsets(count, radius) {

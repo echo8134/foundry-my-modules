@@ -273,6 +273,7 @@
   "MY_MODULES.PartyGlance.menuHint": "Show small badges with AC, passive Perception, HP and more around the tokens you select.",
   "MY_MODULES.PartyGlance.menuLabel": "Configure token ring",
   "MY_MODULES.PartyGlance.slotCount": "Slots on the ring",
+  "MY_MODULES.PartyGlance.ringDistance": "Ring distance",
   "MY_MODULES.PartyGlance.showRing": "Show the ring",
   "MY_MODULES.PartyGlance.trigger.select": "when I select a token",
   "MY_MODULES.PartyGlance.trigger.hover": "when I hover a token",

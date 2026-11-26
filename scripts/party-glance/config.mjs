@@ -1,6 +1,6 @@
 import { MODULE_ID } from "../constants.mjs";
-import { ringRadius, slotOffsets } from "./layout.mjs";
-import { DEFAULTS, MAX_SLOTS, normalize, SETTING, TRIGGERS } from "./settings.mjs";
+import { ringRadius, slotAngles } from "./layout.mjs";
+import { DEFAULTS, DISTANCE, MAX_SLOTS, normalize, SETTING, TRIGGERS } from "./settings.mjs";
 import { GROUPS, STATS, slotAbbr } from "./stats.mjs";
 import { text } from "./text.mjs";
 
@@ -9,6 +9,7 @@ const PREVIEW_TOKEN = 72;
 const PILL_ROOM = 14;
 const FLAGS = ["players", "friendlyNpcs", "labels", "deathSaves", "tempHp"];
 
+const previewRadius = (count, distance) => ringRadius(PREVIEW_TOKEN, count, distance) + PILL_ROOM;
 const options = (entries, selected) =>
   entries.map(([value, label]) => ({ value, label, selected: value === selected }));
 
@@ -71,6 +72,7 @@ export class PartyGlanceConfig extends HandlebarsApplicationMixin(ApplicationV2)
     const form = foundry.utils.expandObject(data);
     const next = foundry.utils.deepClone(this.draft);
     if ("count" in form) next.count = Number(form.count);
+    if ("distance" in form) next.distance = Number(form.distance);
     if ("trigger" in form) next.trigger = form.trigger;
     for (const flag of FLAGS) if (flag in form) next[flag] = Boolean(form[flag]);
     for (const [i, slot] of Object.entries(form.slots ?? {})) {
@@ -85,6 +87,7 @@ export class PartyGlanceConfig extends HandlebarsApplicationMixin(ApplicationV2)
   }
 
   _onChangeForm(_formConfig, event) {
+    if (event.target.name === "distance") return;
     this.apply(new foundry.applications.ux.FormDataExtended(this.element).object);
     const name = event.target.name;
     if (name?.endsWith(".stat")) this.active = Number(name.split(".")[1]);
@@ -95,20 +98,27 @@ export class PartyGlanceConfig extends HandlebarsApplicationMixin(ApplicationV2)
 
   _onRender(context, options) {
     super._onRender(context, options);
+    const slider = this.element.querySelector('input[name="distance"]');
+    slider.addEventListener("input", () => {
+      this.draft.distance = slider.valueAsNumber;
+      const radius = previewRadius(this.draft.count, this.draft.distance);
+      this.element.querySelector(".preview").style.setProperty("--radius", `${radius}px`);
+      this.element.querySelector('output[for="my-party-glance-distance"]').value = `${this.draft.distance}%`;
+    });
     if (this.#focus) this.element.querySelector(`[name="${this.#focus}"]`)?.focus();
     this.#focus = null;
   }
 
   async _prepareContext() {
-    const { count, slots, trigger } = this.draft;
-    const radius = ringRadius(PREVIEW_TOKEN, count, PILL_ROOM);
-    const offsets = slotOffsets(count, radius);
+    const { count, distance, slots, trigger } = this.draft;
+    const angles = slotAngles(count);
     const visible = slots.slice(0, count);
     return {
       text: Object.fromEntries(
         [
           "slotCount",
           "showRing",
+          "ringDistance",
           "previewHint",
           "slotsHeading",
           "slotsHint",
@@ -123,7 +133,9 @@ export class PartyGlanceConfig extends HandlebarsApplicationMixin(ApplicationV2)
         TRIGGERS.map((id) => [id, text(`trigger.${id}`)]),
         trigger
       ),
-      previewDiameter: radius * 2,
+      distance: { ...DISTANCE, value: distance },
+      previewRadius: previewRadius(count, distance),
+      maxPreviewRadius: previewRadius(count, DISTANCE.max),
       preview: visible.map((slot, i) => ({
         index: i,
         number: i + 1,
@@ -132,7 +144,7 @@ export class PartyGlanceConfig extends HandlebarsApplicationMixin(ApplicationV2)
         abbr: slot.stat ? slotAbbr(slot) : text("emptyShort"),
         empty: !slot.stat,
         active: i === this.active,
-        ...offsets[i]
+        angle: angles[i]
       })),
       rows: visible.map((slot, i) => {
         const stat = STATS[slot.stat];
