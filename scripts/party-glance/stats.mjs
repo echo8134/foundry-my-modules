@@ -1,5 +1,3 @@
-import { showsDeathSaves } from "../action-hud/death-saves.mjs";
-import { canViewDeathTray } from "../death-saves.mjs";
 import { text } from "./text.mjs";
 
 /**
@@ -8,7 +6,7 @@ import { text } from "./text.mjs";
  * @typedef {{kind: "number", value: string, missing?: boolean}} NumberBadge
  * @typedef {{kind: "bar", value: number, max: number, tone: Tone, temp?: number}} BarBadge
  * @typedef {{kind: "marker", on: boolean, detail?: string}} MarkerBadge
- * @typedef {{kind: "pips", groups: {on: number, total: number, tone: Tone}[], alert?: boolean, missing?: boolean}} PipsBadge
+ * @typedef {{kind: "pips", groups: {on: number, total: number, tone: Tone}[], missing?: boolean}} PipsBadge
  * @typedef {"good" | "warn" | "bad" | "neutral"} Tone
  */
 
@@ -52,20 +50,6 @@ function hitPoints(actor, _slot, options) {
   const hp = attributes(actor).hp;
   if (!hp) return absent(label("hp"));
   const max = hp.effectiveMax ?? hp.max;
-  if (options.deathSaves && max > 0 && hp.value === 0 && showsDeathSaves(actor) && canViewDeathTray(actor)) {
-    const { success, failure } = attributes(actor).death;
-    return {
-      kind: "pips",
-      icon: "fa-skull",
-      abbr: "DS",
-      alert: true,
-      groups: [
-        { on: success, total: 3, tone: "good" },
-        { on: failure, total: 3, tone: "bad" }
-      ],
-      tooltip: text("tip.deathSaves", { success, failure })
-    };
-  }
   const ratio = max > 0 ? hp.value / max : 0;
   const temp = options.tempHp && hp.temp > 0 ? hp.temp : 0;
   return {
@@ -202,7 +186,7 @@ export const STATS = {
     label: label("hp"),
     abbr: fixed("HP"),
     icon: "fa-heart",
-    kinds: ["bar", "pips"],
+    kinds: ["bar"],
     read: hitPoints
   },
   hd: { group: "defense", label: label("hd"), abbr: fixed("HD"), icon: "fa-dice-d20", kinds: ["bar"], read: hitDice },

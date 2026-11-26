@@ -1,4 +1,9 @@
 <div class="hud-body" data-actor="{{actor.uuid}}">
+  {{#*inline "deathSaveButton"}}
+  <button type="button" id="my-action-death-save" data-action="deathSave" data-tooltip aria-label="{{localize 'MY_MODULES.ActionHud.rollDeathSave'}}">
+    <i class="fa-solid fa-skull" inert></i>
+  </button>
+  {{/inline}}
   {{#if actor}}
   {{#if effects.length}}
   <section class="hud-effects" aria-label="{{localize 'MY_MODULES.ActionHud.activeEffects'}}">
@@ -8,6 +13,12 @@
     </button>
     {{/each}}
   </section>
+  {{/if}}
+  {{#if marks}}
+  <div class="hud-death-saves">
+    {{> deathSaveButton}}
+    <span class="my-death-save-marks" data-success="{{marks.success}}" data-failure="{{marks.failure}}" role="img" aria-label="{{marks.label}}" title="{{marks.label}}"></span>
+  </div>
   {{/if}}
   <nav class="hud-bar" aria-label="{{localize 'MY_MODULES.ActionHud.title'}}">
     <span class="hud-name{{#unless docked}} hud-grip{{/unless}}" {{#unless docked}}title="{{localize 'MY_MODULES.ActionHud.move'}}"{{/unless}}>
@@ -19,11 +30,7 @@
       <i class="fa-solid {{icon}}" inert></i><span>{{localize label}}</span>
     </button>
     {{/each}}
-    {{#if deathSave}}
-    <button type="button" id="my-action-death-save" data-action="deathSave" data-tooltip aria-label="{{localize 'MY_MODULES.ActionHud.rollDeathSave'}}">
-      <i class="fa-solid fa-skull" inert></i>
-    </button>
-    {{/if}}
+    {{#if inlineDeathSave}}{{> deathSaveButton}}{{/if}}
   </nav>
   {{#if open}}
   <section class="hud-panel" aria-label="{{localize open.label}}">
