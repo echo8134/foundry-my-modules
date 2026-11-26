@@ -44,6 +44,10 @@
   padding: 2px 4px;
 }
 
+body > #my-action-hud .hud-effects:has([data-action="endConcentration"]) {
+  contain: none;
+}
+
 #my-action-hud .hud-name {
   display: flex;
   align-items: center;
@@ -101,8 +105,24 @@
 }
 
 #my-action-hud .hud-effects [data-action="endConcentration"] {
+  width: auto;
+  max-width: 100%;
+  padding-inline-end: 0.4rem;
   border: 2px solid var(--hud-menu-emphatic, #f3d08a);
   border-radius: 4px;
+  color: var(--hud-menu-text, #f4e9cf);
+}
+
+#my-action-hud [data-action="endConcentration"] img {
+  flex: none;
+  width: auto;
+  aspect-ratio: 1;
+}
+
+#my-action-hud [data-action="endConcentration"] span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 #my-action-hud .hud-effects button:hover {

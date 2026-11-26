@@ -14,7 +14,13 @@ export async function effectEntries(actor) {
     effects.map(async (effect) => {
       const concentrating = concentration.has(effect);
       const source = await effect.getSource();
-      const sourceName = source?.item?.name ?? source?.name ?? (effect.origin && effect.sourceName);
+      const item = source?.item ?? (source?.documentName === "Item" ? source : null);
+      const sourceName = item?.name ?? source?.name ?? (effect.origin && effect.sourceName);
+      const concentrationLabel = concentrating
+        ? [item?.name ?? effect.name, Number.isFinite(effect.duration.remaining) && effect.duration.label]
+            .filter(Boolean)
+            .join(" · ")
+        : "";
       const hint = concentrating ? "endConcentration" : effect.system.hasLevels ? "reduceEffect" : "endEffect";
       const tooltip = [
         effect.name,
@@ -24,7 +30,7 @@ export async function effectEntries(actor) {
       ]
         .filter(Boolean)
         .join("\n");
-      return { uuid: effect.uuid, name: effect.name, img: effect.img, concentrating, tooltip };
+      return { uuid: effect.uuid, name: effect.name, img: effect.img, concentrationLabel, tooltip };
     })
   );
 }
