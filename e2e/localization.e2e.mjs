@@ -44,6 +44,7 @@ await run(async () => {
     const text = await gm.$eval(tab, (el) => el.textContent);
     for (const expected of [
       "Show action HUD",
+      "Show active effects above the Action HUD",
       "Show the action HUD for this client.",
       "Visible action categories",
       "Arrows (◀ Burning ▶)",

@@ -2,9 +2,11 @@ import english from "../../lang/en.json" with { type: "json" };
 import { MODULE_ID } from "../constants.mjs";
 import { HIDDEN_CATEGORIES, HudCategories } from "./categories.mjs";
 import { showsDeathSaves, trackStabilization } from "./death-saves.mjs";
+import { effectEntries, endHudEffect } from "./effects.mjs";
 import { actionGroups } from "./groups.mjs";
 
 const ENABLED = "actionHudEnabled";
+const SHOW_EFFECTS = "actionHudShowEffects";
 const ALWAYS_SHOW_CHARACTER = "actionHudAlwaysShowCharacter";
 const DETACH_HOTBAR = "actionHudDetachHotbar";
 const DESIGN = "actionHudDesign";
@@ -64,6 +66,9 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
         const level = id !== "exhaustion" && actor?.system.conditions?.[id];
         actor?.toggleStatusEffect(id, level ? { levels: -level } : {});
       },
+      endConcentration(_event, target) {
+        return endHudEffect(this.currentActor(target), target.dataset.effectUuid, true);
+      },
       deathSave(event, target) {
         const actor = this.currentActor(target);
         if (showsDeathSaves(actor)) actor.rollDeathSave({ event }, dialogOptions(event));
@@ -96,7 +101,8 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
     const open = groups.find((g) => g.id === this.group);
     this.group = open?.id;
     const deathSave = !hidden.includes("deathSaves") && showsDeathSaves(actor);
-    return { actor, groups, open, deathSave, docked: !game.settings.get(MODULE_ID, DETACH_HOTBAR) };
+    const effects = game.settings.get(MODULE_ID, SHOW_EFFECTS) ? await effectEntries(actor) : [];
+    return { actor, groups, open, deathSave, effects, docked: !game.settings.get(MODULE_ID, DETACH_HOTBAR) };
   }
 
   _onFirstRender(context, options) {
@@ -119,10 +125,13 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
       }
     });
     this.element.addEventListener("contextmenu", (e) => {
-      const button = e.target.closest('[data-action="item"], [data-action="condition"][data-id="exhaustion"]');
+      const button = e.target.closest(
+        '[data-effect-uuid], [data-action="item"], [data-action="condition"][data-id="exhaustion"]'
+      );
       if (!button) return;
       e.preventDefault();
       const actor = this.currentActor(button);
+      if (button.dataset.effectUuid) return endHudEffect(actor, button.dataset.effectUuid, false);
       if (button.dataset.action === "condition") actor?.toggleStatusEffect("exhaustion", { levels: -1, active: false });
       else actor?.items.get(button.dataset.id)?.sheet.render({ force: true });
     });
@@ -252,6 +261,14 @@ export function setupActionHud() {
       default: true,
       onChange: refresh
     });
+    game.settings.register(MODULE_ID, SHOW_EFFECTS, {
+      name: "MY_MODULES.ActionHud.showEffects",
+      scope: "client",
+      config: true,
+      type: Boolean,
+      default: false,
+      onChange: refresh
+    });
     game.settings.register(MODULE_ID, DETACH_HOTBAR, {
       name: "MY_MODULES.ActionHud.detachHotbar",
       hint: "MY_MODULES.ActionHud.detachHotbarHint",
@@ -306,6 +323,11 @@ export function setupActionHud() {
     Hooks.on("canvasReady", refresh);
     Hooks.on("canvasTearDown", refresh);
     Hooks.on("controlToken", refresh);
+    for (const hook of ["updateWorldTime", "combatTurnChange"]) {
+      Hooks.on(hook, () => {
+        if (hud.rendered && hud.element.querySelector(".hud-effects")) refresh();
+      });
+    }
     Hooks.on("updateUser", (user, changes) => {
       if (user.isSelf && ("role" in changes || "character" in changes)) refresh();
     });

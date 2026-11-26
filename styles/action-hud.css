@@ -18,7 +18,7 @@
     serif;
 }
 
-#my-action-hud .hud-bar,
+#my-action-hud :is(.hud-bar, .hud-effects),
 #hotbar:has(> #my-action-hud) {
   border: 1px solid #887450;
   border-radius: 4px;
@@ -34,6 +34,14 @@
   align-items: center;
   gap: 2px;
   padding: 4px;
+}
+
+#my-action-hud .hud-effects {
+  display: flex;
+  flex-wrap: wrap;
+  contain: inline-size;
+  gap: 3px;
+  padding: 2px 4px;
 }
 
 #my-action-hud .hud-name {
@@ -75,6 +83,30 @@
   background: none;
   color: #f4e9cf;
   font-family: "Quest Fell SC", Georgia, serif;
+}
+
+#my-action-hud .hud-effects button {
+  width: 1.6rem;
+  height: 1.6rem;
+  min-height: 0;
+  padding: 2px;
+  background: #382c24;
+}
+
+#my-action-hud .hud-effects img {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  object-fit: contain;
+}
+
+#my-action-hud .hud-effects [data-action="endConcentration"] {
+  border: 2px solid var(--hud-menu-emphatic, #f3d08a);
+  border-radius: 4px;
+}
+
+#my-action-hud .hud-effects button:hover {
+  background: var(--hud-menu-highlight, #715a3c);
 }
 
 #my-action-hud [aria-pressed="true"] i {
@@ -223,7 +255,7 @@
   margin-inline-start: 0;
 }
 
-#tooltip.my-action-hud-activities {
+#tooltip:is(.my-action-hud-activities, .my-action-hud-effects) {
   white-space: pre-line;
 }
 
@@ -259,7 +291,7 @@
   pointer-events: auto;
 }
 
-#hotbar > #my-action-hud .hud-bar {
+#hotbar > #my-action-hud :is(.hud-bar, .hud-effects) {
   justify-content: center;
   border: 0;
   border-bottom: 1px solid #887450;
@@ -323,7 +355,7 @@
   font-size: var(--font-size-12);
 }
 
-#my-action-hud.menu-design :is(.hud-bar, .hud-panel),
+#my-action-hud.menu-design :is(.hud-bar, .hud-panel, .hud-effects),
 #hotbar:has(> #my-action-hud.menu-design) {
   background: var(--hud-menu-background);
   border-color: var(--hud-menu-border);
@@ -332,7 +364,7 @@
   color: var(--hud-menu-text);
 }
 
-#hotbar > #my-action-hud.menu-design .hud-bar {
+#hotbar > #my-action-hud.menu-design :is(.hud-bar, .hud-effects) {
   background: none;
   border-bottom-color: var(--hud-menu-divider);
   border-radius: 0;
@@ -362,6 +394,10 @@
 
 #my-action-hud.menu-design [data-action="condition"] img {
   background: none;
+}
+
+#my-action-hud.menu-design .hud-effects img {
+  background-color: var(--color-cool-5);
 }
 
 #my-action-hud.menu-design button {
