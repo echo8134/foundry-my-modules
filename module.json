@@ -2,7 +2,7 @@
   "id": "foundry-my-modules",
   "title": "echo8134's table tools",
   "description": "Table features for one group: a quest log with a quest board look, clickable tiles for quest notes and sounds, safety tools (table signals, X-card, lines and veils, open door), a chat dice tray, a dnd5e action HUD, a GM-only party glance ring for dnd5e, private death saves, hidden cursors, every scene level in the navigation, level variants, and names for generic figures from RollTables.",
-  "version": "0.10.10",
+  "version": "0.10.11",
   "authors": [
     {
       "name": "echo8134"

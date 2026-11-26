@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.11](https://github.com/echo8134/foundry-my-modules/compare/v0.10.10...v0.10.11) (2026-11-26)
+
+
+### Features
+
+* **death-saves:** show counters below tokens and above the player HUD ([#74](https://github.com/echo8134/foundry-my-modules/issues/74)) ([68d3761](https://github.com/echo8134/foundry-my-modules/commit/68d3761fd9b31d2b7494e7e4f541a6cceb0c2f5b))
+
 ## [0.10.10](https://github.com/echo8134/foundry-my-modules/compare/v0.10.9...v0.10.10) (2026-11-26)
 
 
