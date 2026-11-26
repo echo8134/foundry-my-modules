@@ -6,6 +6,7 @@
 ### Features
 
 * **action-hud:** show the concentration spell and remaining time ([#80](https://github.com/echo8134/foundry-my-modules/issues/80)) ([9495de0](https://github.com/echo8134/foundry-my-modules/commit/9495de0aa0f7138b785e50c435bb90d672bab22e))
+* **settings:** group Action HUD and Party Glance controls ([#81](https://github.com/echo8134/foundry-my-modules/issues/81)) ([cd99a82](https://github.com/echo8134/foundry-my-modules/commit/cd99a8280195bc984e2fb0b5ce62959ad7e03f21))
 
 ## [0.10.11](https://github.com/echo8134/foundry-my-modules/compare/v0.10.10...v0.10.11) (2026-11-26)
 
