@@ -225,6 +225,25 @@ Each item shows the attack bonus or save DC, damage or healing, range, and area 
 </details>
 
 <details>
+<summary><h3>Party Glance token ring for D&D 5e</h3></summary>
+
+As GM, select a player character's token to see small badges around it with its armor class, passive Perception, hit points and more, so you do not have to open the sheet. Players never see the ring. The badges keep the same size at every zoom level, follow the token while it moves, and show a tooltip with the full value when you hover over them.
+
+Open **Party Glance** in the module settings and choose **Configure token ring**. Only the GM sees the button, and the layout is a world setting.
+
+- **Slots on the ring** sets 1 to 8 badges. Each count has one fixed layout. Slot 1 sits on top and the rest follow clockwise. The preview shows the numbered slots, and clicking one jumps to its row.
+- **Show the ring** picks when it appears: when you select a token, when you hover a token, or on every player token while a combat is running. Outside a started combat the last choice behaves like selecting.
+- **What each slot shows** has one dropdown per slot. Leave a slot empty to leave a gap. Choose **Passive skill** or **Saving throw** to pick the skill or ability in a second dropdown. **Custom value** reads any number, text or true/false value from the actor, for example `system.abilities.san.value`, and shows it under the short name you enter. Slots above the chosen count keep their choice for later.
+- **Player-owned characters** and **Friendly NPCs** choose which tokens get a ring. A friendly NPC is a token with the friendly disposition and no player owner.
+- **Short labels** adds AC, PP and similar labels to every badge. Saving throws, passive skills and custom values always show theirs.
+- **Death saves replace HP at 0 HP** turns the hit point badge into the success and failure pips, with a red border. When the **Private death saves** rule hides them from you, the badge keeps showing the hit point bar instead.
+- **Temp HP on the HP badge** adds the temporary hit points in blue.
+
+A badge for something the character does not have, such as a spell save DC for a fighter or darkvision for a human, shows a faded dash. Concentration and Heroic Inspiration glow when active, and the concentration tooltip names the spell.
+
+</details>
+
+<details>
 <summary><h3>Private death saves for D&D 5e</h3></summary>
 
 In the module’s world settings, select the GM who receives **Private death saves**. This enables the house rule and adds a **House rules** journal with a page the whole table can read.
