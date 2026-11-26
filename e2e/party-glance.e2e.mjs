@@ -155,7 +155,7 @@ await run(async () => {
   const gm = await joinGamemaster();
   await ensureStylesheet(gm);
   const player = await join(PLAYER_NAME, "", "en");
-  const keys = [SETTING];
+  const keys = [SETTING, "partyGlanceEnabled"];
   const previous = await gm.evaluate(
     (moduleId, settings) => ({
       settings: settings.map((key) => ({
@@ -172,6 +172,7 @@ await run(async () => {
   try {
     await check("the GM views a scene with a player character and a hostile creature", async () => {
       ids = await buildScene(gm);
+      await gm.evaluate((id) => game.settings.set(id, "partyGlanceEnabled", true), MODULE_ID);
       await setGlance(gm, {});
       await gm.evaluate(async (id) => {
         await game.user.sheet.close({ animate: false });
@@ -481,6 +482,52 @@ await run(async () => {
       const hero = await gm.evaluate((id) => game.actors.get(id).system.abilities.wis.save.value, ids.hero);
       assert((await text(gm, `${badge(1)} .value`)) === `${hero >= 0 ? "+" : ""}${hero}`, "saving throw bonus");
       assert(await gm.$eval(badge(1), (el) => el.textContent.includes("WIS")), "saving throws keep their label");
+    });
+
+    await check("each main switch toggles its display and preserves its configuration", async () => {
+      const hud = "#my-action-hud";
+      const tab = `#settings-config .tab[data-tab="${MODULE_ID}"]`;
+      async function openSettings() {
+        await gm.evaluate(() => game.settings.sheet.render({ force: true }));
+        await gm.locator(`#settings-config nav [data-tab="${MODULE_ID}"]`).click();
+      }
+      async function toggle(key) {
+        await openSettings();
+        await gm.locator(`${tab} [name="${MODULE_ID}.${key}"]`).click();
+        await gm.locator("#settings-config button[type=submit]").click();
+        await gm.waitForSelector("#settings-config", { hidden: true });
+      }
+      const form = "#my-action-hud-config";
+      const options = ["actionHudAlwaysShowCharacter", "actionHudShowEffects", "actionHudDetachHotbar"];
+      await openSettings();
+      await gm.locator(`${tab} button[data-key="${MODULE_ID}.actionHudCategories"]`).click();
+      await gm.waitForSelector(form, { visible: true });
+      for (const key of options) {
+        await gm.focus(`${form} [name="${key}"]`);
+        await gm.keyboard.press("Space");
+      }
+      await gm.locator(`${form} button[type="submit"]`).click();
+      await gm.waitForSelector(form, { hidden: true });
+      await gm.evaluate(() => game.settings.sheet.close());
+      await gm.waitForSelector(hud, { visible: true });
+      await toggle("partyGlanceEnabled");
+      await gm.waitForSelector(RING, { hidden: true });
+      assert(await gm.$(hud), "turning the ring off hid the HUD");
+      await toggle("partyGlanceEnabled");
+      await waitForCount(gm, BADGES, 4);
+      assert((await gm.$eval(badge(4), (el) => el.dataset.tooltipText)) === "INT 18", "custom ring layout lost");
+      await toggle("actionHudEnabled");
+      await gm.waitForSelector(hud, { hidden: true });
+      assert((await count(gm, BADGES)) === 4, "turning the HUD off hid the ring");
+      await toggle("actionHudEnabled");
+      await gm.waitForSelector(`body > ${hud}`, { visible: true });
+      await openSettings();
+      await gm.locator(`${tab} button[data-key="${MODULE_ID}.actionHudCategories"]`).click();
+      await gm.waitForSelector(form, { visible: true });
+      const checked = await gm.$eval(form, (el, keys) => keys.map((key) => el.elements[key].checked), options);
+      assert(checked.join() === "false,true,true", `HUD options after re-enabling: ${checked}`);
+      await gm.evaluate(() => foundry.applications.instances.get("my-action-hud-config").close());
+      await gm.evaluate(() => game.settings.sheet.close());
     });
 
     await check("reset to defaults restores the default layout in the dialog", async () => {

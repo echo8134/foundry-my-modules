@@ -1,0 +1,22 @@
+<section class="standard-form scrollable">
+  {{#each options}}
+  <div class="form-group">
+    <label for="my-hud-{{key}}">{{localize name}}</label>
+    {{#if choices}}
+    <select id="my-hud-{{key}}" name="{{key}}">{{selectOptions choices selected=value localize=true}}</select>
+    {{else}}
+    <input type="checkbox" id="my-hud-{{key}}" name="{{key}}" {{checked value}}>
+    {{/if}}
+    {{#if hint}}<p class="hint">{{localize hint}}</p>{{/if}}
+  </div>
+  {{/each}}
+  <fieldset>
+    <legend>{{localize "MY_MODULES.ActionHud.categories"}}</legend>
+    {{#each categories}}
+    <div class="form-group">
+      <label for="my-action-category-{{id}}">{{label}}</label>
+      <input type="checkbox" id="my-action-category-{{id}}" name="{{id}}" {{checked visible}}>
+    </div>
+    {{/each}}
+  </fieldset>
+</section>

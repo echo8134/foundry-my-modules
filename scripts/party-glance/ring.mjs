@@ -1,5 +1,6 @@
+import { MODULE_ID } from "../constants.mjs";
 import { ringRadius, slotOffsets } from "./layout.mjs";
-import { glanceSettings } from "./settings.mjs";
+import { ENABLED, glanceSettings } from "./settings.mjs";
 import { readBadge } from "./stats.mjs";
 
 const ID = "my-party-glance";
@@ -171,6 +172,7 @@ function clearRings() {
 
 function sync() {
   if (!game.user.isGM || !canvas?.ready) return;
+  if (!game.settings.get(MODULE_ID, ENABLED)) return clearRings();
   const settings = glanceSettings();
   const wanted = new Map(
     TARGETS[settings.trigger]()

@@ -1,6 +1,7 @@
 import { MODULE_ID } from "../constants.mjs";
 import { STATS } from "./stats.mjs";
 
+export const ENABLED = "partyGlanceEnabled";
 export const SETTING = "partyGlance";
 export const MAX_SLOTS = 8;
 export const DISTANCE = Object.freeze({ min: 25, max: 150, step: 5 });

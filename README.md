@@ -208,6 +208,8 @@ Press **Alt+B** or click the keyboard icon in the Token controls to hide or rest
 
 Select a token you own to see its combat actions above the macro slots. The GM can use any token. If you select several, the bar follows the first. **Alt+H** toggles **Show action HUD** for your client.
 
+Open **Configure Action HUD** below the switch to choose the visible action categories, assigned character display, active effects, docking, and design.
+
 Players have **Always show my character’s action HUD** enabled by default. When the first selected token is yours, the HUD shows its actions. Otherwise, it shows your assigned character if you own it, even on a scene without that character’s token. Players can turn this off in their client settings.
 
 The tabs and macro slots share a frame by default. To move the HUD separately, turn on **Detach action HUD from hotbar** and drag the actor's name. Double-click the name to reset its position. Turning off the setting docks the tabs again. Updating the module preserves a saved layout choice.
@@ -216,7 +218,7 @@ Use **Action HUD design** to switch from **Wood and parchment** to **Foundry men
 
 Turn on **Show active effects above the Action HUD** to see your character’s active spells and conditions. Hover over an icon to see its source and remaining duration. Click the highlighted concentration icon to end the spell on all linked targets. Right-click another effect to end it or remove one level of a condition such as Exhaustion.
 
-Open **Action HUD** in the module settings and choose **Visible action categories** to select your tabs. **Conditions** and **Rests** start hidden. Each player can choose their own categories.
+Use **Visible action categories** to select your tabs. **Conditions** and **Rests** start hidden. Each player can choose their own categories.
 
 Click a group to open it and click it again to fold it away. **Attacks**, **Spells**, **Features**, and **Items** use the item through dnd5e. The attack list shows equipped weapons and other usable items with an attack activity. The spell list starts with cantrips and groups spells by level. Spells with the at-will, ritual, innate, or pact casting method appear even when unprepared. Slot counts, uses, and quantities update as you play. Right-click an item to open its sheet.
 
@@ -233,7 +235,7 @@ The **Show death save counters** world setting is off by default. When enabled, 
 
 As GM, select a player character's token to see small badges around it with its armor class, passive Perception, hit points and more, so you do not have to open the sheet. Players never see the ring. The badges keep the same size at every zoom level, follow the token while it moves, and show a tooltip with the full value when you hover over them.
 
-Open **Party Glance** in the module settings and choose **Configure token ring**. Only the GM sees the button, and the layout is a world setting.
+As GM, use **Show Party Glance** in the module settings to turn the ring on or off for the world. Open **Configure Party Glance** below the switch to edit the layout. Turning the ring off preserves your layout.
 
 - **Slots on the ring** sets 1 to 8 badges. Each count has one fixed layout. Slot 1 sits on top and the rest follow clockwise. The preview shows the numbered slots, and clicking one jumps to its row.
 - **Ring distance** moves the preview badges closer to or farther from the token as you drag. The default of 100% uses the original spacing. Click **Save** to apply the distance on the map.
