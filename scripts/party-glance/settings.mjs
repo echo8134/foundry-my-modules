@@ -3,11 +3,13 @@ import { STATS } from "./stats.mjs";
 
 export const SETTING = "partyGlance";
 export const MAX_SLOTS = 8;
+export const DISTANCE = Object.freeze({ min: 25, max: 150, step: 5 });
 export const TRIGGERS = ["select", "hover", "combat"];
 const FLAGS = ["players", "friendlyNpcs", "labels", "tempHp"];
 
 export const DEFAULTS = Object.freeze({
   count: 6,
+  distance: 100,
   slots: Object.freeze(
     ["ac", "pp", "hp", "dc", "conc", "ins", "save", "hd"].map((stat) =>
       Object.freeze(stat === "save" ? { stat, sub: "dex" } : { stat })
@@ -38,6 +40,9 @@ export function normalize(raw) {
   );
   const settings = {
     count: Number.isFinite(count) ? Math.clamp(count, 1, MAX_SLOTS) : DEFAULTS.count,
+    distance: Number.isFinite(raw?.distance)
+      ? Math.clamp(Math.round(raw.distance / DISTANCE.step) * DISTANCE.step, DISTANCE.min, DISTANCE.max)
+      : DEFAULTS.distance,
     slots,
     trigger: TRIGGERS.includes(raw?.trigger) ? raw.trigger : DEFAULTS.trigger
   };

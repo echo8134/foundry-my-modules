@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.10](https://github.com/echo8134/foundry-my-modules/compare/v0.10.9...v0.10.10) (2026-11-26)
+
+
+### Features
+
+* **party-glance:** adjust token ring spacing with a slider ([#72](https://github.com/echo8134/foundry-my-modules/issues/72)) ([55a8061](https://github.com/echo8134/foundry-my-modules/commit/55a80612d2a99a90b0fbdf70cfa4b90716758230))
+
 ## [0.10.9](https://github.com/echo8134/foundry-my-modules/compare/v0.10.8...v0.10.9) (2026-11-26)
 
 

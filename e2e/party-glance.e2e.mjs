@@ -7,6 +7,7 @@ const RING = `${OVERLAY} .my-party-glance-ring`;
 const BADGES = `${RING} .my-party-glance-badge`;
 const badge = (slot) => `${BADGES}[data-slot="${slot}"]`;
 const DIALOG = "#my-party-glance-config";
+const DISTANCE = `${DIALOG} input[name="distance"]`;
 const row = (index) => `${DIALOG} .slot[data-slot="${index}"]`;
 const pill = (index) => `${DIALOG} .pill[data-slot="${index}"]`;
 
@@ -123,10 +124,19 @@ function geometry(page, tokenId) {
         slot: Number(el.dataset.slot),
         angle: ((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360,
         distance: Math.hypot(dx, dy),
+        width: box.width,
         height: box.height
       };
     });
   }, tokenId);
+}
+
+function previewRadius(page) {
+  return page.$eval(`${DIALOG} .preview`, (preview) => {
+    const token = preview.querySelector(".token").getBoundingClientRect();
+    const top = preview.querySelector('[data-slot="0"]').getBoundingClientRect();
+    return token.y + token.height / 2 - (top.y + top.height / 2);
+  });
 }
 
 const text = (page, selector) => page.$eval(selector, (el) => el.textContent.trim());
@@ -356,6 +366,69 @@ await run(async () => {
       await waitFor(gm, () => !document.querySelector("#my-party-glance .my-party-glance-ring"));
       await setGlance(gm, {});
     });
+
+    await check(
+      "dragging the distance slider previews the spacing and saving applies it to the selected token",
+      async () => {
+        await gm.evaluate((id) => canvas.tokens.get(id).control(), ids.heroToken);
+        await gm.waitForSelector(BADGES);
+        const before = await geometry(gm, ids.heroToken);
+        await openDialog(gm);
+        const slider = await gm.waitForSelector(DISTANCE, { visible: true });
+        const { value, min } = await slider.evaluate((el) => ({ value: el.valueAsNumber, min: Number(el.min) }));
+        assert(value === 100, "a world setting without a distance should use the original spacing");
+        const original = await previewRadius(gm);
+        await slider.scrollIntoView();
+        const box = await slider.boundingBox();
+        const y = box.y + box.height / 2;
+        await gm.mouse.move(box.x + box.width / 2, y);
+        await gm.mouse.down();
+        await gm.mouse.move(box.x + box.width - 1, y, { steps: 6 });
+        assert((await previewRadius(gm)) > original, "badges should move out before the mouse is released");
+        await gm.mouse.move(box.x + 1, y, { steps: 6 });
+        const close = await previewRadius(gm);
+        assert(close < original, "badges should move in before the mouse is released");
+        await gm.mouse.up();
+        assert(
+          (await geometry(gm, ids.heroToken))[0].distance === before[0].distance,
+          "the unsaved draft moved the ring"
+        );
+
+        await gm.click(`${DIALOG} button[type="submit"]`);
+        await waitFor(gm, (sel) => !document.querySelector(sel), DIALOG);
+        await waitFor(gm, (m, key, n) => game.settings.get(m, key).distance === n, MODULE_ID, SETTING, min);
+        await waitFor(
+          gm,
+          (sel, id, radius) => {
+            const { y } = canvas.clientCoordinatesFromCanvas(canvas.tokens.get(id).center);
+            const { top, height } = document.querySelector(sel).getBoundingClientRect();
+            return Math.abs(y - (top + height / 2) - radius) < 2;
+          },
+          badge(1),
+          ids.heroToken,
+          before[0].distance - (original - close)
+        );
+        const after = await geometry(gm, ids.heroToken);
+        assert(after.length === before.length, "changing distance changed the badge count");
+        for (const [i, placed] of after.entries()) {
+          const old = before[i];
+          assert(Math.abs(old.distance - placed.distance - (original - close)) < 2, `slot ${placed.slot} spacing`);
+          assert(placed.slot === old.slot && Math.abs(placed.angle - old.angle) < 2, `slot ${placed.slot} order`);
+          assert(placed.width === old.width && placed.height === old.height, `slot ${placed.slot} size`);
+        }
+
+        await gm.evaluate(() => canvas.tokens.releaseAll());
+        await waitForCount(gm, BADGES, 0);
+        await gm.evaluate((id) => canvas.tokens.get(id).control(), ids.heroToken);
+        await gm.waitForSelector(BADGES);
+        assert((await geometry(gm, ids.heroToken))[0].distance === after[0].distance, "reselecting lost the spacing");
+
+        await openDialog(gm);
+        assert((await gm.$eval(DISTANCE, (el) => el.valueAsNumber)) === min, "the slider lost the saved distance");
+        assert((await previewRadius(gm)) === close, "the reopened preview lost the saved distance");
+        await gm.evaluate(() => foundry.applications.instances.get("my-party-glance-config").close());
+      }
+    );
 
     await check("the settings dialog previews the layout, keeps focus and saves the world setting", async () => {
       await gm.evaluate((id) => canvas.tokens.get(id).control({ releaseOthers: true }), ids.heroToken);
