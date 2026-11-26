@@ -8,6 +8,7 @@ import { harvesting, herbalism, setupHarvesting } from "./harvesting/workflow.mj
 import { setupHotbar } from "./hotbar.mjs";
 import { setupLevels } from "./levels.mjs";
 import { rollName, setupNames } from "./names.mjs";
+import { setupPartyGlance } from "./party-glance/glance.mjs";
 import { localizeQuestJournal, setupQuestData } from "./quests/data.mjs";
 import { quests, setupQuestLog } from "./quests/log.mjs";
 import { setupQuestTracker } from "./quests/tracker.mjs";
@@ -25,6 +26,7 @@ setupHarvesting();
 setupHotbar();
 setupLevels();
 setupNames();
+setupPartyGlance();
 setupQuestData();
 setupQuestLog();
 setupQuestTracker();

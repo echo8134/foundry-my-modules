@@ -16,7 +16,7 @@ function isFullGM(user) {
   return user?.role === CONST.USER_ROLES.GAMEMASTER;
 }
 
-function canViewDeathTray(actor) {
+export function canViewDeathTray(actor) {
   const recipient = selectedRecipientId();
   if (recipient === OFF || (isFullGM(game.user) && game.user.id === recipient)) return true;
 
