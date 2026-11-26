@@ -214,7 +214,7 @@ The tabs and macro slots share a frame by default. To move the HUD separately, t
 
 Use **Action HUD design** to switch from **Wood and parchment** to **Foundry menus** in this browser. The Foundry menu design follows your interface theme and applies to both layouts, including the shared frame when docked.
 
-Turn on **Show active effects above the Action HUD** to see your character’s active spells and conditions. Hover over an icon to see its source and remaining duration. Click the highlighted concentration icon to end the spell on all linked targets. Right-click another effect to end it or remove one level of a condition such as Exhaustion.
+Turn on **Show active effects above the Action HUD** to see your character’s active spells and conditions. The highlighted concentration entry shows the spell name and its remaining duration, when known. Click it to end the spell on all linked targets. Hover over an effect for details, or right-click another effect to end it or remove one level of a condition such as Exhaustion.
 
 Open **Action HUD** in the module settings and choose **Visible action categories** to select your tabs. **Conditions** and **Rests** start hidden. Each player can choose their own categories.
 

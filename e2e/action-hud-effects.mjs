@@ -77,8 +77,10 @@ export async function checkEffectStrip(gm, player, ids) {
     return spell.id;
   }, ids.actor);
 
+  const start = await gm.evaluate(() => game.time.worldTime);
   try {
-    await check("casting Bless shows concentration first and ending it clears both targets", async () => {
+    await check("Bless shows the remaining time and ending concentration clears both targets", async () => {
+      await player.mouse.move(0, 0);
       await waitFor(player, (id, spell) => game.actors.get(id).items.has(spell), ids.actor, spell);
       const message = await player.evaluate(
         async ({ hero, guard, actor }, spell) => {
@@ -115,6 +117,31 @@ export async function checkEffectStrip(gm, player, ids) {
         first[0] === "endConcentration" && first[1].includes("Bless") && /min|60\s*s/i.test(first[1]) && first[2] > 0,
         JSON.stringify(first)
       );
+      const label = await player.$eval(CONCENTRATION, (button) => {
+        const icon = button.querySelector("img").getBoundingClientRect();
+        const text = document.createRange();
+        text.selectNodeContents(button.querySelector("span"));
+        const [line] = text.getClientRects();
+        return {
+          text: button.textContent.trim(),
+          besideIcon:
+            text.getClientRects().length === 1 &&
+            icon.width > 0 &&
+            line.left >= icon.right &&
+            line.top < icon.bottom &&
+            line.bottom > icon.top &&
+            line.right <= button.getBoundingClientRect().right,
+          hovered: button.parentElement.matches(":hover")
+        };
+      });
+      assert(label.text === "Bless · 1 min" && label.besideIcon && !label.hovered, JSON.stringify(label));
+      await gm.evaluate(() => game.time.advance(30));
+      await waitFor(player, (s) => document.querySelector(s)?.textContent.trim() === "Bless · 30 sec", CONCENTRATION);
+      await gm.evaluate((id) => {
+        const [concentration] = game.actors.get(id).concentration.effects;
+        return concentration.update({ "duration.value": null });
+      }, ids.actor);
+      await waitFor(player, (s) => document.querySelector(s)?.textContent.trim() === "Bless", CONCENTRATION);
       await player.hover(CONCENTRATION);
       await waitFor(player, () => document.querySelector("#tooltip.active")?.textContent.includes("Bless"));
       await player.locator(CONCENTRATION).click();
@@ -131,6 +158,7 @@ export async function checkEffectStrip(gm, player, ids) {
     });
   } finally {
     await gm.evaluate((id, spell) => game.actors.get(id).items.get(spell).delete(), ids.actor, spell);
+    await gm.evaluate((time) => game.time.set(time), start);
   }
 
   await check(

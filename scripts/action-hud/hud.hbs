@@ -8,8 +8,9 @@
   {{#if effects.length}}
   <section class="hud-effects" aria-label="{{localize 'MY_MODULES.ActionHud.activeEffects'}}">
     {{#each effects}}
-    <button type="button" data-effect-uuid="{{uuid}}" {{#if concentrating}}data-action="endConcentration"{{/if}} aria-label="{{name}}" aria-description="{{tooltip}}" data-tooltip-text="{{tooltip}}" data-tooltip-class="my-action-hud-effects">
+    <button type="button" data-effect-uuid="{{uuid}}" {{#if concentrationLabel}}data-action="endConcentration"{{else}}aria-label="{{name}}"{{/if}} aria-description="{{tooltip}}" data-tooltip-text="{{tooltip}}" data-tooltip-class="my-action-hud-effects">
       <img src="{{img}}" alt="">
+      {{#if concentrationLabel}}<span>{{concentrationLabel}}</span>{{/if}}
     </button>
     {{/each}}
   </section>
