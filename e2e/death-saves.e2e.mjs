@@ -183,6 +183,127 @@ const reset = (player, actorId, marks = 0) =>
     marks
   );
 
+async function createTokenScene(gm, actorId) {
+  return gm.evaluate(async (id) => {
+    const token = await game.actors.get(id).getTokenDocument({
+      actorLink: true,
+      displayName: CONST.TOKEN_DISPLAY_MODES.ALWAYS,
+      x: 400,
+      y: 400
+    });
+    const scene = await Scene.create({
+      name: "Death save counters",
+      width: 1200,
+      height: 1000,
+      tokenVision: false,
+      ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER },
+      tokens: [token.toObject(), { name: "Other token", x: 700, y: 400 }]
+    });
+    return {
+      scene: scene.id,
+      dying: scene.tokens.find((t) => t.actorId === id).id,
+      other: scene.tokens.find((t) => !t.actorId).id
+    };
+  }, actorId);
+}
+
+function assertMarks(page, selector, success, failure) {
+  return waitFor(
+    page,
+    (sel, good, bad) => {
+      const marks = document.querySelector(sel);
+      const pips = (count) => "●".repeat(count) + "○".repeat(3 - count);
+      return marks?.checkVisibility() && marks.dataset.success === pips(good) && marks.dataset.failure === pips(bad);
+    },
+    selector,
+    success,
+    failure
+  );
+}
+
+async function checkStackedRows(player, actorId) {
+  const original = await player.evaluate(
+    (m) => ({
+      design: game.settings.get(m, "actionHudDesign"),
+      detached: game.settings.get(m, "actionHudDetachHotbar"),
+      effects: game.settings.get(m, "actionHudShowEffects")
+    }),
+    MODULE_ID
+  );
+  const layout = (design, detached) =>
+    player.evaluate(
+      async (m, design, detached) => {
+        if (game.settings.get(m, "actionHudDesign") !== design) await game.settings.set(m, "actionHudDesign", design);
+        if (game.settings.get(m, "actionHudDetachHotbar") !== detached)
+          await game.settings.set(m, "actionHudDetachHotbar", detached);
+      },
+      MODULE_ID,
+      design,
+      detached
+    );
+  const rolls = '#my-action-hud [data-group="rolls"]';
+  const effectId = await player.evaluate(async (id) => {
+    const [effect] = await game.actors
+      .get(id)
+      .createEmbeddedDocuments("ActiveEffect", [
+        { name: "Death save layout test", duration: { value: 1, units: "minutes" } }
+      ]);
+    return effect.id;
+  }, actorId);
+  try {
+    await player.evaluate((m) => game.settings.set(m, "actionHudShowEffects", true), MODULE_ID);
+    await player.locator(rolls).click();
+    for (const design of ["wood", "menu"]) {
+      for (const detached of [false, true]) {
+        await layout(design, detached);
+        const hud = `${detached ? "body" : "#hotbar"} > #my-action-hud${design === "menu" ? ".menu-design" : ":not(.menu-design)"}`;
+        await waitFor(
+          player,
+          (selector) => {
+            const body = document.querySelector(`${selector} .hud-body`);
+            const death = body?.querySelector(".hud-death-saves");
+            const panel = body?.querySelector(".hud-panel");
+            const effects = body?.querySelector(".hud-effects");
+            if (!death || !panel || !effects?.querySelector("[data-effect-uuid]")) return false;
+            const rows = [effects, death, body.querySelector(".hud-bar")].map((row) => row.getBoundingClientRect());
+            const popup = panel.getBoundingClientRect();
+            const macros = document.querySelector("#action-bar").getBoundingClientRect();
+            return (
+              rows[0].height > 0 &&
+              rows[0].bottom <= rows[1].top + 1 &&
+              rows[1].bottom <= rows[2].top + 1 &&
+              rows[2].bottom <= macros.top + 1 &&
+              (popup.bottom <= rows[0].top + 1 || popup.top >= rows[2].bottom - 1)
+            );
+          },
+          hud
+        );
+      }
+    }
+  } finally {
+    await player.evaluate(
+      async (m, id, effect, show) => {
+        await game.actors.get(id).deleteEmbeddedDocuments("ActiveEffect", [effect]);
+        await game.settings.set(m, "actionHudShowEffects", show);
+      },
+      MODULE_ID,
+      actorId,
+      effectId,
+      original.effects
+    );
+    await layout(original.design, original.detached);
+    await player.locator(rolls).click();
+  }
+}
+
+function fixedDie(player, value) {
+  return player.evaluate(async (face) => {
+    CONFIG.Dice.fulfillment.methods.hudTest = { label: "HUD test d20", handler: () => face };
+    const dice = game.settings.get("core", "diceConfiguration");
+    await game.settings.set("core", "diceConfiguration", { ...dice, d20: "hudTest" });
+  }, value);
+}
+
 await run(async () => {
   const gm = await joinGamemaster("de");
   const setting = await gm.evaluate(
@@ -392,20 +513,38 @@ await run(async () => {
         MODULE_ID,
         hiddenKey
       );
-      const bar = `#my-action-hud [data-actor="Actor.${actorId}"] .hud-bar`;
-      const skull = `${bar} button[data-action="deathSave"]`;
+      const body = `#my-action-hud [data-actor="Actor.${actorId}"]`;
+      const bar = `${body} .hud-bar`;
+      const strip = `${body} .hud-death-saves`;
+      const skull = `${body} button[data-action="deathSave"]`;
+      const displays = (value) =>
+        gm.evaluate((m, on) => game.settings.set(m, "showDeathSaveCounters", on), MODULE_ID, value);
+      const originalDisplay = await gm.evaluate((m) => game.settings.get(m, "showDeathSaveCounters"), MODULE_ID);
+      const tokens = await createTokenScene(gm, actorId);
+      const badge = `#my-token-death-saves-${tokens.dying}`;
       const heal = () =>
         player.evaluate((id) => game.actors.get(id).update({ "system.attributes.hp.value": 1 }), actorId);
       const categories = (value) =>
         player.evaluate((m, key, list) => game.settings.set(m, key, list), MODULE_ID, hiddenKey, value);
       try {
+        await displays(false);
+        await Promise.all(
+          clients.map(async (page) => {
+            await waitFor(page, (id) => game.scenes.has(id), tokens.scene);
+            await page.evaluate(async (id) => {
+              await game.scenes.get(id).view();
+            }, tokens.scene);
+            await waitFor(page, (id) => canvas.ready && canvas.tokens.get(id)?.mesh, tokens.dying);
+          })
+        );
+        await gm.evaluate((id) => canvas.tokens.get(id).control(), tokens.other);
         await gm.evaluate((id, name) => game.users.getName(name).update({ character: id }), actorId, PLAYER_NAME);
         await player.evaluate((id) => game.actors.get(id).sheet.close({ animate: false }), actorId);
         await categories(previous.categories.filter((id) => id !== "deathSaves"));
         await heal();
         await player.evaluate((id) => game.actors.get(id).toggleStatusEffect("sleeping", { active: true }), actorId);
         await player.waitForSelector(bar, { visible: true });
-        assert(!(await player.$(skull)), "sleeping at positive HP showed a death save");
+        await player.waitForSelector(skull, { hidden: true });
         await player.evaluate((id) => game.actors.get(id).toggleStatusEffect("sleeping", { active: false }), actorId);
         await reset(player, actorId);
         await player.waitForSelector(`${skull} .fa-skull`, { visible: true });
@@ -413,8 +552,87 @@ await run(async () => {
           !(await player.evaluate((id) => game.actors.get(id).statuses.has("unconscious"), actorId)),
           "fixture is already unconscious at zero HP"
         );
+        assert(!(await player.$(strip)) && !(await gm.$(badge)), "disabled counters are visible");
+        await displays(true);
+        await assertMarks(player, `${strip} .my-death-save-marks`, 0, 0);
+        await assertMarks(gm, badge, 0, 0);
+        assert(
+          await gm.evaluate(
+            (selector, id) => {
+              const token = canvas.tokens.get(id);
+              const below = canvas.stage.worldTransform.apply({ x: token.center.x, y: token.bounds.bottom });
+              const rect = document.querySelector(selector).getBoundingClientRect();
+              const name = token.nameplate.getBounds();
+              return (
+                !token.controlled &&
+                rect.top >= Math.max(name.bottom, below.y) - 1 &&
+                Math.abs(rect.left + rect.width / 2 - below.x) < 2
+              );
+            },
+            badge,
+            tokens.dying
+          ),
+          "badge is not directly below the unselected token"
+        );
+        assert(
+          (await player.$$(skull)).length === 1 && (await player.$(`${strip} [data-action="deathSave"]`)),
+          "expected one skull in the strip"
+        );
+        await checkStackedRows(player, actorId);
+        for (const page of [player, observer, otherGM]) assert(!(await page.$(badge)), "unexpected map counters");
+        const alternate = await otherGM.evaluate(() => game.user.id);
+        await setRecipient(gm, clients, alternate);
+        await assertMarks(otherGM, badge, 0, 0);
+        await gm.waitForSelector(badge, { hidden: true });
+        await setRecipient(gm, clients, recipient);
+        await otherGM.waitForSelector(badge, { hidden: true });
+
+        await gm.evaluate(
+          (id, user) => game.actors.get(id).update({ [`ownership.${user}`]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER }),
+          actorId,
+          observerId
+        );
+        await waitFor(observer, (id) => game.actors.get(id).isOwner, actorId);
+        await observer.evaluate((id) => canvas.tokens.get(id).control(), tokens.dying);
+        await observer.waitForSelector(bar);
+        assert(!(await observer.$(strip)) && !(await observer.$(skull)), "another owner saw private death saves");
+        await gm.evaluate(
+          (id, user) => game.actors.get(id).update({ [`ownership.${user}`]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER }),
+          actorId,
+          observerId
+        );
+
+        for (const [face, success, failure] of [
+          [14, 1, 0],
+          [5, 1, 1]
+        ]) {
+          await fixedDie(player, face);
+          const id = await nextRoll(gm, actorId, () => rollWithDialog(player, skull, "gm", true));
+          await assertAudience(clients, id, recipient);
+          await assertMarks(player, `${strip} .my-death-save-marks`, success, failure);
+          await assertMarks(gm, badge, success, failure);
+          await player.evaluate(async (id) => {
+            await game.actors.get(id).sheet.render({ force: true });
+          }, actorId);
+          await assertSheetAudience(clients, actorId, [gm, player]);
+          await player.evaluate((id) => game.actors.get(id).sheet.close({ animate: false }), actorId);
+        }
+
+        await setRecipient(gm, clients, "off");
+        await assertMarks(otherGM, badge, 1, 1);
+        await fixedDie(player, 14);
+        const publicRoll = await nextRoll(gm, actorId, () => rollWithDialog(player, skull, "public", false));
+        await assertAudience(clients, publicRoll);
+        await setRecipient(gm, clients, recipient);
+        await displays(false);
+        await gm.waitForSelector(badge, { hidden: true });
+        await player.waitForSelector(`${bar} [data-action="deathSave"]`, { visible: true });
+        assert(!(await player.$(strip)), "the disabled strip is still present");
+        await displays(true);
+        await assertMarks(gm, badge, 2, 1);
         await heal();
         await player.waitForSelector(skull, { hidden: true });
+        await gm.waitForSelector(badge, { hidden: true });
         await reset(player, actorId, 2);
         await player.waitForSelector(skull, { visible: true });
         await categories([...new Set([...previous.categories, "deathSaves"])]);
@@ -426,11 +644,7 @@ await run(async () => {
           [5, "death"]
         ]) {
           await player.waitForSelector(skull, { visible: true });
-          await player.evaluate(async (face) => {
-            CONFIG.Dice.fulfillment.methods.hudTest = { label: "HUD test d20", handler: () => face };
-            const dice = game.settings.get("core", "diceConfiguration");
-            await game.settings.set("core", "diceConfiguration", { ...dice, d20: "hudTest" });
-          }, face);
+          await fixedDie(player, face);
           const id = await nextRoll(gm, actorId, async () => {
             if (terminal === "stable") return rollWithDialog(player, skull, "gm", true);
             await player.keyboard.down("Shift");
@@ -442,6 +656,7 @@ await run(async () => {
           });
           assert((await terminalOutcome(gm, actorId, id)) === terminal, `expected ${terminal}`);
           await player.waitForSelector(skull, { hidden: true });
+          await gm.waitForSelector(badge, { hidden: true });
           await assertAudience(clients, id, recipient, terminal);
           if (terminal === "stable") {
             await heal();
@@ -449,6 +664,11 @@ await run(async () => {
           }
         }
       } finally {
+        await displays(originalDisplay);
+        await Promise.all(clients.map((page) => page.evaluate(() => game.scenes.active?.view().then(() => true))));
+        await gm.evaluate(async (id) => {
+          await game.scenes.get(id).delete();
+        }, tokens.scene);
         await player.evaluate(async (dice) => {
           await game.settings.set("core", "diceConfiguration", dice);
           delete CONFIG.Dice.fulfillment.methods.hudTest;

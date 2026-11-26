@@ -224,6 +224,8 @@ Each item shows the attack bonus or save DC, damage or healing, range, and area 
 
 **Checks/Saves** shows modifiers for ability checks, saving throws, and skills. **Conditions** toggles dnd5e effects. Click Exhaustion to add one level or right-click it to remove one. **Rests** starts a short or long rest. At 0 HP, click the skull in the bar to roll a death save. It uses the same roll and privacy settings as the character sheet. The button disappears when you stabilize, die, or regain HP. Hide it with the **Death Saves** category. Shift-click to skip the configuration dialog where dnd5e supports it.
 
+The **Show death save counters** world setting is off by default. Enable it to see ongoing saves beneath tokens as GM, regardless of the selected token or the Party Glance ring. Players see their skull button, successes (✓) and failures (×) together above their character’s Action HUD. Turning off the counters returns the skull to the main HUD bar. The **Private death saves** house rule applies in either layout.
+
 </details>
 
 <details>
@@ -239,7 +241,6 @@ Open **Party Glance** in the module settings and choose **Configure token ring**
 - **What each slot shows** has one dropdown per slot. Leave a slot empty to leave a gap. Choose **Passive skill** or **Saving throw** to pick the skill or ability in a second dropdown. **Custom value** reads any number, text or true/false value from the actor, for example `system.abilities.san.value`, and shows it under the short name you enter. Slots above the chosen count keep their choice for later.
 - **Player-owned characters** and **Friendly NPCs** choose which tokens get a ring. A friendly NPC is a token with the friendly disposition and no player owner.
 - **Short labels** adds AC, PP and similar labels to every badge. Saving throws, passive skills and custom values always show theirs.
-- **Death saves replace HP at 0 HP** turns the hit point badge into the success and failure pips, with a red border. When the **Private death saves** rule hides them from you, the badge keeps showing the hit point bar instead.
 - **Temp HP on the HP badge** adds the temporary hit points in blue.
 
 A badge for something the character does not have, such as a spell save DC for a fighter or darkvision for a human, shows a faded dash. Concentration and Heroic Inspiration glow when active, and the concentration tooltip names the spell.

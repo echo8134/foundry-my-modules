@@ -1,5 +1,7 @@
 import english from "../../lang/en.json" with { type: "json" };
 import { MODULE_ID } from "../constants.mjs";
+import { deathSaveMarks } from "../death-save-displays.mjs";
+import { canViewDeathTray } from "../death-saves.mjs";
 import { HIDDEN_CATEGORIES, HudCategories } from "./categories.mjs";
 import { showsDeathSaves, trackStabilization } from "./death-saves.mjs";
 import { effectEntries, endHudEffect } from "./effects.mjs";
@@ -71,7 +73,7 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
       },
       deathSave(event, target) {
         const actor = this.currentActor(target);
-        if (showsDeathSaves(actor)) actor.rollDeathSave({ event }, dialogOptions(event));
+        if (showsDeathSaves(actor) && canViewDeathTray(actor)) actor.rollDeathSave({ event }, dialogOptions(event));
       },
       shortRest(event, target) {
         this.currentActor(target)?.shortRest({ dialog: !event.shiftKey });
@@ -100,9 +102,18 @@ class ActionHud extends HandlebarsApplicationMixin(ApplicationV2) {
     const groups = actionGroups(actor).filter((group) => !hidden.includes(group.id));
     const open = groups.find((g) => g.id === this.group);
     this.group = open?.id;
-    const deathSave = !hidden.includes("deathSaves") && showsDeathSaves(actor);
+    const deathSave = !hidden.includes("deathSaves") && showsDeathSaves(actor) && canViewDeathTray(actor);
     const effects = game.settings.get(MODULE_ID, SHOW_EFFECTS) ? await effectEntries(actor) : [];
-    return { actor, groups, open, deathSave, effects, docked: !game.settings.get(MODULE_ID, DETACH_HOTBAR) };
+    const marks = deathSave && !game.user.isGM ? deathSaveMarks(actor) : null;
+    return {
+      actor,
+      groups,
+      open,
+      effects,
+      inlineDeathSave: deathSave && !marks,
+      marks,
+      docked: !game.settings.get(MODULE_ID, DETACH_HOTBAR)
+    };
   }
 
   _onFirstRender(context, options) {
@@ -328,6 +339,7 @@ export function setupActionHud() {
         if (hud.rendered && hud.element.querySelector(".hud-effects")) refresh();
       });
     }
+    Hooks.on(`${MODULE_ID}.deathSaveVisibilityChanged`, refresh);
     Hooks.on("updateUser", (user, changes) => {
       if (user.isSelf && ("role" in changes || "character" in changes)) refresh();
     });

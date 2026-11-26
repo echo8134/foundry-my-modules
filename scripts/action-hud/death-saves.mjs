@@ -10,6 +10,7 @@ export function showsDeathSaves(actor) {
     attributes.death?.success < 3 &&
     attributes.death?.failure < 3 &&
     !actor.statuses.has("stable") &&
+    !actor.statuses.has(CONFIG.specialStatusEffects.DEFEATED) &&
     !actor.getFlag(MODULE_ID, STABLE)
   );
 }

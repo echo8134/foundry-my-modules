@@ -16,14 +16,20 @@ function isFullGM(user) {
   return user?.role === CONST.USER_ROLES.GAMEMASTER;
 }
 
-export function canViewDeathTray(actor) {
-  const recipient = selectedRecipientId();
-  if (recipient === OFF || (isFullGM(game.user) && game.user.id === recipient)) return true;
-
+function characterViewer(actor) {
   const character = actor.token?.baseActor ?? actor;
   const assigned = game.users.filter((user) => !user.isGM && user.character === character);
   if (assigned.length) return assigned.some((user) => user.isSelf);
   return !actor.hasPlayerOwner || (!game.user.isGM && actor.isOwner);
+}
+
+export function canViewOwnDeathSaves(actor) {
+  return !game.user.isGM && actor.isOwner && characterViewer(actor);
+}
+
+export function canViewDeathTray(actor) {
+  const recipient = selectedRecipientId();
+  return recipient === OFF || (isFullGM(game.user) && game.user.id === recipient) || characterViewer(actor);
 }
 
 function updateDeathTray(sheet) {
@@ -31,6 +37,7 @@ function updateDeathTray(sheet) {
 }
 
 function refreshDeathTrays() {
+  Hooks.callAll(`${MODULE_ID}.deathSaveVisibilityChanged`);
   for (const sheet of foundry.applications.instances.values()) {
     if (sheet instanceof game.dnd5e.applications.actor.CharacterActorSheet) updateDeathTray(sheet);
   }

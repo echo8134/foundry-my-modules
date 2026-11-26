@@ -5,7 +5,7 @@ export const SETTING = "partyGlance";
 export const MAX_SLOTS = 8;
 export const DISTANCE = Object.freeze({ min: 25, max: 150, step: 5 });
 export const TRIGGERS = ["select", "hover", "combat"];
-const FLAGS = ["players", "friendlyNpcs", "labels", "deathSaves", "tempHp"];
+const FLAGS = ["players", "friendlyNpcs", "labels", "tempHp"];
 
 export const DEFAULTS = Object.freeze({
   count: 6,
@@ -19,7 +19,6 @@ export const DEFAULTS = Object.freeze({
   players: true,
   friendlyNpcs: false,
   labels: false,
-  deathSaves: true,
   tempHp: true
 });
 

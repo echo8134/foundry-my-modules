@@ -1,4 +1,3 @@
-import { MODULE_ID } from "../constants.mjs";
 import { ringRadius, slotOffsets } from "./layout.mjs";
 import { glanceSettings } from "./settings.mjs";
 import { readBadge } from "./stats.mjs";
@@ -73,7 +72,6 @@ function badgeElement(badge, number, settings) {
   const classes = ["my-party-glance-badge", badge.kind];
   if (faded) classes.push("faded");
   if (badge.kind === "marker" && badge.on) classes.push("on");
-  if (badge.alert) classes.push("alert");
   const label = badge.labelled || settings.labels ? [span("label", badge.abbr)] : [];
   const node = element("div", classes.join(" "), [
     element("i", `fa-solid ${badge.icon}`),
@@ -122,7 +120,7 @@ function ensureRing(token, settings) {
     rings.set(token.id, ring);
     overlay().append(ring.element);
   }
-  const options = { deathSaves: settings.deathSaves, tempHp: settings.tempHp };
+  const options = { tempHp: settings.tempHp };
   const badges = settings.slots
     .slice(0, settings.count)
     .map((slot, i) => (slot.stat ? { number: i + 1, badge: readBadge(token.actor, slot, options) } : null));
@@ -229,9 +227,6 @@ export function watchRings() {
       });
     }
     for (const type of ["Token", "Combat", "Combatant"]) Hooks.on(`${action}${type}`, refresh);
-    Hooks.on(`${action}Setting`, (setting) => {
-      if (setting.key === `${MODULE_ID}.privateDeathSaves`) refresh();
-    });
   }
   Hooks.on("updateUser", refresh);
   if (canvas?.ready) start();

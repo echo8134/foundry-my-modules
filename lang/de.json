@@ -48,6 +48,7 @@
   "MY_MODULES.DeathSaves.SelectGM": "Wähle in den Moduleinstellungen ein gültiges Spielleitungskonto für verdeckte Todesrettungswürfe.",
   "MY_MODULES.DeathSaves.PrivateRoll": "{user} hat verdeckt gewürfelt.",
   "MY_MODULES.DeathSaves.UnknownUser": "Unbekannte Person",
+  "MY_MODULES.DeathSaves.Counters": "Todesrettungswürfe. Erfolge: {success}/3. Fehlschläge: {failure}/3.",
   "MY_MODULES.DeathSaves.JournalName": "Homebrew Regeln",
   "MY_MODULES.DeathSaves.PageName": "Verdeckte Todesrettungswürfe",
   "MY_MODULES.DeathSaves.Journal": "<p>Todesrettungswürfe würfelst du auf deinem Charakterbogen. Im Chat sehen nur du und das in den Moduleinstellungen ausgewählte Spielleitungskonto das Ergebnis. Das gilt auch, wenn du den Würfeldialog überspringst.</p><p>Foundry zählt Erfolge und Fehlschläge auf deinem Charakterbogen. Mitspieler sehen den Stand nicht, wenn sie deinen Bogen öffnen. Eine natürliche 1 zählt als zwei Fehlschläge. Ob deine Verbündeten dir helfen, entscheiden sie anhand dessen, was sie im Kampf mitbekommen.</p>",

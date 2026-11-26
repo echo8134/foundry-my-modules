@@ -2,3 +2,46 @@
   /* biome-ignore lint/complexity/noImportantStyles: The dnd5e sheet sets display on the tray with a more specific selector. */
   display: none !important;
 }
+
+#my-action-hud .hud-death-saves {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2px 4px;
+  color: #f4e9cf;
+}
+
+.my-death-save-marks {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.my-death-save-marks::before {
+  content: "✓ " attr(data-success);
+}
+
+.my-death-save-marks::after {
+  content: "× " attr(data-failure);
+}
+
+#hud .my-token-death-saves {
+  transform: translate(-50%, 2px);
+  padding: 3px 6px;
+  border: 1px solid #897251;
+  border-radius: 8px;
+  background: #241e19;
+  color: #f4e9cf;
+  font: 14px / 1 sans-serif;
+}
+
+.my-token-death-saves > i {
+  order: -1;
+}
+
+.my-token-death-saves[hidden] {
+  display: none;
+}

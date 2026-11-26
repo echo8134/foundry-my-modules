@@ -21,7 +21,6 @@ const GLANCE = {
   players: true,
   friendlyNpcs: false,
   labels: false,
-  deathSaves: true,
   tempHp: true
 };
 
@@ -156,7 +155,7 @@ await run(async () => {
   const gm = await joinGamemaster();
   await ensureStylesheet(gm);
   const player = await join(PLAYER_NAME, "", "en");
-  const keys = [SETTING, "privateDeathSaves"];
+  const keys = [SETTING];
   const previous = await gm.evaluate(
     (moduleId, settings) => ({
       settings: settings.map((key) => ({
@@ -245,31 +244,11 @@ await run(async () => {
       await gm.waitForSelector(`${badge(3)} .temp`);
     });
 
-    await check(
-      "at 0 hit points the death saves replace the hit point badge unless they are off or private to another GM",
-      async () => {
-        await gm.evaluate((id) => game.actors.get(id).update({ "system.attributes.hp.value": 0 }), ids.hero);
-        await gm.waitForSelector(`${badge(3)}.alert .pips`);
-        const pips = await gm.$eval(badge(3), (el) => ({
-          total: el.querySelectorAll(".pip").length,
-          good: el.querySelectorAll('.pip.on[data-tone="good"]').length,
-          bad: el.querySelectorAll('.pip.on[data-tone="bad"]').length,
-          tooltip: el.dataset.tooltipText
-        }));
-        assert(pips.total === 6 && pips.good === 1 && pips.bad === 2, JSON.stringify(pips));
-        assert(pips.tooltip.includes("1 success, 2 failure"), pips.tooltip);
-        await setGlance(gm, { deathSaves: false });
-        await waitFor(gm, (s) => document.querySelector(s)?.textContent === "0/38", `${badge(3)} .value`);
-        await setGlance(gm, {});
-        await gm.waitForSelector(`${badge(3)}.alert .pips`);
-        await gm.evaluate((m) => game.settings.set(m, "privateDeathSaves", "someone-else"), MODULE_ID);
-        await waitFor(gm, (s) => document.querySelector(s)?.textContent === "0/38", `${badge(3)} .value`);
-        await gm.evaluate((m) => game.settings.set(m, "privateDeathSaves", "off"), MODULE_ID);
-        await gm.waitForSelector(`${badge(3)}.alert .pips`);
-        await gm.evaluate((id) => game.actors.get(id).update({ "system.attributes.hp.value": 31 }), ids.hero);
-        await gm.waitForSelector(`${badge(3)}.bar`);
-      }
-    );
+    await check("the hit point badge keeps showing HP at zero", async () => {
+      await gm.evaluate((id) => game.actors.get(id).update({ "system.attributes.hp.value": 0 }), ids.hero);
+      await waitFor(gm, (s) => document.querySelector(s)?.textContent === "0/38", `${badge(3)}.bar .value`);
+      await gm.evaluate((id) => game.actors.get(id).update({ "system.attributes.hp.value": 31 }), ids.hero);
+    });
 
     await check("the concentration marker lights up when the actor starts concentrating", async () => {
       assert(
@@ -480,7 +459,7 @@ await run(async () => {
       await gm.select(`${row(0)} select[name="slots.0.sub"]`, "wis");
       await waitFor(gm, (s) => document.querySelector(s)?.textContent.trim().endsWith("WIS"), pill(0));
       assert((await text(gm, `${row(0)} .kind`)) === "Number", "kind chip");
-      assert((await text(gm, `${row(2)} .kind`)) === "Bar · Pips", "hit points can be a bar or pips");
+      assert((await text(gm, `${row(2)} .kind`)) === "Bar", "hit points use a bar");
 
       await gm.click(pill(2));
       await waitFor(gm, (s) => document.activeElement === document.querySelector(s), `${row(2)} select`);

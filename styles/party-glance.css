@@ -74,19 +74,8 @@
     0 2px 6px #000000b3;
 }
 
-#my-party-glance .my-party-glance-badge.alert i {
-  color: var(--pg-bad);
-}
-
 #my-party-glance .my-party-glance-badge.marker.on i {
   color: var(--pg-gold-bright);
-}
-
-#my-party-glance .my-party-glance-badge.alert {
-  border-color: var(--pg-bad);
-  box-shadow:
-    0 0 0 2px #e0705a40,
-    0 2px 6px #000000b3;
 }
 
 #my-party-glance .my-party-glance-badge .label {

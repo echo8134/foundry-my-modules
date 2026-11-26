@@ -18,7 +18,7 @@
     serif;
 }
 
-#my-action-hud :is(.hud-bar, .hud-effects),
+#my-action-hud :is(.hud-bar, .hud-effects, .hud-death-saves),
 #hotbar:has(> #my-action-hud) {
   border: 1px solid #887450;
   border-radius: 4px;
@@ -78,7 +78,7 @@
   text-shadow: none;
 }
 
-#my-action-hud .hud-bar button {
+#my-action-hud :is(.hud-bar, .hud-death-saves) button {
   padding: 0.3rem 0.48rem;
   background: none;
   color: #f4e9cf;
@@ -118,24 +118,24 @@
   font-size: 0.78em;
 }
 
-#my-action-hud .hud-bar [data-action="deathSave"] {
+#my-action-hud :is(.hud-bar, .hud-death-saves) [data-action="deathSave"] {
   justify-content: center;
   min-width: 2rem;
   border: 1px solid currentColor;
   border-radius: 4px;
 }
 
-#my-action-hud .hud-bar [data-action="deathSave"] i {
+#my-action-hud :is(.hud-bar, .hud-death-saves) [data-action="deathSave"] i {
   font-size: 1rem;
   color: inherit;
 }
 
-#my-action-hud .hud-bar button:is(:hover, [aria-expanded="true"]) {
+#my-action-hud :is(.hud-bar, .hud-death-saves) button:is(:hover, [aria-expanded="true"]) {
   background: #f0dfb9;
   color: #362317;
 }
 
-#my-action-hud .hud-bar button:is(:hover, [aria-expanded="true"]) i {
+#my-action-hud :is(.hud-bar, .hud-death-saves) button:is(:hover, [aria-expanded="true"]) i {
   color: #704329;
 }
 
@@ -291,7 +291,7 @@
   pointer-events: auto;
 }
 
-#hotbar > #my-action-hud :is(.hud-bar, .hud-effects) {
+#hotbar > #my-action-hud :is(.hud-bar, .hud-effects, .hud-death-saves) {
   justify-content: center;
   border: 0;
   border-bottom: 1px solid #887450;
@@ -355,7 +355,7 @@
   font-size: var(--font-size-12);
 }
 
-#my-action-hud.menu-design :is(.hud-bar, .hud-panel, .hud-effects),
+#my-action-hud.menu-design :is(.hud-bar, .hud-panel, .hud-effects, .hud-death-saves),
 #hotbar:has(> #my-action-hud.menu-design) {
   background: var(--hud-menu-background);
   border-color: var(--hud-menu-border);
@@ -364,7 +364,7 @@
   color: var(--hud-menu-text);
 }
 
-#hotbar > #my-action-hud.menu-design :is(.hud-bar, .hud-effects) {
+#hotbar > #my-action-hud.menu-design :is(.hud-bar, .hud-effects, .hud-death-saves) {
   background: none;
   border-bottom-color: var(--hud-menu-divider);
   border-radius: 0;
@@ -416,7 +416,7 @@
   color: var(--hud-menu-emphatic);
 }
 
-#my-action-hud.menu-design .hud-bar button:is(:hover, [aria-expanded="true"]) i {
+#my-action-hud.menu-design :is(.hud-bar, .hud-death-saves) button:is(:hover, [aria-expanded="true"]) i {
   color: inherit;
 }
 

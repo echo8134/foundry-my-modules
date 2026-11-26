@@ -7,7 +7,7 @@ import { text } from "./text.mjs";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 const PREVIEW_TOKEN = 72;
 const PILL_ROOM = 14;
-const FLAGS = ["players", "friendlyNpcs", "labels", "deathSaves", "tempHp"];
+const FLAGS = ["players", "friendlyNpcs", "labels", "tempHp"];
 
 const previewRadius = (count, distance) => ringRadius(PREVIEW_TOKEN, count, distance) + PILL_ROOM;
 const options = (entries, selected) =>
