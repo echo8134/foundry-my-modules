@@ -1,0 +1,73 @@
+<div class="my-party-glance-config">
+  <div class="top-fields">
+    <div class="form-group">
+      <label for="my-party-glance-count">{{text.slotCount}}</label>
+      <div class="form-fields">
+        <select id="my-party-glance-count" name="count">
+          {{#each counts}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{value}}</option>{{/each}}
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="my-party-glance-trigger">{{text.showRing}}</label>
+      <div class="form-fields">
+        <select id="my-party-glance-trigger" name="trigger">
+          {{#each triggers}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="preview">
+    <span class="guide" style="width: {{previewDiameter}}px; height: {{previewDiameter}}px"></span>
+    <span class="token"><i class="fa-solid fa-user"></i></span>
+    {{#each preview}}
+    <button type="button" class="pill{{#if active}} active{{/if}}{{#if empty}} empty{{/if}}" data-action="focusSlot" data-slot="{{index}}"
+      style="left: calc(50% + {{dx}}px); top: calc(50% + {{dy}}px)" aria-label="{{name}}: {{label}}" aria-pressed="{{active}}">
+      <span class="number">{{number}}</span>{{abbr}}
+    </button>
+    {{/each}}
+  </div>
+  <p class="preview-hint">{{text.previewHint}}</p>
+
+  <div class="slots-heading">
+    <h3>{{text.slotsHeading}}</h3>
+    <span>{{text.slotsHint}}</span>
+  </div>
+  <div class="slots">
+    {{#each rows}}
+    <div class="slot{{#if active}} active{{/if}}" data-slot="{{index}}">
+      <div class="slot-fields">
+        <span class="number">{{number}}</span>
+        <select name="slots.{{index}}.stat" aria-label="{{name}}">
+          <option value="" {{#unless stat}}selected{{/unless}}>{{@root.text.empty}}</option>
+          {{#each groups}}
+          {{#if label}}<optgroup label="{{label}}">{{/if}}
+          {{#each options}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+          {{#if label}}</optgroup>{{/if}}
+          {{/each}}
+        </select>
+        {{#if subChoices}}
+        <select name="slots.{{index}}.sub" class="sub" aria-label="{{subName}}">
+          {{#each subChoices}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+        </select>
+        {{/if}}
+        <span class="kind">{{kind}}</span>
+      </div>
+      {{#if custom}}
+      <div class="custom-fields">
+        <label class="abbr">{{@root.text.customAbbr}}<input type="text" name="slots.{{index}}.abbr" value="{{abbr}}" maxlength="6"></label>
+        <label class="path">{{@root.text.customPath}}<input type="text" name="slots.{{index}}.path" value="{{path}}" placeholder="system.abilities.san.value"></label>
+      </div>
+      {{/if}}
+    </div>
+    {{/each}}
+  </div>
+
+  <div class="flags">
+    {{#each flags}}
+    <label><input type="checkbox" name="{{id}}" {{checked value}}>{{label}}</label>
+    {{/each}}
+  </div>
+  <p class="footer-note">{{text.footer}}</p>
+</div>
