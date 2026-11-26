@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.9](https://github.com/echo8134/foundry-my-modules/compare/v0.10.8...v0.10.9) (2026-11-26)
+
+
+### Features
+
+* **action-hud:** show active effects and end concentration from the HUD ([#70](https://github.com/echo8134/foundry-my-modules/issues/70)) ([e27accb](https://github.com/echo8134/foundry-my-modules/commit/e27accbf3f8db173b95e78030e1375b01276541e))
+
 ## [0.10.8](https://github.com/echo8134/foundry-my-modules/compare/v0.10.7...v0.10.8) (2026-11-26)
 
 ### Features
