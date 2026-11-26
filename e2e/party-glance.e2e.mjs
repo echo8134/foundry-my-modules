@@ -1,5 +1,3 @@
-import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
 import { assert, check, join, joinGamemaster, MODULE_ID, PLAYER_NAME, run, waitFor } from "./harness.mjs";
 
 const SETTING = "partyGlance";
@@ -27,17 +25,15 @@ const GLANCE = {
 };
 
 async function ensureStylesheet(page) {
-  const manifest = JSON.parse(await readFile(new URL("../module.json", import.meta.url)));
-  assert(manifest.styles.includes(STYLESHEET), `module.json does not list ${STYLESHEET}`);
   const loaded = await page.evaluate(
-    (path) => [...document.styleSheets].some((sheet) => sheet.href?.endsWith(path)),
+    (path) =>
+      [...document.styleSheets].some(
+        (sheet) =>
+          sheet.href?.endsWith(path) || [...sheet.cssRules].some((rule) => rule.styleSheet?.href?.endsWith(path))
+      ),
     STYLESHEET
   );
-  if (loaded) return;
-  console.log(
-    `NOTE ${STYLESHEET} is not served yet. Foundry reads module.json when the world launches, so the test injects the file.`
-  );
-  await page.addStyleTag({ path: fileURLToPath(new URL(`../${STYLESHEET}`, import.meta.url)) });
+  assert(loaded, `Foundry does not serve ${STYLESHEET}; relaunch the world after changing module.json`);
 }
 
 function setGlance(page, patch) {
