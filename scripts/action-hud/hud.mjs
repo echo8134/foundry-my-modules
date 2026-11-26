@@ -2,16 +2,13 @@ import english from "../../lang/en.json" with { type: "json" };
 import { MODULE_ID } from "../constants.mjs";
 import { deathSaveMarks } from "../death-save-displays.mjs";
 import { canViewDeathTray } from "../death-saves.mjs";
-import { HIDDEN_CATEGORIES, HudCategories } from "./categories.mjs";
+import { registerFeatureMenu } from "../feature-menu.mjs";
+import { ALWAYS_SHOW_CHARACTER, DESIGN, DETACH_HOTBAR, HIDDEN_CATEGORIES, HudConfig, SHOW_EFFECTS } from "./config.mjs";
 import { showsDeathSaves, trackStabilization } from "./death-saves.mjs";
 import { effectEntries, endHudEffect } from "./effects.mjs";
 import { actionGroups } from "./groups.mjs";
 
 const ENABLED = "actionHudEnabled";
-const SHOW_EFFECTS = "actionHudShowEffects";
-const ALWAYS_SHOW_CHARACTER = "actionHudAlwaysShowCharacter";
-const DETACH_HOTBAR = "actionHudDetachHotbar";
-const DESIGN = "actionHudDesign";
 const POSITIONS = "actionHudPositions";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -267,7 +264,7 @@ export function setupActionHud() {
       name: "MY_MODULES.ActionHud.alwaysShowCharacter",
       hint: "MY_MODULES.ActionHud.alwaysShowCharacterHint",
       scope: "client",
-      config: true,
+      config: false,
       type: Boolean,
       default: true,
       onChange: refresh
@@ -275,7 +272,7 @@ export function setupActionHud() {
     game.settings.register(MODULE_ID, SHOW_EFFECTS, {
       name: "MY_MODULES.ActionHud.showEffects",
       scope: "client",
-      config: true,
+      config: false,
       type: Boolean,
       default: false,
       onChange: refresh
@@ -284,7 +281,7 @@ export function setupActionHud() {
       name: "MY_MODULES.ActionHud.detachHotbar",
       hint: "MY_MODULES.ActionHud.detachHotbarHint",
       scope: "client",
-      config: true,
+      config: false,
       type: Boolean,
       default: false,
       onChange: refresh
@@ -293,7 +290,7 @@ export function setupActionHud() {
       name: "MY_MODULES.ActionHud.design",
       hint: "MY_MODULES.ActionHud.designHint",
       scope: "client",
-      config: true,
+      config: false,
       type: String,
       choices: { wood: "MY_MODULES.ActionHud.designWood", menu: "MY_MODULES.ActionHud.designMenu" },
       default: "wood",
@@ -311,11 +308,11 @@ export function setupActionHud() {
       default: ["conditions", "rests"],
       onChange: refresh
     });
-    game.settings.registerMenu(MODULE_ID, "actionHudCategories", {
+    registerFeatureMenu("actionHudCategories", ENABLED, {
       name: english["MY_MODULES.ActionHud.title"],
-      label: "MY_MODULES.ActionHud.categories",
+      label: "MY_MODULES.ActionHud.configure",
       icon: "fa-solid fa-list-check",
-      type: HudCategories,
+      type: HudConfig,
       restricted: false
     });
     // Foundry replaces the hotbar's children when paging or assigning a macro.

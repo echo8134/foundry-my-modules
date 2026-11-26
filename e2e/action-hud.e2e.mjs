@@ -355,7 +355,8 @@ await run(async () => {
       const attacks = group("attacks");
       const staff = entry("item", ids.items["Ashwood Staff"]);
       const detached = `body > ${HUD}`;
-      const select = `#settings-config select[name="${MODULE_ID}.${DESIGN}"]`;
+      const form = "#my-action-hud-config";
+      const select = `${form} select[name="${DESIGN}"]`;
       const openAttacks = async (page) => {
         await page.waitForSelector(`${HUD} [data-actor="Actor.${ids.actor}"] [data-group="attacks"]`, {
           visible: true
@@ -375,13 +376,22 @@ await run(async () => {
       try {
         await player.evaluate(() => game.settings.sheet.render({ force: true }));
         await click(player, `#settings-config nav [data-tab="${MODULE_ID}"]`);
+        assert(!(await player.$(`#settings-config [data-key="${MODULE_ID}.partyGlance"]`)), "player sees GM ring menu");
+        assert(
+          !(await player.$(`#settings-config [name="${MODULE_ID}.partyGlanceEnabled"]`)),
+          "player sees GM ring toggle"
+        );
+        await click(player, `#settings-config [data-key="${MODULE_ID}.actionHudCategories"]`);
+        await player.waitForSelector(select, { visible: true });
         assert((await player.$eval(select, (el) => el.value)) === "wood", "wood and parchment is the default");
         assert(
           await player.evaluate((key) => game.settings.settings.get(key).scope === "client", `${MODULE_ID}.${DESIGN}`),
           "HUD design must be stored per client"
         );
         await player.select(select, "menu");
-        await click(player, '#settings-config button[type="submit"]');
+        await click(player, `${form} button[type="submit"]`);
+        await player.waitForSelector(form, { hidden: true });
+        await player.evaluate(() => game.settings.sheet.close());
         await player.waitForSelector("#settings-config", { hidden: true });
         await openAttacks(player);
 
@@ -539,7 +549,7 @@ await run(async () => {
         await peer.evaluate(() => game.settings.sheet.render({ force: true }));
         await click(peer, `#settings-config nav [data-tab="${MODULE_ID}"]`);
         await click(peer, `#settings-config [data-action="openSubmenu"][data-key="${MODULE_ID}.actionHudCategories"]`);
-        const form = "#my-action-hud-categories";
+        const form = "#my-action-hud-config";
         await peer.waitForSelector(`${form} label[for="my-action-category-attacks"]`, { visible: true });
         assert(
           (await peer.$eval(`${form} label[for="my-action-category-attacks"]`, (el) => el.textContent.trim())) ===
@@ -547,7 +557,7 @@ await run(async () => {
           "English category setting"
         );
         await peer.waitForSelector(`${form} [name="attacks"]`, { visible: true });
-        const checks = await peer.$$eval(`${form} input[type="checkbox"]`, (inputs) =>
+        const checks = await peer.$$eval(`${form} input[id^="my-action-category-"]`, (inputs) =>
           Object.fromEntries(inputs.map((input) => [input.name, input.checked]))
         );
         assert(

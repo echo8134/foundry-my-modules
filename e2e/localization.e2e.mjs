@@ -44,9 +44,8 @@ await run(async () => {
     const text = await gm.$eval(tab, (el) => el.textContent);
     for (const expected of [
       "Show action HUD",
-      "Show active effects above the Action HUD",
-      "Show the action HUD for this client.",
-      "Visible action categories",
+      "Configure Action HUD",
+      "Configure Party Glance",
       "Arrows (◀ Burning ▶)",
       "Quest journal folder",
       "Safety alert sound",
@@ -56,10 +55,36 @@ await run(async () => {
     ]) {
       assert(text.includes(expected), `Missing English setting: ${expected}`);
     }
+    const order = await gm.$$eval(`${tab} .form-group`, (groups) =>
+      groups.slice(0, 4).map((row) => row.querySelector("input")?.name ?? row.querySelector("button")?.dataset.key)
+    );
+    assert(
+      order.join("/") ===
+        ["actionHudEnabled", "actionHudCategories", "partyGlanceEnabled", "partyGlance"]
+          .map((id) => `${MODULE_ID}.${id}`)
+          .join("/"),
+      JSON.stringify(order)
+    );
+    const hudLabels = [
+      "Always show my character’s action HUD",
+      "Show active effects above the Action HUD",
+      "Detach action HUD from hotbar",
+      "Action HUD design",
+      "Visible action categories"
+    ];
+    for (const label of hudLabels) {
+      assert(!text.includes(label), `HUD option in the main settings: ${label}`);
+    }
     await gm.click(`${tab} [data-key="${MODULE_ID}.actionHudCategories"]`);
-    const menu = "#my-action-hud-categories";
+    const menu = "#my-action-hud-config";
     await gm.waitForSelector(menu, { visible: true });
-    const labels = await gm.$$eval(`${menu} .form-group label`, (items) => items.map((el) => el.textContent.trim()));
+    const hudText = await gm.$eval(menu, (el) => el.textContent);
+    for (const label of [...hudLabels, "Wood and parchment", "Foundry menus"]) {
+      assert(hudText.includes(label), `Missing English HUD option: ${label}`);
+    }
+    const labels = await gm.$$eval(`${menu} label[for^="my-action-category-"]`, (items) =>
+      items.map((el) => el.textContent.trim())
+    );
     assert(
       labels.join("/") === "Attacks/Spells/Features/Items/Checks/Saves/Conditions/Rests/Death Saves",
       labels.join("/")
