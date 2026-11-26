@@ -30,6 +30,16 @@ jobs:
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           token: ${{ steps.app-token.outputs.token }}
+      - name: Merge the release pull request once its checks pass
+        if: steps.release.outputs.release_created != 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          BRANCH: release-please--branches--main--components--foundry-my-modules
+        run: |
+          state=$(gh pr view "$BRANCH" --repo "$GITHUB_REPOSITORY" --json state --jq .state 2>/dev/null || true)
+          if [ "$state" = OPEN ]; then
+            gh pr merge "$BRANCH" --repo "$GITHUB_REPOSITORY" --auto --squash
+          fi
 
   publish:
     needs: release-please
