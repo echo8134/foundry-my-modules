@@ -127,6 +127,7 @@ function ensureRing(token, settings) {
     .slice(0, settings.count)
     .map((slot, i) => (slot.stat ? { number: i + 1, badge: readBadge(token.actor, slot, options) } : null));
   const signature = JSON.stringify([settings.labels, badges]);
+  ring.distance = settings.distance;
   if (signature === ring.signature) return;
   ring.signature = signature;
   ring.geometry = "";
@@ -144,10 +145,11 @@ function place(ring) {
   const x = Math.round(view.left + center.x);
   const y = Math.round(view.top + center.y);
   const diameter = Math.round(Math.min(token.w, token.h) * scale);
-  const geometry = `${x},${y},${diameter}`;
+  const radius = ringRadius(diameter, ring.count, ring.distance);
+  const geometry = `${x},${y},${radius}`;
   if (geometry === ring.geometry) return;
-  if (!ring.geometry.endsWith(`,${diameter}`)) {
-    const offsets = slotOffsets(ring.count, ringRadius(diameter, ring.count));
+  if (!ring.geometry.endsWith(`,${radius}`)) {
+    const offsets = slotOffsets(ring.count, radius);
     for (const badge of ring.element.children) {
       const { dx, dy } = offsets[badge.dataset.slot - 1];
       badge.style.setProperty("--dx", `${dx}px`);

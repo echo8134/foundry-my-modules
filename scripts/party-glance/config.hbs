@@ -18,12 +18,19 @@
     </div>
   </div>
 
-  <div class="preview">
-    <span class="guide" style="width: {{previewDiameter}}px; height: {{previewDiameter}}px"></span>
+  <div class="form-group">
+    <label for="my-party-glance-distance">{{text.ringDistance}}</label>
+    <div class="form-fields">
+      <input type="range" id="my-party-glance-distance" name="distance" min="{{distance.min}}" max="{{distance.max}}" step="{{distance.step}}" value="{{distance.value}}">
+      <output for="my-party-glance-distance">{{distance.value}}%</output>
+    </div>
+  </div>
+  <div class="preview" style="--radius: {{previewRadius}}px; --max-radius: {{maxPreviewRadius}}px">
+    <span class="guide"></span>
     <span class="token"><i class="fa-solid fa-user"></i></span>
     {{#each preview}}
     <button type="button" class="pill{{#if active}} active{{/if}}{{#if empty}} empty{{/if}}" data-action="focusSlot" data-slot="{{index}}"
-      style="left: calc(50% + {{dx}}px); top: calc(50% + {{dy}}px)" aria-label="{{name}}: {{label}}" aria-pressed="{{active}}">
+      style="--angle: {{angle}}deg" aria-label="{{name}}: {{label}}" aria-pressed="{{active}}">
       <span class="number">{{number}}</span>{{abbr}}
     </button>
     {{/each}}

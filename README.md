@@ -234,6 +234,7 @@ As GM, select a player character's token to see small badges around it with its 
 Open **Party Glance** in the module settings and choose **Configure token ring**. Only the GM sees the button, and the layout is a world setting.
 
 - **Slots on the ring** sets 1 to 8 badges. Each count has one fixed layout. Slot 1 sits on top and the rest follow clockwise. The preview shows the numbered slots, and clicking one jumps to its row.
+- **Ring distance** moves the preview badges closer to or farther from the token as you drag. The default of 100% uses the original spacing. Click **Save** to apply the distance on the map.
 - **Show the ring** picks when it appears: when you select a token, when you hover a token, or on every player token while a combat is running. Outside a started combat the last choice behaves like selecting.
 - **What each slot shows** has one dropdown per slot. Leave a slot empty to leave a gap. Choose **Passive skill** or **Saving throw** to pick the skill or ability in a second dropdown. **Custom value** reads any number, text or true/false value from the actor, for example `system.abilities.san.value`, and shows it under the short name you enter. Slots above the chosen count keep their choice for later.
 - **Player-owned characters** and **Friendly NPCs** choose which tokens get a ring. A friendly NPC is a token with the friendly disposition and no player owner.

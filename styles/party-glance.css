@@ -185,7 +185,7 @@
 .my-party-glance-config .preview {
   position: relative;
   flex: none;
-  height: 264px;
+  height: calc(2 * var(--max-radius) + 40px);
   border: 1px solid var(--pg-border);
   border-radius: 6px;
   background: #00000059;
@@ -194,6 +194,8 @@
 
 .my-party-glance-config .preview .guide {
   position: absolute;
+  width: calc(2 * var(--radius));
+  height: calc(2 * var(--radius));
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -222,6 +224,9 @@
 
 .my-party-glance-config .pill {
   position: absolute;
+  left: calc(50% + sin(var(--angle)) * var(--radius));
+  top: calc(50% - cos(var(--angle)) * var(--radius));
+  transition-property: background-color, border-color, color, box-shadow;
   transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
